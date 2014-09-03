@@ -1,0 +1,11 @@
+<plugin name='mogobiz-elasticsearch' version='1.0-SNAPSHOT' grailsVersion='2.3 &gt; *'>
+  <author>Stéphane Manciot</author>
+  <authorEmail>stephane.manciot@ebiznext.com</authorEmail>
+  <title>Mogobiz Elasticsearch Plugin</title>
+  <description>Brief summary/description of the plugin.
+</description>
+  <documentation>http://grails.org/plugin/mogobiz-elasticsearch</documentation>
+  <type>MogobizElasticsearchGrailsPlugin</type>
+  <packaging>binary</packaging>
+  <resources />
+</plugin>
