@@ -1,0 +1,9 @@
+com.mogobiz.elasticsearch.rivers.CountryRiver
+com.mogobiz.elasticsearch.rivers.RateRiver
+com.mogobiz.elasticsearch.rivers.CatalogRiver
+com.mogobiz.elasticsearch.rivers.BrandRiver
+com.mogobiz.elasticsearch.rivers.CategoryRiver
+com.mogobiz.elasticsearch.rivers.TagRiver
+com.mogobiz.elasticsearch.rivers.ProductRiver
+com.mogobiz.elasticsearch.rivers.SuggestionRiver
+com.mogobiz.elasticsearch.rivers.CouponRiver
