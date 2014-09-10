@@ -372,7 +372,9 @@ final class RiverTools {
                     "uuid",
                     "hide",
                     "sanitizedName",
-                    "keywords"
+                    "keywords",
+                    "dateCreated",
+                    "lastUpdated"
             ], p)
 
             m << [calendarType:p.calendarType?.name()]
