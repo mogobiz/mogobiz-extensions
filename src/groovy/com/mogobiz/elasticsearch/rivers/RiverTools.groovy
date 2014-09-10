@@ -366,6 +366,7 @@ final class RiverTools {
                     "stopDate",
                     "startFeatureDate",
                     "stopFeatureDate",
+                    "availabilityDate",
                     "nbSales",
                     "stockDisplay",
                     "uuid",
@@ -557,7 +558,7 @@ final class RiverTools {
     }
 
     static Map asIBeaconMap(Ibeacon ibeacon, RiverConfig config){
-        ibeacon ? RenderUtil.asIsoMapForJSON(['uuid', 'name', 'startDate', 'endDate', 'active'], ibeacon) : [:]
+        ibeacon ? RenderUtil.asIsoMapForJSON(['uuid', 'name', 'startDate', 'endDate', 'active', 'major', 'minor'], ibeacon) : [:]
     }
 
     static String extractResourceUrl(Resource resource, RiverConfig config) {
