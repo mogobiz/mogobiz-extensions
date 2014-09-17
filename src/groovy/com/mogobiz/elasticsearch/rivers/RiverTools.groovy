@@ -224,7 +224,8 @@ final class RiverTools {
                 'name',
                 'description',
                 'picture',
-                'position'
+                'position',
+                'availabilityDate'
         ], sku)
 
         translate(msku, sku.id, ['name', 'description'], config.languages, config.defaultLang)
@@ -374,7 +375,8 @@ final class RiverTools {
                     "sanitizedName",
                     "keywords",
                     "dateCreated",
-                    "lastUpdated"
+                    "lastUpdated",
+                    "availabilityDate"
             ], p)
 
             m << [calendarType:p.calendarType?.name()]
