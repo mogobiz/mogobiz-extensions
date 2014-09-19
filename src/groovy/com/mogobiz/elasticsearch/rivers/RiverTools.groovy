@@ -17,6 +17,7 @@ import com.mogobiz.store.domain.Product2Resource
 import com.mogobiz.store.domain.ProductCalendar
 import com.mogobiz.store.domain.ProductProperty
 import com.mogobiz.store.domain.ReductionRule
+import com.mogobiz.store.domain.ReductionRuleType
 import com.mogobiz.store.domain.Resource
 import com.mogobiz.store.domain.ResourceType
 import com.mogobiz.store.domain.Shipping
@@ -236,37 +237,79 @@ final class RiverTools {
 
         // liste des coupons associés à ce sku
         def product = sku.product
-        Set<Coupon> coupons = []
-        coupons << Coupon.executeQuery('select distinct coupon FROM Coupon coupon left join coupon.products as product where (product.id=:idProduct)',
-                [idProduct:product.id])
-        def idCategories = []
-        categoryWithParents(product.category).each {Category c ->
-            idCategories << c.id
-        }
-        coupons << Coupon.executeQuery('select distinct coupon FROM Coupon coupon left join coupon.categories as category where (category.id in (:idCategories))', ['idCategories':idCategories])
+        Set<Coupon> coupons = extractProductCoupons(product)
         coupons << Coupon.executeQuery('select distinct coupon FROM Coupon coupon left join coupon.ticketTypes as ticketType where (ticketType.id=:idSku)',
                 [idSku:sku.id])
-        def skuCoupons = []
-        coupons.flatten().each {Coupon coupon ->
-            skuCoupons << [id: coupon.id]
-        }
-//        def idCategories = categoryWithParents(sku.product.category).collect {it.id}
-//        Coupon.where {
-//            (
-//                    products in Product.where {id==sku.product.id}
-//            ) || (
-//                    categories in Category.where {id in idCategories}
-//            ) || (
-//                    ticketTypes in TicketType.where {id==sku.id}
-//            )
-//        }.list().each {Coupon coupon ->
-//            skuCoupons << [id: coupon.id]
-//        }
-        if(!skuCoupons.isEmpty()){
-            msku << ['coupons':skuCoupons]
+
+        asPromotionsAndCouponsMap(coupons, sku.price).each {k, v ->
+            msku[k] = v
         }
 
         msku
+    }
+
+    private static Set<Coupon> extractProductCoupons(Product product) {
+        Set<Coupon> coupons = []
+        coupons << Coupon.executeQuery('select distinct coupon FROM Coupon coupon left join coupon.products as product where (product.id=:idProduct)',
+                [idProduct: product.id])
+        def idCategories = []
+        categoryWithParents(product.category).each { Category c ->
+            idCategories << c.id
+        }
+        coupons << Coupon.executeQuery('select distinct coupon FROM Coupon coupon left join coupon.categories as category where (category.id in (:idCategories))', ['idCategories': idCategories])
+        coupons
+    }
+
+    private static Map asPromotionsAndCouponsMap(Set<Coupon> coupons, Long price){
+        def m = [:]
+        def mCoupons = []
+        Long reduction = 0L
+        String name = null
+        String description = null
+        coupons.flatten().each {Coupon coupon ->
+            mCoupons << [id: coupon.id]
+            if(coupon.active && coupon.anonymous){
+                if(!name){
+                    name = coupon.name
+                }
+                if(!description){
+                    description = coupon.description
+                }
+                reduction += calculerReduction(coupon, price)
+            }
+        }
+        if(!mCoupons.isEmpty()){
+            m << ['coupons':mCoupons]
+            if(reduction > 0){
+                m << [promotion:[name:name, description:description, reduction:reduction]]
+                m << [salePrice:price - reduction]
+            }
+        }
+        m
+    }
+
+    private static Long calculerReduction(Coupon coupon, Long prixDeBase){
+        def reduction = 0
+        coupon.rules?.each {rule ->
+            switch (rule.xtype) {
+                case ReductionRuleType.DISCOUNT:
+                    String discount = rule.discount
+                    if(discount?.endsWith("%")){
+                        reduction += (Long)(prixDeBase * Float.parseFloat(discount.substring(0, discount.length()-1)) / 100)
+                    }
+                    else if (discount.startsWith ("+")){
+                        //should never be the case
+                        reduction -= Long.parseLong (discount.substring(1))
+                    }
+                    else if (discount.startsWith ("-")){
+                        reduction += Long.parseLong (discount.substring(1))
+                    }
+                    break
+                default:
+                    break
+            }
+        }
+        reduction
     }
 
     static Map asVariationMap(VariationValue variationValue, RiverConfig config){
@@ -521,6 +564,10 @@ final class RiverTools {
                 m << ["${property.name}":property.value]
             }
 
+            asPromotionsAndCouponsMap(extractProductCoupons(p), p.price).each {k, v ->
+                m[k] = v
+            }
+
             return m
         }
         [:]
@@ -614,41 +661,13 @@ final class RiverTools {
     static Map asCouponMap(Coupon coupon, RiverConfig config){
         def map = [:]
         if(coupon){
-            map <<  RenderUtil.asIsoMapForJSON(['id', 'code', 'name', 'active', 'numberOfUses', 'startDate', 'endDate', 'catalogWise'], coupon)
+            map <<  RenderUtil.asIsoMapForJSON(['id', 'code', 'name', 'active', 'numberOfUses', 'startDate', 'endDate', 'catalogWise', 'anonymous'], coupon)
             map << ['sold': coupon.reductionSold ? coupon.reductionSold.sold : 0L]
             def rules = []
             coupon.rules.each {rule ->
                 rules << asReductionRuleMap(rule, config)
             }
             map << ['rules':rules]
-
-//            def categories  = []
-//            coupon.categories?.each {Category category ->
-//                categoryWithChildren(category, categories)
-//            }
-//
-//            List<TicketType> skus = TicketType.createCriteria().list {
-//                or {
-//                    if (coupon.products) {
-//                        "in"("product", coupon.products)
-//                    }
-//                    if (coupon.categories) {
-//                        product {
-//                            'in' ('category', categories.flatten())
-//                        }
-//                    }
-//                    if (coupon.ticketTypes) {
-//                        "in"("id", coupon.ticketTypes.collect {it.id})
-//                    }
-//                }
-//            }
-//            if(skus){
-//                def mskus = []
-//                skus.each {TicketType sku ->
-//                    mskus << [id:sku.id]
-//                }
-//                map << [skus: mskus]
-//            }
         }
         map
     }
