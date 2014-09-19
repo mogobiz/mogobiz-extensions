@@ -362,7 +362,6 @@ final class RiverTools {
                     "description",
                     "descriptionAsText",
                     "price",
-                    "creationDate",
                     "startDate",
                     "stopDate",
                     "startFeatureDate",
