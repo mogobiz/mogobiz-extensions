@@ -148,27 +148,38 @@ final class RiverTools {
     }
 
     static Map asCategoryMap(Category category, RiverConfig config) {
-        category ? translate(
-                RenderUtil.asIsoMapForJSON(
-                        [
-                                "id",
-                                "name",
-                                "description",
-                                "uuid",
-                                "keywords",
-                                "hide"
-                        ],
-                        category
-                ),
-                category.id,
-                [
-                        'name',
-                        'description',
-                        'keywords'
-                ],
-                config.languages,
-                config.defaultLang
-        ) << [path: retrieveCategoryPath(category, category.sanitizedName)] << [parentId:category.parent?.id] << [increments:0] : [:]
+        def m = [:]
+        if(category){
+            m =  translate(
+                    RenderUtil.asIsoMapForJSON(
+                            [
+                                    "id",
+                                    "name",
+                                    "description",
+                                    "uuid",
+                                    "keywords",
+                                    "hide"
+                            ],
+                            category
+                    ),
+                    category.id,
+                    [
+                            'name',
+                            'description',
+                            'keywords'
+                    ],
+                    config.languages,
+                    config.defaultLang
+            ) << [path: retrieveCategoryPath(category, category.sanitizedName)] << [parentId:category.parent?.id] << [increments:0]
+            def coupons = []
+            extractCategoryCoupons(category).each {coupon ->
+                coupons << [id:coupon.id]
+            }
+            if(!coupons.isEmpty()){
+                m << [coupons:coupons]
+            }
+        }
+        m
     }
 
     static String retrieveCategoryPath(Category cat, String path = cat?.sanitizedName){
@@ -254,6 +265,16 @@ final class RiverTools {
                 [idProduct: product.id])
         def idCategories = []
         categoryWithParents(product.category).each { Category c ->
+            idCategories << c.id
+        }
+        coupons << Coupon.executeQuery('select distinct coupon FROM Coupon coupon left join coupon.categories as category where (category.id in (:idCategories))', ['idCategories': idCategories])
+        coupons
+    }
+
+    private static Set<Coupon> extractCategoryCoupons(Category category) {
+        Set<Coupon> coupons = []
+        def idCategories = []
+        categoryWithParents(category).each { Category c ->
             idCategories << c.id
         }
         coupons << Coupon.executeQuery('select distinct coupon FROM Coupon coupon left join coupon.categories as category where (category.id in (:idCategories))', ['idCategories': idCategories])
