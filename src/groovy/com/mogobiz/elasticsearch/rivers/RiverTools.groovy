@@ -173,7 +173,7 @@ final class RiverTools {
             ) << [path: retrieveCategoryPath(category, category.sanitizedName)] << [parentId:category.parent?.id] << [increments:0]
             def coupons = []
             extractCategoryCoupons(category).each {coupon ->
-                coupons << [id:coupon.id]
+                coupons << coupon.id
             }
             if(!coupons.isEmpty()){
                 m << [coupons:coupons]
