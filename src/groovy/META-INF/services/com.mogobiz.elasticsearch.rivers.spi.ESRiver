@@ -7,3 +7,4 @@ com.mogobiz.elasticsearch.rivers.TagRiver
 com.mogobiz.elasticsearch.rivers.ProductRiver
 com.mogobiz.elasticsearch.rivers.SuggestionRiver
 com.mogobiz.elasticsearch.rivers.CouponRiver
+com.mogobiz.elasticsearch.rivers.StockRiver

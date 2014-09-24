@@ -223,40 +223,43 @@ final class RiverTools {
     }
 
     static Map asSkuMap(TicketType sku, RiverConfig config){
-        def msku = RenderUtil.asIsoMapForJSON([
-                'id',
-                'sku',
-                'price',
-                'minOrder',
-                'maxOrder',
-                'nbSales',
-                'startDate',
-                'stopDate',
-                'xprivate',
-                'name',
-                'description',
-                'picture',
-                'position',
-                'availabilityDate'
-        ], sku)
+        if(sku){
+            def m = RenderUtil.asIsoMapForJSON([
+                    'id',
+                    'uuid',
+                    'sku',
+                    'price',
+                    'minOrder',
+                    'maxOrder',
+                    'nbSales',
+                    'startDate',
+                    'stopDate',
+                    'xprivate',
+                    'name',
+                    'description',
+                    'picture',
+                    'position'
+            ], sku)
 
-        translate(msku, sku.id, ['name', 'description'], config.languages, config.defaultLang)
+            translate(m, sku.id, ['name', 'description'], config.languages, config.defaultLang)
 
-        msku << [variation1:asVariationMap(sku.variation1, config)]
-        msku << [variation2:asVariationMap(sku.variation2, config)]
-        msku << [variation3:asVariationMap(sku.variation3, config)]
+            m << [variation1:asVariationMap(sku.variation1, config)]
+            m << [variation2:asVariationMap(sku.variation2, config)]
+            m << [variation3:asVariationMap(sku.variation3, config)]
 
-        // liste des coupons associés à ce sku
-        def product = sku.product
-        Set<Coupon> coupons = extractProductCoupons(product)
-        coupons << Coupon.executeQuery('select distinct coupon FROM Coupon coupon left join coupon.ticketTypes as ticketType where (ticketType.id=:idSku)',
-                [idSku:sku.id])
+            // liste des coupons associés à ce sku
+            def product = sku.product
+            Set<Coupon> coupons = extractProductCoupons(product)
+            coupons << Coupon.executeQuery('select distinct coupon FROM Coupon coupon left join coupon.ticketTypes as ticketType where (ticketType.id=:idSku)',
+                    [idSku:sku.id])
 
-        asPromotionsAndCouponsMap(coupons, sku.price).each {k, v ->
-            msku[k] = v
+            asPromotionsAndCouponsMap(coupons, sku.price).each {k, v ->
+                m[k] = v
+            }
+
+            return m
         }
-
-        msku
+        [:]
     }
 
     private static Set<Coupon> extractProductCoupons(Product product) {
@@ -512,37 +515,37 @@ final class RiverTools {
 
             def skus = []
             TicketType.findAllByProduct(p).each {sku ->
-                def msku = asSkuMap(sku, config)
-                def stock = sku.stock
-                if(stock){
-                    msku << [initialStock: stock.stock]
-                    msku << [stockUnlimited: stock.stockUnlimited]
-                    msku << [stockOutSelling: stock.stockOutSelling]
-                    msku << [stockDisplay: p.stockDisplay]
-                    if(!stock.stockUnlimited){
-                        if (p.calendarType == ProductCalendar.NO_DATE) {
-                            StockCalendar stockCalendar = StockCalendar.findByTicketType(sku)
-                            if (stockCalendar) {
-                                msku << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)]
-                            }
-                            else
-                            {
-                                msku << [stock: stock.stock]
-                            }
-                        }
-                        else{
-                            def stockCalendars = []
-                            StockCalendar.findAllByTicketType(sku).each {stockCalendar ->
-                                stockCalendars << (RenderUtil.asIsoMapForJSON(['startDate'], stockCalendar)
-                                        << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)])
-                            }
-                            if(!stockCalendars.isEmpty()){
-                                msku << [stockByDateTime:stockCalendars]
-                            }
-                        }
-                    }
-                }
-                skus << msku
+//                def msku = asSkuMap(sku, config)
+//                def stock = sku.stock
+//                if(stock){
+//                    msku << [initialStock: stock.stock]
+//                    msku << [stockUnlimited: stock.stockUnlimited]
+//                    msku << [stockOutSelling: stock.stockOutSelling]
+//                    msku << [stockDisplay: p.stockDisplay]
+//                    if(!stock.stockUnlimited){
+//                        if (p.calendarType == ProductCalendar.NO_DATE) {
+//                            StockCalendar stockCalendar = StockCalendar.findByTicketType(sku)
+//                            if (stockCalendar) {
+//                                msku << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)]
+//                            }
+//                            else
+//                            {
+//                                msku << [stock: stock.stock]
+//                            }
+//                        }
+//                        else{
+//                            def stockCalendars = []
+//                            StockCalendar.findAllByTicketType(sku).each {stockCalendar ->
+//                                stockCalendars << (RenderUtil.asIsoMapForJSON(['startDate'], stockCalendar)
+//                                        << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)])
+//                            }
+//                            if(!stockCalendars.isEmpty()){
+//                                msku << [stockByDateTime:stockCalendars]
+//                            }
+//                        }
+//                    }
+//                }
+                skus << asSkuMap(sku, config)
             }
             if(!skus.isEmpty()){
                 m << [skus:skus]
@@ -589,6 +592,52 @@ final class RiverTools {
                 m[k] = v
             }
 
+            return m
+        }
+        [:]
+    }
+
+    static Map asStockMap(TicketType sku, RiverConfig config){
+        if(sku){
+            def m = RenderUtil.asIsoMapForJSON([
+                    'id',
+                    'sku',
+                    'uuid',
+                    'startDate',
+                    'stopDate',
+                    'availabilityDate'
+            ], sku)
+            def p = sku.product
+            def stock = sku.stock
+            if(stock){
+                m << [initialStock: stock.stock]
+                m << [stockUnlimited: stock.stockUnlimited]
+                m << [stockOutSelling: stock.stockOutSelling]
+                m << [stockDisplay: p.stockDisplay]
+                m << [calendarType: p.calendarType]
+                if(!stock.stockUnlimited){
+                    if (p.calendarType == ProductCalendar.NO_DATE) {
+                        StockCalendar stockCalendar = StockCalendar.findByTicketType(sku)
+                        if (stockCalendar) {
+                            m << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)]
+                        }
+                        else
+                        {
+                            m << [stock: stock.stock]
+                        }
+                    }
+                    else{
+                        def stockCalendars = []
+                        StockCalendar.findAllByTicketType(sku).each {stockCalendar ->
+                            stockCalendars << (RenderUtil.asIsoMapForJSON(['id', 'uuid', 'startDate'], stockCalendar)
+                                    << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)])
+                        }
+                        if(!stockCalendars.isEmpty()){
+                            m << [stockByDateTime:stockCalendars]
+                        }
+                    }
+                }
+            }
             return m
         }
         [:]
