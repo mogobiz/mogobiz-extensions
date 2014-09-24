@@ -605,18 +605,24 @@ final class RiverTools {
                     'uuid',
                     'startDate',
                     'stopDate',
-                    'availabilityDate'
+                    'availabilityDate',
+                    'dateCreated',
+                    'lastUpdated'
             ], sku)
-            def p = sku.product
+            def product = sku.product
+            if(product){
+                m << [productId: product.id]
+                m << [productUuid: product.uuid]
+                m << [stockDisplay: product.stockDisplay]
+                m << [calendarType: product.calendarType]
+            }
             def stock = sku.stock
             if(stock){
                 m << [initialStock: stock.stock]
                 m << [stockUnlimited: stock.stockUnlimited]
                 m << [stockOutSelling: stock.stockOutSelling]
-                m << [stockDisplay: p.stockDisplay]
-                m << [calendarType: p.calendarType]
                 if(!stock.stockUnlimited){
-                    if (p.calendarType == ProductCalendar.NO_DATE) {
+                    if (product?.calendarType == ProductCalendar.NO_DATE) {
                         StockCalendar stockCalendar = StockCalendar.findByTicketType(sku)
                         if (stockCalendar) {
                             m << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)]
@@ -629,7 +635,7 @@ final class RiverTools {
                     else{
                         def stockCalendars = []
                         StockCalendar.findAllByTicketType(sku).each {stockCalendar ->
-                            stockCalendars << (RenderUtil.asIsoMapForJSON(['id', 'uuid', 'startDate'], stockCalendar)
+                            stockCalendars << (RenderUtil.asIsoMapForJSON(['id', 'uuid', 'startDate', 'dateCreated', 'lastUpdated'], stockCalendar)
                                     << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)])
                         }
                         if(!stockCalendars.isEmpty()){
