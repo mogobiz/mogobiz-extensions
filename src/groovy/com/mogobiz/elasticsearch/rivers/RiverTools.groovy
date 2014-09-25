@@ -21,6 +21,7 @@ import com.mogobiz.store.domain.ReductionRuleType
 import com.mogobiz.store.domain.Resource
 import com.mogobiz.store.domain.ResourceType
 import com.mogobiz.store.domain.Shipping
+import com.mogobiz.store.domain.ShippingRule
 import com.mogobiz.store.domain.StockCalendar
 import com.mogobiz.store.domain.Suggestion
 import com.mogobiz.store.domain.Tag
@@ -818,5 +819,41 @@ final class RiverTools {
         finally{
             conn?.disconnect()
         }
+    }
+
+    static Map asShippingRuleMap(ShippingRule shippingRule, RiverConfig config){
+        def m = [:]
+        if(shippingRule){
+            m = RenderUtil.asIsoMapForJSON(
+                    [
+                            'id',
+                            'uuid',
+                            'dateCreated',
+                            'lastUpdated',
+                            'countryCode',
+                            'minAmount',
+                            'maxAmount'
+                    ],
+                    shippingRule
+            )
+            def absolute = true
+            def percentage = false
+            def price = shippingRule.price
+            if(price.startsWith("-")){
+                absolute = false
+                price = price.substring(1)
+            }
+            else if(price.startsWith("+")){
+                price = price.substring(1)
+            }
+            m << [absolute:absolute]
+            if(price?.endsWith("%")){
+                percentage = true
+                price = price.substring(0, price.length()-1)
+            }
+            m << [percentage:percentage]
+            m << [price:Long.parseLong(price)]
+        }
+        m
     }
 }

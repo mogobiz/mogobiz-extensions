@@ -8,3 +8,4 @@ com.mogobiz.elasticsearch.rivers.ProductRiver
 com.mogobiz.elasticsearch.rivers.SuggestionRiver
 com.mogobiz.elasticsearch.rivers.CouponRiver
 com.mogobiz.elasticsearch.rivers.StockRiver
+com.mogobiz.elasticsearch.rivers.ShippingRuleRiver
