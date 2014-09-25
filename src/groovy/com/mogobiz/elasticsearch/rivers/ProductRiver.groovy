@@ -185,7 +185,7 @@ class ProductRiver extends AbstractESRiver<Product>{
                         << new ESProperty(name:'category', type:ESClient.TYPE.OBJECT, properties: categoryProperties)
                         << new ESProperty(name:'brand', type:ESClient.TYPE.OBJECT, properties: brandProperties)
                         << new ESProperty(name:'shipping', type:ESClient.TYPE.OBJECT, properties: shippingProperties)
-                        << new ESProperty(name:'features', type:ESClient.TYPE.OBJECT, properties: featureProperties)
+                        << new ESProperty(name:'features', type:ESClient.TYPE.NESTED, properties: featureProperties)
                         << new ESProperty(name:'skus', type:ESClient.TYPE.OBJECT, properties: skuProperties)
                         << new ESProperty(name:'datePeriods', type:ESClient.TYPE.OBJECT, properties: datePeriodProperties)
                         << new ESProperty(name:'intraDayPeriods', type:ESClient.TYPE.OBJECT, properties: intraDayPeriodProperties)
