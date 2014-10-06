@@ -1,16 +1,16 @@
 package com.mogobiz.elasticsearch.rivers
 
+import com.mogobiz.common.client.BulkItemResponse
+import com.mogobiz.common.client.BulkResponse
+import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.elasticsearch.client.ESIndexResponse
 import com.mogobiz.elasticsearch.rivers.CategoryRiver
 import com.mogobiz.elasticsearch.rivers.ESRivers
 import com.mogobiz.store.domain.*
-import com.mogobiz.store.service.SanitizeUrlService
-import com.mogobiz.client.HTTPClient
-import com.mogobiz.rivers.elasticsearch.client.ESBulkIndexResponse
-import com.mogobiz.rivers.elasticsearch.client.ESClient
-import com.mogobiz.rivers.elasticsearch.client.ESIndexCreationResponse
-import com.mogobiz.rivers.elasticsearch.client.ESResponse
-import com.mogobiz.rivers.elasticsearch.client.ESUpsertResponse
-import com.mogobiz.rivers.elasticsearch.spi.RiverConfig
+import com.mogobiz.service.SanitizeUrlService
+import com.mogobiz.elasticsearch.client.ESClient
+import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.http.client.HTTPClient
 import grails.test.mixin.Mock
 import grails.test.mixin.TestMixin
 import grails.test.mixin.support.GrailsUnitTestMixin
@@ -103,7 +103,7 @@ class CategoryRiverSpec extends Specification{
                     debug:true,
                     languages: ['fr', 'en', 'de', 'es'],
                     defaultLang: 'fr')
-            ESIndexCreationResponse creationResponse = ESRivers.createCompanyIndex(config, company.index, 1, 1)
+            ESIndexResponse creationResponse = ESRivers.createCompanyIndex(config, company.index, 1, 1)
             Category parent = new Category(
                     name : 'parent',
                     description : 'description',
@@ -129,18 +129,17 @@ class CategoryRiverSpec extends Specification{
                     position : 10
             ).save()
             ExecutionContext ec = ESRivers.dispatcher()
-            Collection<Future<ESUpsertResponse>> collectionOfMaps = []
+            Collection<Future<BulkResponse>> collectionOfMaps = []
         when:
             new CategoryRiver().upsertCatalogObjects(config, ec, categories).subscribe({
                 collectionOfMaps << it
-            } as Action1<Future<ESUpsertResponse>>)
+            } as Action1<Future<BulkResponse>>)
         then:
-            true == creationResponse.indexResponse.acknowledged
-            true == creationResponse.aliasResponse.acknowledged
-            Future<Collection<ESResponse>> futureResult = ESClient.collect(collectionOfMaps, ec)
-            Collection<ESResponse> result = Await.result(futureResult, Duration.create(2, SECONDS))
+            true == creationResponse.acknowledged
+            Future<Collection<BulkResponse>> futureResult = ESRivers.collect(collectionOfMaps, ec)
+            Collection<BulkItemResponse> result = Await.result(futureResult, Duration.create(2, SECONDS))?.items
             2 == result.size()
-            2 == result.findAll {ESUpsertResponse response ->
+            2 == result.findAll {BulkItemResponse response ->
                 index.equals(response.index) && 'category'.equals(response.type)
             }.size()
     }
@@ -162,7 +161,7 @@ class CategoryRiverSpec extends Specification{
                 debug:true,
                 languages: ['fr', 'en', 'de', 'es'] as String[],
                 defaultLang: 'fr')
-        ESIndexCreationResponse creationResponse = ESRivers.createCompanyIndex(config, company.index, 1, 1)
+        ESIndexResponse creationResponse = ESRivers.createCompanyIndex(config, company.index, 1, 1)
         Category parent = new Category(
                 name : 'parent',
                 description : 'description',
@@ -187,17 +186,15 @@ class CategoryRiverSpec extends Specification{
                 position : 10
         ).save()
         ExecutionContext ec = ESRivers.dispatcher()
-        Collection<Future<ESBulkIndexResponse>> collectionOfMaps = []
+        Collection<Future<BulkResponse>> collectionOfMaps = []
         when:
         new CategoryRiver().bulkIndexCatalogObjects(config, ec, 10).subscribe({
             collectionOfMaps << it
-        } as Action1<Future<ESBulkIndexResponse>>)
+        } as Action1<Future<BulkResponse>>)
         then:
-        true == creationResponse.indexResponse.acknowledged
-        true == creationResponse.aliasResponse.acknowledged
-        Future<Collection<ESResponse>> futureResult = ESClient.collect(collectionOfMaps, ec)
-        Collection<ESResponse> result = Await.result(futureResult, Duration.create(2, SECONDS))
+        true == creationResponse.acknowledged
+        Future<Collection<BulkResponse>> futureResult = ESRivers.collect(collectionOfMaps, ec)
+        Collection<BulkItemResponse> result = Await.result(futureResult, Duration.create(2, SECONDS))?.items
         1 == result.size()
-        false == (result[0] as ESBulkIndexResponse).errors
     }
 }

@@ -1,6 +1,9 @@
 package com.mogobiz.elasticsearch.rivers
 
+import com.mogobiz.common.client.BulkItemResponse
+import com.mogobiz.common.client.BulkResponse
 import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.elasticsearch.client.ESIndexResponse
 import com.mogobiz.elasticsearch.rivers.BrandRiver
 import com.mogobiz.elasticsearch.rivers.ESRivers
 import com.mogobiz.store.domain.Brand
@@ -12,13 +15,9 @@ import com.mogobiz.store.domain.Company
 import com.mogobiz.store.domain.CompanyValidation
 import com.mogobiz.store.domain.Translation
 import com.mogobiz.store.domain.TranslationValidation
-import com.mogobiz.client.HTTPClient
-import com.mogobiz.rivers.elasticsearch.client.ESBulkIndexResponse
-import com.mogobiz.rivers.elasticsearch.client.ESClient
-import com.mogobiz.rivers.elasticsearch.client.ESIndexCreationResponse
-import com.mogobiz.rivers.elasticsearch.client.ESResponse
-import com.mogobiz.rivers.elasticsearch.client.ESUpsertResponse
-import com.mogobiz.rivers.elasticsearch.spi.RiverConfig
+import com.mogobiz.elasticsearch.client.ESClient
+import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.http.client.HTTPClient
 import grails.test.mixin.Mock
 import grails.test.mixin.TestMixin
 import grails.test.mixin.support.GrailsUnitTestMixin
@@ -107,7 +106,7 @@ class BrandRiverSpec extends Specification{
                 debug:true,
                 languages: ['fr', 'en', 'de', 'es'],
                 defaultLang: 'fr')
-            ESIndexCreationResponse creationResponse = ESRivers.instance.createCompanyIndex(config, company.index, 1, 1)
+            ESIndexResponse creationResponse = ESRivers.instance.createCompanyIndex(config, company.index, 1, 1)
             def nike = new Brand(name:'Nike',hide:false,website:'www.nike.fr',company:company).save()
             createTranslation(company, 'en', nike.id, [website:'www.nike.com'])
             def adidas = new Brand(name:'Addidas',hide:false,website:'www.addidas.fr',company:company).save()
@@ -116,18 +115,17 @@ class BrandRiverSpec extends Specification{
             createTranslation(company, 'en', hidden.id, [website:'www.hideBrand.com'])
             def brands = [nike, adidas, hidden]
             ExecutionContext ec = ESRivers.dispatcher()
-            Collection<Future<ESUpsertResponse>> collectionOfMaps = []
+            Collection<Future<BulkResponse>> collectionOfMaps = []
         when:
             new BrandRiver().upsertCatalogObjects(config, ec, brands).subscribe({
                 collectionOfMaps << it
-            } as Action1<Future<ESUpsertResponse>>)
+            } as Action1<Future<BulkResponse>>)
         then:
-            true == creationResponse.indexResponse.acknowledged
-            true == creationResponse.aliasResponse.acknowledged
-            Future<Collection<ESResponse>> futureResult = ESClient.collect(collectionOfMaps, ec)
-            Collection<ESResponse> result = Await.result(futureResult, Duration.create(4, SECONDS))
+            true == creationResponse.acknowledged
+            Future<Collection<BulkResponse>> futureResult = ESRivers.collect(collectionOfMaps, ec)
+            Collection<BulkItemResponse> result = Await.result(futureResult, Duration.create(4, SECONDS))?.items
             3 == result.size()
-            3 == result.findAll {ESUpsertResponse response ->
+            3 == result.findAll {BulkItemResponse response ->
                 index.equals(response.index) && 'brand'.equals(response.type)
             }.size()
     }
@@ -148,7 +146,7 @@ class BrandRiverSpec extends Specification{
                 debug:true,
                 languages: ['fr', 'en', 'de', 'es'] as String[],
                 defaultLang: 'fr')
-        ESIndexCreationResponse creationResponse = ESRivers.createCompanyIndex(config, company.index, 1, 1)
+        ESIndexResponse creationResponse = ESRivers.createCompanyIndex(config, company.index, 1, 1)
         def nike = new Brand(name:'Nike',hide:false,website:'www.nike.fr',company:company).save()
         createTranslation(company, 'en', nike.id, [website:'www.nike.com'])
         def adidas = new Brand(name:'Addidas',hide:false,website:'www.addidas.fr',company:company).save()
@@ -156,18 +154,16 @@ class BrandRiverSpec extends Specification{
         def hidden = new Brand(name:'hideBrand',hide:true,website:'www.hideBrand.fr',company:company).save()
         createTranslation(company, 'en', hidden.id, [website:'www.hideBrand.com'])
         ExecutionContext ec = ESRivers.dispatcher()
-        Collection<Future<ESBulkIndexResponse>> collectionOfMaps = []
+        Collection<Future<BulkResponse>> collectionOfMaps = []
         when:
-        new BrandRiver().bulkIndexCatalogObjects(config, ec, 10).subscribe({
+        new BrandRiver().exportCatalogItems(config, ec, 10).subscribe({
             collectionOfMaps << it
-        } as Action1<Future<ESBulkIndexResponse>>)
+        } as Action1<Future<BulkResponse>>)
         then:
-        true == creationResponse.indexResponse.acknowledged
-        true == creationResponse.aliasResponse.acknowledged
-        Future<Collection<ESResponse>> futureResult = ESClient.collect(collectionOfMaps, ec)
-        Collection<ESResponse> result = Await.result(futureResult, Duration.create(2, SECONDS))
+        true == creationResponse.acknowledged
+        Future<Collection<BulkResponse>> futureResult = ESRivers.collect(collectionOfMaps, ec)
+        Collection<BulkItemResponse> result = Await.result(futureResult, Duration.create(2, SECONDS))?.items
         1 == result.size()
-        false == (result[0] as ESBulkIndexResponse).errors
     }
 
     private Translation createTranslation(Company company, String lang, long target, Map translations){

@@ -1,15 +1,16 @@
 package com.mogobiz.elasticsearch.rivers
 
-import com.mogobiz.elasticsearch.rivers.ESRivers
+import com.mogobiz.common.client.BulkItemResponse
+import com.mogobiz.common.client.BulkResponse
+import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.elasticsearch.client.ESIndexResponse
 import com.mogobiz.elasticsearch.rivers.TagRiver
+import com.mogobiz.elasticsearch.rivers.ESRivers
 import com.mogobiz.store.domain.*
-import com.mogobiz.store.service.SanitizeUrlService
-import com.mogobiz.client.HTTPClient
-import com.mogobiz.rivers.elasticsearch.client.ESClient
-import com.mogobiz.rivers.elasticsearch.client.ESIndexCreationResponse
-import com.mogobiz.rivers.elasticsearch.client.ESResponse
-import com.mogobiz.rivers.elasticsearch.client.ESUpsertResponse
-import com.mogobiz.rivers.elasticsearch.spi.RiverConfig
+import com.mogobiz.service.SanitizeUrlService
+import com.mogobiz.elasticsearch.client.ESClient
+import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.http.client.HTTPClient
 import grails.test.mixin.Mock
 import grails.test.mixin.TestMixin
 import grails.test.mixin.support.GrailsUnitTestMixin
@@ -105,7 +106,7 @@ class TagRiverSpec extends Specification{
                     debug:true,
                     languages: ['fr', 'en', 'de', 'es'],
                     defaultLang: 'fr')
-            ESIndexCreationResponse creationResponse = ESRivers.createCompanyIndex(config, company.index, 1, 1)
+            ESIndexResponse creationResponse = ESRivers.createCompanyIndex(config, company.index, 1, 1)
             Category parent = new Category(
                     name : 'parent',
                     description : 'description',
@@ -132,17 +133,16 @@ class TagRiverSpec extends Specification{
             Tag tag = new Tag(name:'TAG_NAME').save()
             createProduct('PRODUCT_CODE','PRODUCT_NAME', child, company, [tag])
             ExecutionContext ec = ESRivers.dispatcher()
-            Collection<Future<ESUpsertResponse>> collectionOfMaps = []
+            Collection<Future<BulkResponse>> collectionOfMaps = []
         when:
             new TagRiver().upsertCatalogObjects(config, ec, []).subscribe({
                 collectionOfMaps << it
-            } as Action1<Future<ESUpsertResponse>>)
+            } as Action1<Future<BulkResponse>>)
         then:
-            true == creationResponse.indexResponse.acknowledged
-            true == creationResponse.aliasResponse.acknowledged
+            true == creationResponse.acknowledged
             //TODO
-            Future<Collection<ESResponse>> futureResult = ESClient.collect(collectionOfMaps, ec)
-            Collection<ESResponse> result = Await.result(futureResult, Duration.create(2, SECONDS))
+            Future<Collection<BulkResponse>> futureResult = ESRivers.collect(collectionOfMaps, ec)
+            Collection<BulkItemResponse> result = Await.result(futureResult, Duration.create(2, SECONDS))?.items
             0 == result.size()
     }
 
