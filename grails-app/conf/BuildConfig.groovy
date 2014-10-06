@@ -2,7 +2,7 @@ grails.project.class.dir = "target/classes"
 grails.project.test.class.dir = "target/test-classes"
 grails.project.test.reports.dir = "target/test-reports"
 
-grails.plugin.location."mogobiz-core" = "../mogobiz-core"
+// grails.plugin.location."mogobiz-core" = "../mogobiz-core"
 
 grails.project.fork = [
     // configure settings for compilation JVM, note that if you alter the Groovy version forked compilation is required
@@ -48,7 +48,7 @@ grails.project.dependency.resolution = {
         compile 'com.mogobiz.rivers:mogobiz-google-shopping:1.0-SNAPSHOT'
         compile 'com.mogobiz.rivers:mogobiz-cfp:1.0-SNAPSHOT'
 
-        compile "com.mogobiz:mogobiz-core:1.0-SNAPSHOT"
+        compile group:"com.mogobiz", name:"mogobiz-core", version:"1.0-SNAPSHOT", classifier:"grails-plugin"
 
     }
 
