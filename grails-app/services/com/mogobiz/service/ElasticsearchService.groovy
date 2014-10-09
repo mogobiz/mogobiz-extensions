@@ -15,6 +15,7 @@ import com.mogobiz.json.RenderUtil
 import com.mogobiz.store.Comment
 import com.mogobiz.store.CommentSearchCriteria
 import com.mogobiz.store.HistorySearchCriteria
+import com.mogobiz.store.OrderDirection
 import com.mogobiz.store.ProductSearchCriteria
 import com.mogobiz.store.customer.StoreSessionData
 import com.mogobiz.store.domain.Catalog
