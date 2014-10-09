@@ -159,6 +159,10 @@ class ProductRiver extends AbstractESRiver<Product>{
         iBeaconProperties << new ESProperty(name:'major', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
         iBeaconProperties << new ESProperty(name:'minor', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
 
+        def notationsProperties = []
+        notationsProperties << new ESProperty(name:'notation', type:ESClient.TYPE.STRING, index:ESClient.INDEX.ANALYZED, multilang:false)
+        notationsProperties << new ESProperty(name:'nbcomments', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+
         new ESMapping(type:getType(),
                 timestamp:true,
                 properties: []
@@ -200,6 +204,7 @@ class ProductRiver extends AbstractESRiver<Product>{
                         << new ESProperty(name:'lastUpdated', type:ESClient.TYPE.DATE, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'salePrice', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'promotion', type:ESClient.TYPE.OBJECT, properties: promotionProperties)
+                        << new ESProperty(name:'notations', type:ESClient.TYPE.NESTED, properties: notationsProperties)
         )
     }
 
@@ -220,6 +225,6 @@ class ProductRiver extends AbstractESRiver<Product>{
 
     @Override
     List<String> previousProperties(){
-        ['id', 'increments']
+        ['id', 'increments', 'notations']
     }
 }
