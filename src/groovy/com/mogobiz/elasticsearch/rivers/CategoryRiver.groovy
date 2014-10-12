@@ -33,7 +33,7 @@ class CategoryRiver extends AbstractESRiver<Category>{
 
     @Override
     Observable<Category> retrieveCatalogItems(final RiverConfig config){
-        return Observable.from(Category.findAllByCatalog(Catalog.get(config.idCatalog)))
+        return Observable.from(Category.findAllByCatalogAndDeleted(Catalog.get(config.idCatalog), false))
     }
 
     @Override

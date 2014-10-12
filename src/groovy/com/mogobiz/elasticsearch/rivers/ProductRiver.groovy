@@ -210,7 +210,7 @@ class ProductRiver extends AbstractESRiver<Product>{
 
     @Override
     Observable<Product> retrieveCatalogItems(RiverConfig config) {
-        return Observable.from(Product.executeQuery('FROM Product p WHERE p.category.catalog.id=:idCatalog and p.state = :productState',
+        return Observable.from(Product.executeQuery('FROM Product p WHERE p.category.catalog.id=:idCatalog and p.state = :productState and p.deleted = false',
                 [idCatalog:config.idCatalog, productState:ProductState.ACTIVE]))
 //        DetachedCriteria<Product> query = Product.where{
 //            category.catalog.id==config.idCatalog && state==ProductState.ACTIVE

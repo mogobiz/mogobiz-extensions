@@ -1,4 +1,4 @@
-class MogobizElasticsearchGrailsPlugin {
+class MogobizExtensionsGrailsPlugin {
     def packaging = "binary"
     // the plugin version
     def version = "1.0-SNAPSHOT"
@@ -12,7 +12,7 @@ class MogobizElasticsearchGrailsPlugin {
     ]
 
     def groupId="com.mogobiz"
-    def title = "Mogobiz Elasticsearch Plugin" // Headline display name of the plugin
+    def title = "Mogobiz Extensions Plugin" // Headline display name of the plugin
     def author = "Stéphane Manciot"
     def authorEmail = "stephane.manciot@ebiznext.com"
     def description = '''\
@@ -20,7 +20,7 @@ Brief summary/description of the plugin.
 '''
 
     // URL to the plugin's documentation
-    def documentation = "http://grails.org/plugin/mogobiz-elasticsearch"
+    def documentation = "http://grails.org/plugin/mogobiz-extensions"
 
     // Extra (optional) plugin metadata
 

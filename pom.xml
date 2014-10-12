@@ -5,12 +5,12 @@
     <modelVersion>4.0.0</modelVersion>
     
     <groupId>com.mogobiz</groupId>
-    <artifactId>mogobiz-elasticsearch</artifactId>
+    <artifactId>mogobiz-extensions</artifactId>
     <packaging>grails-binary-plugin</packaging>
     <version>1.0-SNAPSHOT</version>
 
-    <name>mogobiz elasticsearch grails plugin</name>
-    <description>mogobiz elasticsearch grails plugin</description>
+    <name>mogobiz extensions grails plugin</name>
+    <description>mogobiz extensions grails plugin</description>
 
     <properties>
         <grails.version>2.3.8</grails.version>
