@@ -21,6 +21,7 @@ import com.mogobiz.store.domain.Catalog
 import com.mogobiz.store.domain.Category
 import com.mogobiz.store.domain.Company
 import com.mogobiz.store.domain.DatePeriod
+import com.mogobiz.store.domain.IntraDayPeriod
 import com.mogobiz.store.domain.Product
 import com.mogobiz.store.domain.ProductCalendar
 import com.mogobiz.store.domain.ProductProperty
@@ -184,9 +185,15 @@ final class CfpTools {
                                     def index = avatarURL.lastIndexOf('.')
                                     if (index > 0) {
                                         extension = avatarURL.substring(index)
+                                        index = extension.indexOf('?')
+                                        if (index >= 0)
+                                            extension = extension.substring(0, index)
+                                    }
+                                    else {
+                                        extension = ".png"
                                     }
                                     if(extension.contains('/')){
-                                        extension = ''
+                                        extension = '.png'
                                     }
                                     def dir = "${Holders.config.rootPath}/brands/logos/${company.code}"
                                     File d = new File(dir)
@@ -293,10 +300,23 @@ final class CfpTools {
                         addProductProperty(product, "speakers", speakers.join(","))
                         addProductProperty(product, "room", slot.roomName())
                         // period
-                        DatePeriod period = new DatePeriod(
+//                        DatePeriod period = new DatePeriod(
+//                                product: product,
+//                                startDate: product.startDate,
+//                                endDate: product.stopDate
+//                        )
+                        IntraDayPeriod period = new IntraDayPeriod(
                                 product: product,
                                 startDate: product.startDate,
-                                endDate: product.stopDate
+                                endDate: product.stopDate,
+                                weekday1:true,
+                                weekday2:true,
+                                weekday3:true,
+                                weekday4:true,
+                                weekday5:true,
+                                weekday6:true,
+                                weekday7:true
+
                         )
                         period.validate()
                         if(!period.hasErrors()){
