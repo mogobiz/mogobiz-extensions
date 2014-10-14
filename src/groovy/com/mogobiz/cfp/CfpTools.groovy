@@ -295,6 +295,10 @@ final class CfpTools {
                             Brand brand = uuid.isSuccess() ? Brand.findByCompanyAndUuid(company, uuid.get()) : null
                             if(brand){
                                 speakers << brand.id.toString()
+                                if (product.brand  == null) {
+                                    product.brand = brand
+                                    product.save()
+                                }
                             }
                         }
                         addProductProperty(product, "speakers", speakers.join(","))
