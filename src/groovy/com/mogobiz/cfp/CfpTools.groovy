@@ -296,10 +296,10 @@ final class CfpTools {
                             Brand brand = uuid.isSuccess() ? Brand.findByCompanyAndUuid(company, uuid.get()) : null
                             if(brand){
                                 speakers << brand.id.toString()
-                                if (product.brand  == null) {
-                                    product.brand = brand
-                                    product.save()
-                                }
+//                                if (product.brand  == null) {
+//                                    product.brand = brand
+//                                    product.save()
+//                                }
                             }
                         }
                         addProductProperty(product, "speakers", speakers.join(","))
@@ -321,7 +321,6 @@ final class CfpTools {
                                 weekday5:true,
                                 weekday6:true,
                                 weekday7:true
-
                         )
                         period.validate()
                         if(!period.hasErrors()){
