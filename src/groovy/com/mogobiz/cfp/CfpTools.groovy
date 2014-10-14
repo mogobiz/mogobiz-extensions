@@ -185,15 +185,16 @@ final class CfpTools {
                                     def index = avatarURL.lastIndexOf('.')
                                     if (index > 0) {
                                         extension = avatarURL.substring(index)
-                                        index = extension.indexOf('?')
-                                        if (index >= 0)
-                                            extension = extension.substring(0, index)
-                                    }
-                                    else {
-                                        extension = ".png"
                                     }
                                     if(extension.contains('/')){
-                                        extension = '.png'
+                                        extension = ''
+                                    }
+                                    index = extension.indexOf('?')
+                                    if(index > 0){
+                                        extension = extension.substring(0, index)
+                                    }
+                                    if(extension.trim().length() == 0){
+                                        extension = ".png" // FIXME
                                     }
                                     def dir = "${Holders.config.rootPath}/brands/logos/${company.code}"
                                     File d = new File(dir)
