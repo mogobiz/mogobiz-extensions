@@ -251,7 +251,7 @@ final class RiverTools {
             // liste des coupons associés à ce sku
             def product = sku.product
             Set<Coupon> coupons = extractProductCoupons(product)
-            coupons << Coupon.executeQuery('select distinct coupon FROM Coupon coupon left join coupon.ticketTypes as ticketType where (ticketType.id=:idSku)',
+            coupons << Coupon.executeQuery('select coupon FROM Coupon coupon left join coupon.ticketTypes as ticketType where (ticketType.id=:idSku)',
                     [idSku:sku.id])
 
             asPromotionsAndCouponsMap(coupons, sku.price).each {k, v ->
@@ -265,14 +265,10 @@ final class RiverTools {
 
     private static Set<Coupon> extractProductCoupons(Product product) {
         Set<Coupon> coupons = []
-        coupons << Coupon.executeQuery('select distinct coupon FROM Coupon coupon left join coupon.products as product where (product.id=:idProduct)',
+        coupons << Coupon.executeQuery('select coupon FROM Coupon coupon left join coupon.products as product where (product.id=:idProduct)',
                 [idProduct: product.id])
-        def idCategories = []
-        categoryWithParents(product.category).each { Category c ->
-            idCategories << c.id
-        }
-        coupons << Coupon.executeQuery('select distinct coupon FROM Coupon coupon left join coupon.categories as category where (category.id in (:idCategories))', ['idCategories': idCategories])
-        coupons
+        coupons << extractCategoryCoupons(product.category)
+        coupons.flatten()
     }
 
     private static Set<Coupon> extractCategoryCoupons(Category category) {
@@ -281,8 +277,8 @@ final class RiverTools {
         categoryWithParents(category).each { Category c ->
             idCategories << c.id
         }
-        coupons << Coupon.executeQuery('select distinct coupon FROM Coupon coupon left join coupon.categories as category where (category.id in (:idCategories))', ['idCategories': idCategories])
-        coupons
+        coupons << Coupon.executeQuery('select coupon FROM Coupon coupon left join coupon.categories as category where (category.id in (:idCategories))', ['idCategories': idCategories])
+        coupons.flatten()
     }
 
     private static Map asPromotionsAndCouponsMap(Set<Coupon> coupons, Long price){
