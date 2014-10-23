@@ -139,6 +139,7 @@ class ProductRiver extends AbstractESRiver<Product>{
         resourceProperties << new ESProperty(name:'sanitizedName', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NO, multilang:false)
 
         def tagProperties = []
+        tagProperties << new ESProperty(name:'id', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
         tagProperties << new ESProperty(name:'name', type:ESClient.TYPE.STRING, index:ESClient.INDEX.ANALYZED, multilang:true)
 
         def localTaxRatesProperties = []
@@ -190,7 +191,7 @@ class ProductRiver extends AbstractESRiver<Product>{
                         << new ESProperty(name:'brand', type:ESClient.TYPE.OBJECT, properties: brandProperties)
                         << new ESProperty(name:'shipping', type:ESClient.TYPE.OBJECT, properties: shippingProperties)
                         << new ESProperty(name:'features', type:ESClient.TYPE.NESTED, properties: featureProperties)
-                        << new ESProperty(name:'skus', type:ESClient.TYPE.OBJECT, properties: skuProperties)
+                        << new ESProperty(name:'skus', type:ESClient.TYPE.NESTED, properties: skuProperties)
                         << new ESProperty(name:'datePeriods', type:ESClient.TYPE.OBJECT, properties: datePeriodProperties)
                         << new ESProperty(name:'intraDayPeriods', type:ESClient.TYPE.OBJECT, properties: intraDayPeriodProperties)
                         << new ESProperty(name:'resources', type:ESClient.TYPE.OBJECT, properties: resourceProperties)

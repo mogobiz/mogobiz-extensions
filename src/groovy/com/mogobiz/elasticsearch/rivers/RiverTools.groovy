@@ -496,7 +496,7 @@ final class RiverTools {
 
             def tags = []
             p.tags.each{ tag ->
-                tags << [name:tag.name]
+                tags << asTagMap(tag, config)
             }
             if(!tags.isEmpty()){
                 m << [tags:tags]
