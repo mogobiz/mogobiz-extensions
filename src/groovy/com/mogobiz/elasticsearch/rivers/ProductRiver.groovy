@@ -195,7 +195,7 @@ class ProductRiver extends AbstractESRiver<Product>{
                         << new ESProperty(name:'datePeriods', type:ESClient.TYPE.OBJECT, properties: datePeriodProperties)
                         << new ESProperty(name:'intraDayPeriods', type:ESClient.TYPE.OBJECT, properties: intraDayPeriodProperties)
                         << new ESProperty(name:'resources', type:ESClient.TYPE.OBJECT, properties: resourceProperties)
-                        << new ESProperty(name:'tags', type:ESClient.TYPE.OBJECT, properties: tagProperties)
+                        << new ESProperty(name:'tags', type:ESClient.TYPE.NESTED, properties: tagProperties)
                         << new ESProperty(name:'taxRate', type:ESClient.TYPE.OBJECT, properties: taxRateProperties)
                         << new ESProperty(name:'imported', type:ESClient.TYPE.DATE, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'increments', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
