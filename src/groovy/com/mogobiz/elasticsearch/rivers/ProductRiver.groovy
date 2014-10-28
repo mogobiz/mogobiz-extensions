@@ -206,6 +206,10 @@ class ProductRiver extends AbstractESRiver<Product>{
                         << new ESProperty(name:'salePrice', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'promotion', type:ESClient.TYPE.OBJECT, properties: promotionProperties)
                         << new ESProperty(name:'notations', type:ESClient.TYPE.NESTED, properties: notationsProperties)
+                        << new ESProperty(name:'viewed', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+                        << new ESProperty(name:'purchased', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+                        << new ESProperty(name:'similar', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+                        << new ESProperty(name:'popularity', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
         )
     }
 
