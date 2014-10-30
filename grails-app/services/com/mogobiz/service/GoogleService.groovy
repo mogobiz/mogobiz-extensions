@@ -1,26 +1,14 @@
 package com.mogobiz.service
 
-import akka.actor.ActorSystem
-import akka.dispatch.Futures
 import com.mogobiz.common.client.ClientConfig
 import com.mogobiz.common.client.Credentials
 import com.mogobiz.common.rivers.spi.RiverConfig
-import com.mogobiz.google.client.GoogleCategoryItem
-import com.mogobiz.google.client.GoogleCategoryReader
 import com.mogobiz.google.rivers.GoogleRivers
 import com.mogobiz.store.domain.Catalog
 import com.mogobiz.store.domain.Company
-import com.mogobiz.store.domain.GoogleCategory
 import com.mogobiz.store.domain.Translation
 import org.quartz.CronExpression
-import rx.util.functions.Action0
-import rx.util.functions.Action1
-import rx.util.functions.Func1
 import scala.Function1
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
-
-import java.util.concurrent.Callable
 
 class GoogleService {
 
