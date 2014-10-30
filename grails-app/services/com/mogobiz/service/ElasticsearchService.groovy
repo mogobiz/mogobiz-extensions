@@ -28,6 +28,7 @@ import com.mogobiz.utils.Page
 import grails.plugin.cache.Cacheable
 import grails.transaction.Transactional
 import groovy.json.JsonBuilder
+import org.quartz.CronExpression
 import scala.Function1
 import scala.concurrent.ExecutionContext
 
@@ -1105,6 +1106,29 @@ curl -XPUT ${url}/$index/_alias/$store
             url = envs.get(0).url
         }
         url
+    }
+    def publishAll() {
+        def cal = Calendar.getInstance()
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        def now = cal.getTime()
+        Company.findAll().each { Company company ->
+            Collection<Catalog> catalogs = Catalog.findAllByActivationDateLessThanEqualsAndCompanyAndDeleted(
+                    new Date(),
+                    company,
+                    false,
+                    [sort:'activationDate', order:'desc'])
+            Catalog catalog = catalogs.size() > 0 ? catalogs.get(0) : null
+            if(catalog){
+                EsEnv.findAllByCompany(company).each {env ->
+                    def cron = env.cronExpr
+                    if(CronExpression.isValidExpression(cron) && new CronExpression(cron).isSatisfiedBy(now)){
+                        this.publish(company, env, catalog)
+                    }
+                }
+            }
+        }
+
     }
 }
 
