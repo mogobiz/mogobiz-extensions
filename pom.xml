@@ -7,7 +7,7 @@
     <groupId>com.mogobiz</groupId>
     <artifactId>mogobiz-extensions</artifactId>
     <packaging>grails-binary-plugin</packaging>
-    <version>1.0-SNAPSHOT</version>
+    <version>0.1-SNAPSHOT</version>
 
     <name>mogobiz extensions grails plugin</name>
     <description>mogobiz extensions grails plugin</description>
@@ -193,7 +193,7 @@
         <dependency>
             <groupId>com.mogobiz.rivers</groupId>
             <artifactId>mogobiz-elasticsearch</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${project.version}</version>
             <scope>compile</scope>
             <exclusions>
                 <exclusion>
@@ -206,7 +206,7 @@
         <dependency>
             <groupId>com.mogobiz.rivers</groupId>
             <artifactId>mogobiz-google-shopping</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${project.version}</version>
             <scope>compile</scope>
             <exclusions>
                 <exclusion>
@@ -219,14 +219,14 @@
         <dependency>
             <groupId>com.mogobiz.rivers</groupId>
             <artifactId>mogobiz-cfp</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${project.version}</version>
             <scope>compile</scope>
         </dependency>
         
         <dependency>
             <groupId>com.mogobiz</groupId>
             <artifactId>mogobiz-core</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${project.version}</version>
             <scope>compile</scope>
             <type>zip</type>
         </dependency>
