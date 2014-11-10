@@ -38,7 +38,7 @@ class CountryRiver extends AbstractESRiver<Country> {
             {
                 def debug = config.debug
                 def http = HTTPClient.instance
-                conn = http.doGet([debug:debug], new StringBuffer(Holders.config.mogopay.url as String).append('country/countriesForShipping').toString())
+                conn = http.doGet([debug:debug], new StringBuffer(Holders.config.mogopay.url as String).append('country/countries-for-shipping').toString())
                 if(conn.responseCode >=200 && conn.responseCode < 400){
                     def data = http.getText([debug:debug], conn)
                     if(data && !StringUtils.isEmpty(data.toString())){
