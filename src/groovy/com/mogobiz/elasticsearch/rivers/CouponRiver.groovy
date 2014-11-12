@@ -72,6 +72,7 @@ class CouponRiver extends AbstractESRiver<Coupon> {
                         << new ESProperty(name:'rules', type:ESClient.TYPE.OBJECT, properties: ruleProperties)
 //                        << new ESProperty(name:'skus', type:ESClient.TYPE.OBJECT, properties: skuProperties)
                         << new ESProperty(name:'anonymous', type:ESClient.TYPE.BOOLEAN, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+                        << new ESProperty(name:'pastille', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
         )
     }
 
