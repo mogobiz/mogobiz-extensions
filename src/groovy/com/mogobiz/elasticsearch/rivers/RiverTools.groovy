@@ -802,7 +802,8 @@ final class RiverTools {
                     List<JSONObject> res = JSON.parse(data.toString()) as List<JSONObject>
                     res.each { JSONObject r ->
                         rates << new MogopayRate(
-                                id : r.get('id'),
+                                id : -1L,
+                                uuid: r.get('uuid'),
                                 code: r.get('currencyCode'),
                                 name: r.get('currencyCode'),
                                 rate: r.get('currencyRate') as Double,
