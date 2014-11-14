@@ -72,7 +72,7 @@ class CfpRiverSpec extends Specification{
 
     def setupSpec(){
         grailsApplication.config.elasticsearch.serverURL = 'http://localhost:9200'
-        grailsApplication.config.mogopay.url = "http://mogopay.ebiznext.com/mogopay/"
+        grailsApplication.config.mogopay.url = "http://mogopay.ebiznext.com/pay/"
         node = nodeBuilder().node()
     }
 

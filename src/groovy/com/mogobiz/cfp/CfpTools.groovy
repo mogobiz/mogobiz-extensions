@@ -196,7 +196,7 @@ final class CfpTools {
                                     if(extension.trim().length() == 0){
                                         extension = ".png" // FIXME
                                     }
-                                    def dir = "${Holders.config.rootPath}/brands/logos/${company.code}"
+                                    def dir = "${Holders.config.resources.path}/brands/logos/${company.code}"
                                     File d = new File(dir)
                                     d.mkdirs()
                                     def destination = "${dir}/${brand.id}${extension}"

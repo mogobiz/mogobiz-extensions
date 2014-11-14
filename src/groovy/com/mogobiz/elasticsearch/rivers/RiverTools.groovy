@@ -715,7 +715,7 @@ final class RiverTools {
 
     static String retrieveResourceUrl(String url) {
         if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
-            url = Holders.config.resourcesServerURL + (url - Holders.config.rootPath);
+            url = Holders.config.resources.url + (url - Holders.config.resources.path);
         }
         url
     }
