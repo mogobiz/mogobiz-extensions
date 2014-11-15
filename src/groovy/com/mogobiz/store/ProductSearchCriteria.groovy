@@ -42,5 +42,4 @@ class ProductSearchCriteria extends Pagination implements Serializable{
 
     boolean featured = false
 
-    String sku
 }
