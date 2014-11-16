@@ -1,9 +1,6 @@
 package com.mogobiz.service
 
-import com.mogobiz.common.client.BulkAction
-import com.mogobiz.common.client.BulkItem
 import com.mogobiz.common.client.ClientConfig
-import com.mogobiz.common.client.Item
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.constant.IperConstant
 import com.mogobiz.elasticsearch.client.ESClient
@@ -12,12 +9,7 @@ import com.mogobiz.elasticsearch.client.ESRequest
 import com.mogobiz.elasticsearch.client.ESSearchResponse
 import com.mogobiz.elasticsearch.rivers.ESRivers
 import com.mogobiz.json.RenderUtil
-import com.mogobiz.store.Comment
-import com.mogobiz.store.CommentSearchCriteria
-import com.mogobiz.store.HistorySearchCriteria
-import com.mogobiz.store.OrderDirection
 import com.mogobiz.store.ProductSearchCriteria
-import com.mogobiz.store.customer.StoreSessionData
 import com.mogobiz.store.domain.Catalog
 import com.mogobiz.store.domain.Company
 import com.mogobiz.store.domain.EsEnv
@@ -25,12 +17,10 @@ import com.mogobiz.store.domain.ProductCalendar
 import com.mogobiz.store.domain.Translation
 import com.mogobiz.utils.IperUtil
 import com.mogobiz.utils.Page
-import grails.plugin.cache.Cacheable
 import grails.transaction.Transactional
 import groovy.json.JsonBuilder
 import org.quartz.CronExpression
 import scala.Function1
-import scala.concurrent.ExecutionContext
 
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -630,7 +620,6 @@ curl -XPUT ${url}/$index/_alias/$store
     }
 
 
-    @Cacheable('globalCache')
     private String getStoreUrl(String store) {
         String url = null
         Collection envs = EsEnv.executeQuery(
