@@ -287,6 +287,7 @@ final class RiverTools {
         Long reduction = 0L
         String name = null
         String description = null
+        String pastille = null
         coupons.flatten().each {Coupon coupon ->
             mCoupons << [id: coupon.id]
             if(coupon.active && coupon.anonymous && coupon.startDate?.compareTo(Calendar.getInstance()) <= 0 && coupon.endDate?.compareTo(Calendar.getInstance()) >= 0){
@@ -296,13 +297,16 @@ final class RiverTools {
                 if(!description){
                     description = coupon.description
                 }
+                if(!pastille){
+                    pastille = coupon.pastille
+                }
                 reduction += calculerReduction(coupon, price)
             }
         }
         if(!mCoupons.isEmpty()){
             m << ['coupons':mCoupons]
             if(reduction > 0){
-                m << [promotion:[name:name, description:description, reduction:reduction]]
+                m << [promotion:[name:name, description:description, reduction:reduction, pastille:pastille]]
                 m << [salePrice:price - reduction]
             }
         }
