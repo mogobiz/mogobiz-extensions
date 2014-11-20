@@ -7,5 +7,9 @@
   <documentation>http://grails.org/plugin/mogobiz-extensions</documentation>
   <type>MogobizExtensionsGrailsPlugin</type>
   <packaging>binary</packaging>
-  <resources />
+  <resources>
+      <resource>com.mogobiz.service.ElasticsearchService</resource>
+      <resource>com.mogobiz.service.GoogleCategoryService</resource>
+      <resource>com.mogobiz.service.GoogleService</resource>
+  </resources>
 </plugin>
