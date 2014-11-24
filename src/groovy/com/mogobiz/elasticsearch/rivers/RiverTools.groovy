@@ -739,7 +739,7 @@ final class RiverTools {
         def map = [:]
         if(coupon){
             map <<  RenderUtil.asIsoMapForJSON(['id', 'code', 'name', 'description', 'active', 'numberOfUses', 'startDate', 'endDate', 'catalogWise', 'anonymous', 'pastille'], coupon)
-            map << ['sold': coupon.reductionSold ? coupon.reductionSold.sold : 0L]
+            map << ['consumed': coupon.consumed]
             def rules = []
             coupon.rules.each {rule ->
                 rules << asReductionRuleMap(rule, config)

@@ -68,7 +68,7 @@ class CouponRiver extends AbstractESRiver<Coupon> {
                         << new ESProperty(name:'numberOfUses', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'startDate', type:ESClient.TYPE.DATE, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'stopDate', type:ESClient.TYPE.DATE, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
-                        << new ESProperty(name:'sold', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+                        << new ESProperty(name:'consumed', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'rules', type:ESClient.TYPE.OBJECT, properties: ruleProperties)
 //                        << new ESProperty(name:'skus', type:ESClient.TYPE.OBJECT, properties: skuProperties)
                         << new ESProperty(name:'anonymous', type:ESClient.TYPE.BOOLEAN, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
