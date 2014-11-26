@@ -1,5 +1,6 @@
 package com.mogobiz.service
 
+import com.mogobiz.common.client.BulkResponse
 import com.mogobiz.common.client.ClientConfig
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.constant.IperConstant
@@ -21,6 +22,9 @@ import grails.transaction.Transactional
 import groovy.json.JsonBuilder
 import org.quartz.CronExpression
 import scala.Function1
+import scala.PartialFunction
+import scala.Unit
+import scala.concurrent.Future
 
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -385,8 +389,10 @@ class ElasticsearchService {
     }
 
     def publish(Company company, EsEnv env, Catalog catalog) {
-        if (company && env && env.company == company && catalog && catalog.company == company && catalog.activationDate < new Date()) {
+        if (company && env && env.company == company && catalog && catalog.company == company && catalog.activationDate < new Date() && !env.running) {
             log.info("Export to Elastic Search has started ...")
+            env.running = true
+            env.save(flush: true)
             int replicas = grailsApplication.config.elasticsearch.replicas as int ?: 1
             def languages = Translation.executeQuery('SELECT DISTINCT t.lang FROM Translation t WHERE t.companyId=:idCompany', [idCompany: company.id]) as String[]
             if (languages.length == 0) {
@@ -411,30 +417,40 @@ class ElasticsearchService {
                     languages: languages,
                     defaultLang: company.defaultLanguage
             )
-            ESRivers.instance.export(config, ec).onComplete({
+            Future<Collection<BulkResponse>> future = ESRivers.instance.export(config, ec)
+            future.onFailure({Throwable th ->
+                EsEnv.withTransaction {
+                    env.refresh()
+                    env.running = false
+                    env.success = false
+                    env.extra = th.message
+                    env.save(flush: true)
+                }
+            } as PartialFunction<Throwable, Unit>, ec)
+            future.onSuccess({a, b ->
+                def extra = ""
+                def success = true
                 def conf = [debug: debug]
                 def previousIndices = client.retrieveAliasIndexes(url, store, conf)
                 if (previousIndices.empty || (!previousIndices.any { String previous -> !client.removeAlias(conf, url, store, previous).acknowledged })) {
                     if (!client.createAlias(conf, url, store, index)) {
                         def revert = env?.idx
                         if (previousIndices.any { previous -> revert = previous; client.createAlias(conf, url, store, previous) }) {
-                            log.warn("Failed to create alias ${store} for ${index} -> revert to previous index ${revert}")
-                            log.warn("""
+                            extra = """
+Failed to create alias ${store} for ${index} -> revert to previous index ${revert}
 The alias can be created by executing the following command :
 curl -XPUT ${url}/$index/_alias/$store
-""")
+"""
+                            log.warn(extra)
                         } else {
-                            log.fatal("Failed to create alias ${store} for ${index}.")
-                            log.fatal("""
+                            extra = """
+Failed to create alias ${store} for ${index}.
 The alias can be created by executing the following command :
 curl -XPUT ${url}/$index/_alias/$store
-""")
+"""
+                            log.warn(extra)
                         }
                     } else {
-                        EsEnv.withTransaction {
-                            env?.idx = index
-                            env?.save(flush: true)
-                        }
                         previousIndices.each { previous -> client.removeIndex(url, previous, conf) }
                         client.updateIndex(url, index, new ESIndexSettings(number_of_replicas: replicas), conf)
                         File dir = new File("${grailsApplication.config.resources.path}/stores/${store}")
@@ -445,7 +461,17 @@ curl -XPUT ${url}/$index/_alias/$store
                         log.info("End ElasticSearch export for ${store} -> ${index}")
                     }
                 }
-            } as Function1, ec)
+                EsEnv.withTransaction {
+                    env.refresh()
+                    env.running = false
+                    env.success = success
+                    if(success){
+                        env.idx = index
+                    }
+                    env.extra = extra
+                    env.save(flush: true)
+                }
+            } as PartialFunction, ec)
         }
     }
 
@@ -642,7 +668,7 @@ curl -XPUT ${url}/$index/_alias/$store
                     [sort:'activationDate', order:'desc'])
             Catalog catalog = catalogs.size() > 0 ? catalogs.get(0) : null
             if(catalog){
-                EsEnv.findAllByCompany(company).each {env ->
+                EsEnv.findAllByCompanyAndRunning(company, false).each {env ->
                     def cron = env.cronExpr
                     if(CronExpression.isValidExpression(cron) && new CronExpression(cron).isSatisfiedBy(now)){
                         this.publish(company, env, catalog)

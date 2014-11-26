@@ -6,6 +6,7 @@ import com.mogobiz.store.domain.Brand
 import com.mogobiz.store.domain.BrandProperty
 import com.mogobiz.store.domain.Catalog
 import com.mogobiz.store.domain.Category
+import com.mogobiz.store.domain.Company
 import com.mogobiz.store.domain.Coupon
 import com.mogobiz.store.domain.DatePeriod
 import com.mogobiz.store.domain.Feature
@@ -856,5 +857,14 @@ final class RiverTools {
             m << [price:Long.parseLong(price)]
         }
         m
+    }
+
+    static Map asCompanyMap(Company company, RiverConfig config){
+        company ?  RenderUtil.asIsoMapForJSON([
+                'name',
+                'code',
+                'uuid',
+                'aesPassword'
+        ], company) : [:]
     }
 }
