@@ -861,6 +861,7 @@ final class RiverTools {
 
     static Map asCompanyMap(Company company, RiverConfig config){
         company ?  RenderUtil.asIsoMapForJSON([
+                'id',
                 'name',
                 'code',
                 'uuid',
