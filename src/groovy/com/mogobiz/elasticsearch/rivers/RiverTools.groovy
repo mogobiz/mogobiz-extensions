@@ -577,10 +577,10 @@ final class RiverTools {
                 }
             }
             def resources = []
-            Product2Resource.findAllByProduct(p).each {pr ->
+            Product2Resource.findAllByProduct(p).each {Product2Resource pr ->
                 final r = pr.resource
                 if(!skuResources.contains(r.id)){
-                    resources << asResourceMap(pr.resource, config)
+                    resources << asResourceMap(r, config)
                 }
             }
             if(!resources.isEmpty()){
