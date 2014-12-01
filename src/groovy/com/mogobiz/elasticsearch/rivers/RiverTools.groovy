@@ -280,7 +280,7 @@ final class RiverTools {
                     [product: product, xtype: ResourceType.PICTURE])
             bindedResources?.each {Product2Resource product2Resource ->
                 Resource resource = product2Resource.resource
-                def resourceName = resource.name.toLowerCase()
+                def resourceName = resource.name
                 Matcher matcher = RESOURCE_VARIATION_VALUES.matcher(resourceName)
                 if (matcher.find() && matcher.groupCount() > 1){
                     final match = matcher.group(2)
