@@ -64,7 +64,7 @@ class CountryRiver extends AbstractESRiver<Country> {
 
     @Override
     Item asItem(Country country, RiverConfig config) {
-        new Item(id:country.id, type: getType(), map:RiverTools.asCountryMap(country, config))
+        new Item(id:UUID.randomUUID().toString(), type: getType(), map:RiverTools.asCountryMap(country, config))
     }
 
 }
