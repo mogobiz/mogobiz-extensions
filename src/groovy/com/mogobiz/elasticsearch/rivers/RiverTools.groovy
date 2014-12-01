@@ -38,17 +38,23 @@ import com.mogobiz.utils.MogopayRate
 import grails.converters.JSON
 import grails.util.Holders
 import groovy.json.JsonSlurper
+import groovy.util.logging.Log4j
 import org.apache.commons.lang.StringUtils
 import org.codehaus.groovy.grails.web.json.JSONObject
 
 import java.text.NumberFormat
+import java.util.regex.Matcher
+import java.util.regex.Pattern
 
 /**
  * Created by stephane.manciot@ebiznext.com on 20/02/2014.
  */
+@Log4j
 final class RiverTools {
 
     private RiverTools(){}
+
+    def static final Pattern RESOURCE_VARIATION_VALUES = ~/(.*)_(\S*)_(.*)/
 
     static Map translate(
             Map m,
@@ -245,12 +251,58 @@ final class RiverTools {
 
             translate(m, sku.id, ['name', 'description'], config.languages, config.defaultLang)
 
-            m << [variation1:asVariationMap(sku.variation1, config)]
-            m << [variation2:asVariationMap(sku.variation2, config)]
-            m << [variation3:asVariationMap(sku.variation3, config)]
+            List<VariationValue> variations = []
+            final variation1 = sku.variation1
+            if(variation1){
+                variations << variation1
+            }
+            m << [variation1:asVariationMap(variation1, config)]
+
+            final variation2 = sku.variation2
+            if(variation2){
+                variations << variation2
+            }
+            m << [variation2:asVariationMap(variation2, config)]
+
+            final variation3 = sku.variation3
+            if(variation3){
+                variations << variation3
+            }
+            m << [variation3:asVariationMap(variation3, config)]
+
+            def product = sku.product
+
+            // liste des images associées à ce sku
+            List<Resource> resources = []
+            final nbVariations = variations.size()
+            List<Product2Resource> bindedResources = Product2Resource.executeQuery(
+                    'select distinct pr from Product2Resource pr join pr.resource as r where pr.product=:product and r.xtype=:xtype order by pr.position asc',
+                    [product: product, xtype: ResourceType.PICTURE])
+            bindedResources?.each {Product2Resource product2Resource ->
+                Resource resource = product2Resource.resource
+                def resourceName = resource.name.toLowerCase()
+                Matcher matcher = RESOURCE_VARIATION_VALUES.matcher(resourceName)
+                if (matcher.find() && matcher.groupCount() > 1){
+                    final match = matcher.group(2)
+                    final resourceVariationValues = match.split("\\.")
+                    if(resourceVariationValues.size() == nbVariations &&
+                        (0..(nbVariations-1)).every {index ->
+                            final resourceVariationValue = resourceVariationValues[index]
+                            final variationValue = variations.get(index)
+                            resourceVariationValue.equalsIgnoreCase('x') ||
+                                    resourceVariationValue.equalsIgnoreCase(variationValue.value) ||
+                                    resourceVariationValue.equals("${variationValue.position}")
+                        })
+                    {
+                        resources << resource
+                    }
+                }
+            }
+            if(!resources.isEmpty()){
+                m << [pictures:resources.collect {resource -> extractSkuResourceUrl(resource, config)}]
+            }
 
             // liste des coupons associés à ce sku
-            def product = sku.product
             Set<Coupon> coupons = extractProductCoupons(product)
             coupons << Coupon.executeQuery('select coupon FROM Coupon coupon left join coupon.ticketTypes as ticketType where (ticketType.id=:idSku)',
                     [idSku:sku.id])
@@ -687,6 +739,18 @@ final class RiverTools {
 
     static Map asIBeaconMap(Ibeacon ibeacon, RiverConfig config){
         ibeacon ? RenderUtil.asIsoMapForJSON(['uuid', 'name', 'startDate', 'endDate', 'active', 'major', 'minor'], ibeacon) : [:]
+    }
+
+    static String extractSkuResourceUrl(Resource resource, RiverConfig config) {
+        String url = resource?.url;
+        if (resource?.uploaded) {
+            StringBuffer buffer = new StringBuffer('/api/store/')
+                    .append(config.clientConfig.store)
+                    .append('/resources/')
+                    .append("${resource.id}${resource.name.toLowerCase()}")
+            url = buffer.toString()
+        }
+        return retrieveResourceUrl(url)
     }
 
     static String extractResourceUrl(Resource resource, RiverConfig config) {
