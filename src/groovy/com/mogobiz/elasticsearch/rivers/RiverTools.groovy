@@ -404,6 +404,7 @@ final class RiverTools {
 
     static Map asResourceMap(Resource resource, RiverConfig config) {
         def m = resource ? RenderUtil.asIsoMapForJSON([
+                'id',
                 'name',
                 'xtype',
                 'active',
@@ -561,50 +562,29 @@ final class RiverTools {
                 m << [tags:tags]
             }
 
-            def resources = []
-            Product2Resource.findAllByProduct(p).each {pr ->
-                resources << asResourceMap(pr.resource, config)
-            }
-            if(!resources.isEmpty()){
-                m << [resources:resources]
-            }
-
-            def skus = []
+            List<Map> skus = []
             TicketType.findAllByProduct(p).each {sku ->
-//                def msku = asSkuMap(sku, config)
-//                def stock = sku.stock
-//                if(stock){
-//                    msku << [initialStock: stock.stock]
-//                    msku << [stockUnlimited: stock.stockUnlimited]
-//                    msku << [stockOutSelling: stock.stockOutSelling]
-//                    msku << [stockDisplay: p.stockDisplay]
-//                    if(!stock.stockUnlimited){
-//                        if (p.calendarType == ProductCalendar.NO_DATE) {
-//                            StockCalendar stockCalendar = StockCalendar.findByTicketType(sku)
-//                            if (stockCalendar) {
-//                                msku << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)]
-//                            }
-//                            else
-//                            {
-//                                msku << [stock: stock.stock]
-//                            }
-//                        }
-//                        else{
-//                            def stockCalendars = []
-//                            StockCalendar.findAllByTicketType(sku).each {stockCalendar ->
-//                                stockCalendars << (RenderUtil.asIsoMapForJSON(['startDate'], stockCalendar)
-//                                        << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)])
-//                            }
-//                            if(!stockCalendars.isEmpty()){
-//                                msku << [stockByDateTime:stockCalendars]
-//                            }
-//                        }
-//                    }
-//                }
                 skus << asSkuMap(sku, config)
             }
             if(!skus.isEmpty()){
                 m << [skus:skus]
+            }
+
+            Set<Long> skuResources = []
+            skus?.each {sku ->
+                if(sku.containsKey("resources")){
+                    skuResources.addAll((sku.resources as List<Map>).groupBy {it.id as Long}.keySet())
+                }
+            }
+            def resources = []
+            Product2Resource.findAllByProduct(p).each {pr ->
+                final r = pr.resource
+                if(!skuResources.contains(r.id)){
+                    resources << asResourceMap(pr.resource, config)
+                }
+            }
+            if(!resources.isEmpty()){
+                m << [resources:resources]
             }
 
             if (p.calendarType != ProductCalendar.NO_DATE) {
