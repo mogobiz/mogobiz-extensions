@@ -54,7 +54,7 @@ final class RiverTools {
 
     private RiverTools(){}
 
-    def static final Pattern RESOURCE_VARIATION_VALUES = ~/(.*)_(\S*)_(.*)/
+    def static final Pattern RESOURCE_VARIATION_VALUES = ~/(.*)__(\S*)__(.*)/
 
     static Map translate(
             Map m,
@@ -284,7 +284,7 @@ final class RiverTools {
                 Matcher matcher = RESOURCE_VARIATION_VALUES.matcher(resourceName)
                 if (matcher.find() && matcher.groupCount() > 1){
                     final match = matcher.group(2)
-                    final resourceVariationValues = match.split("\\.")
+                    final resourceVariationValues = match.split("_")
                     if(resourceVariationValues.size() == nbVariations &&
                         (0..(nbVariations-1)).every {index ->
                             final resourceVariationValue = resourceVariationValues[index]
