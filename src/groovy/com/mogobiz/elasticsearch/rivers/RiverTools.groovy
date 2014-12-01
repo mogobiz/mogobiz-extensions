@@ -273,7 +273,7 @@ final class RiverTools {
             def product = sku.product
 
             // liste des images associées à ce sku
-            List<Resource> resources = []
+            List<Map> resources = []
             final nbVariations = variations.size()
             List<Product2Resource> bindedResources = Product2Resource.executeQuery(
                     'select distinct pr from Product2Resource pr join pr.resource as r where pr.product=:product and r.xtype=:xtype order by pr.position asc',
@@ -294,12 +294,14 @@ final class RiverTools {
                                     resourceVariationValue.equals("${variationValue.position}")
                         })
                     {
-                        resources << resource
+                        def map = asResourceMap(resource, config)
+                        map << [variationValues: resourceVariationValues]
+                        resources << map
                     }
                 }
             }
             if(!resources.isEmpty()){
-                m << [pictures:resources.collect {resource -> extractSkuResourceUrl(resource, config)}]
+                m << [resources:resources]
             }
 
             // liste des coupons associés à ce sku
