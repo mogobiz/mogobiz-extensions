@@ -621,6 +621,20 @@
         </plugins>
     </build>
 
+    <!-- distributionManagement -->
+    <distributionManagement>
+        <repository>
+            <id>mogobiz.release</id>
+            <name>Internal Release Repository</name>
+            <url>http://art.ebiznext.com/artifactory/libs-release-local</url>
+        </repository>
+        <snapshotRepository>
+            <id>mogobiz.snapshots</id>
+            <name>Internal Snapshot Repository</name>
+            <url>http://art.ebiznext.com/artifactory/libs-snapshot-local</url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <repositories>
         <repository>
             <id>grails</id>
@@ -631,6 +645,28 @@
             <id>grails-plugins</id>
             <name>grails-plugins</name>
             <url>http://repo.grails.org/grails/plugins</url>
+        </repository>
+        <repository>
+            <id>mogobiz.release</id>
+            <name>Internal Release Repository</name>
+            <url>http://art.ebiznext.com/artifactory/libs-release-local</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>mogobiz.snapshots</id>
+            <name>Internal Snapshot Repository</name>
+            <url>http://art.ebiznext.com/artifactory/libs-snapshot-local</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
         </repository>
     </repositories>
 
