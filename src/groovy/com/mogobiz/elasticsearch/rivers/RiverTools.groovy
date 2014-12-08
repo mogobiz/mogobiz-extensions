@@ -10,6 +10,7 @@ import com.mogobiz.store.domain.Company
 import com.mogobiz.store.domain.Coupon
 import com.mogobiz.store.domain.DatePeriod
 import com.mogobiz.store.domain.Feature
+import com.mogobiz.store.domain.FeatureValue
 import com.mogobiz.store.domain.Ibeacon
 import com.mogobiz.store.domain.IntraDayPeriod
 import com.mogobiz.store.domain.LocalTaxRate
@@ -63,7 +64,7 @@ final class RiverTools {
             final List<String> languages = ['fr', 'en', 'es', 'de'],
             final String defaultLang = 'fr'){
         // translations for default language
-        m[defaultLang] = [:]
+        m[defaultLang] = m[defaultLang] as Map ?: [:]
         included.each {k ->
             m[defaultLang][k] = m[k]
         }
@@ -75,7 +76,7 @@ final class RiverTools {
                 eq("lang", lang)
             }
             // translated properties
-            def translations = [:]
+            def translations = m[lang] as Map ?: [:]
             list.each {translation ->
                 new JsonSlurper().parseText(translation.value).each {k, v ->
                     if(included.contains(k)){
@@ -421,17 +422,19 @@ final class RiverTools {
         m
     }
 
-    static Map asFeatureMap(Feature feature, RiverConfig config) {
+    static Map asFeatureMap(Feature feature, FeatureValue featureValue, RiverConfig config) {
         def m = feature ? RenderUtil.asIsoMapForJSON([
                 'name',
                 'position',
                 'domain',
                 'uuid',
-                'hide',
-                'value'
-        ], feature) : [:]
+                'hide'
+        ], feature) << [value: featureValue?.value ?: feature.value] : [:]
         if(feature){
             translate(m, feature.id, ['name', 'value'], config.languages, config.defaultLang)
+            if(featureValue){
+                translate(m, featureValue.id, ['value'], config.languages, config.defaultLang)
+            }
         }
         m
     }
@@ -547,8 +550,12 @@ final class RiverTools {
             }
 
             def features = []
-            Feature.findAllByProduct(p).each { feature ->
-                features << asFeatureMap(feature, config)
+            List<Feature> productFeatures = Feature.findAllByProduct(p)
+            productFeatures.addAll(Feature.findAllByCategoryInListAndProductNotEqual(categoryWithParents(p.category), p))
+            final featureValues = FeatureValue.findAllByProduct(p)
+            productFeatures.each { feature ->
+                final featureValue = featureValues.find {it.feature.id == feature.id}
+                features << asFeatureMap(feature, featureValue, config)
             }
             if(!features.isEmpty()){
                 m << [features:features]
