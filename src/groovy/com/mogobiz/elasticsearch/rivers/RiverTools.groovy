@@ -127,6 +127,14 @@ final class RiverTools {
                     config?.languages,
                     config?.defaultLang
             ) << [increments:0]
+
+            StringBuffer buffer = new StringBuffer('/api/store/')
+                    .append(config.clientConfig.store)
+                    .append('/resources/')
+                    .append(b.id)
+            String url = retrieveResourceUrl(buffer.toString())
+            m << [url: url, smallPicture: "$url/SMALL"]
+
             BrandProperty.findAllByBrand(b).each {BrandProperty property ->
                 m << ["${property.name}":property.value]
             }
