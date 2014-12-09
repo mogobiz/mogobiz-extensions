@@ -694,8 +694,7 @@ final class RiverTools {
 
     static Map asSuggestionMap(Suggestion suggestion, RiverConfig config){
         suggestion ?
-                asProductMap(
-                        suggestion.product, config) << RenderUtil.asIsoMapForJSON(
+                asProductMap(suggestion.product, config) << RenderUtil.asIsoMapForJSON(
                             [
                                 'id',
                                 'required',
@@ -703,7 +702,7 @@ final class RiverTools {
                                 'discount'
                             ],
                             suggestion
-                ) << [price: IperUtil.computeDiscount(suggestion.discount, suggestion.product.price)] : [:]
+                ) << [price: IperUtil.computeDiscount(suggestion.discount, suggestion.product.price)] << [productId: suggestion.product.id] : [:]
     }
 
 
