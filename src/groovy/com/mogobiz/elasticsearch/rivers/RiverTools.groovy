@@ -585,6 +585,9 @@ final class RiverTools {
                 m << [skus:skus]
             }
 
+            m << [maxPrice: skus?.collect { it.price as Long }?.max() ?: 0L]
+            m << [maxSalePrice: skus?.collect { it.salePrice as Long ?: 0L }?.max() ?: 0L]
+
             Set<Long> skuResources = []
             skus?.each {sku ->
                 if(sku.containsKey("resources")){
