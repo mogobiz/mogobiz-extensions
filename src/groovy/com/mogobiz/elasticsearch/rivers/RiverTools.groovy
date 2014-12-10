@@ -133,7 +133,7 @@ final class RiverTools {
                     .append('/resources/')
                     .append(b.id)
             String url = retrieveResourceUrl(buffer.toString())
-            m << [url: url, smallPicture: "$url/SMALL"]
+            m << [picture: url, smallPicture: "$url/SMALL"]
 
             BrandProperty.findAllByBrand(b).each {BrandProperty property ->
                 m << ["${property.name}":property.value]
