@@ -64,16 +64,17 @@ final class RiverTools {
             final List<String> languages = ['fr', 'en', 'es', 'de'],
             final String defaultLang = 'fr'){
         // translations for default language
-        m[defaultLang] = m[defaultLang] as Map ?: [:]
+        def _defaultLang = defaultLang.trim().toLowerCase()
+        m[_defaultLang] = m[_defaultLang] as Map ?: [:]
         included.each {k ->
-            m[defaultLang][k] = m[k]
+            m[_defaultLang][k] = m[k]
         }
         // translations for other languages
-        def _languages = languages - defaultLang
+        def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
         _languages.each {lang ->
             def final list = Translation.createCriteria().list {
                 eq ("target", id)
-                eq("lang", lang)
+                eq("lang", lang, [ignoreCase: true])
             }
             // translated properties
             def translations = m[lang] as Map ?: [:]
