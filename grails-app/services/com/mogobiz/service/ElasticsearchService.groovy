@@ -681,7 +681,7 @@ curl -XPUT ${url}/$index/_alias/$store
 }
 
 class Period {
-    Date startDate                                                             C
+    Date startDate
     Date endDate
 }
 
