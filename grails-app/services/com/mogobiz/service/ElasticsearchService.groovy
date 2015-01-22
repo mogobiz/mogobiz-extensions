@@ -436,6 +436,7 @@ class ElasticsearchService {
                     if (!client.createAlias(conf, url, store, index)) {
                         def revert = env?.idx
                         if (previousIndices.any { previous -> revert = previous; client.createAlias(conf, url, store, previous) }) {
+                            success = false
                             extra = """
 Failed to create alias ${store} for ${index} -> revert to previous index ${revert}
 The alias can be created by executing the following command :
@@ -443,6 +444,7 @@ curl -XPUT ${url}/$index/_alias/$store
 """
                             log.warn(extra)
                         } else {
+                            success = false
                             extra = """
 Failed to create alias ${store} for ${index}.
 The alias can be created by executing the following command :
@@ -458,6 +460,8 @@ curl -XPUT ${url}/$index/_alias/$store
                         File file = new File("${grailsApplication.config.resources.path}/stores/${store}.zip")
                         file.getParentFile().mkdirs()
                         file.delete()
+                        catalog.refresh()
+                        extra = "${catalog.name} - ${com.mogobiz.utils.DateUtilitaire.format(new Date(), "dd/MM/yyyy HH:mm")}"
                         log.info("End ElasticSearch export for ${store} -> ${index}")
                     }
                 }
