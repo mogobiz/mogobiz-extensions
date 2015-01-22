@@ -668,9 +668,10 @@ curl -XPUT ${url}/$index/_alias/$store
                     [sort:'activationDate', order:'desc'])
             Catalog catalog = catalogs.size() > 0 ? catalogs.get(0) : null
             if(catalog){
-                EsEnv.findAllByCompanyAndRunningAndActiveAndCronExprIsNotEmpty(company, false, true).each {env ->
+                EsEnv.findAllByCompanyAndRunningAndActive(company, false, true).each {env ->
                     def cron = env.cronExpr
-                    if(CronExpression.isValidExpression(cron) && new CronExpression(cron).isSatisfiedBy(now)){
+                    if(cron && cron.trim().length() > 0 && CronExpression.isValidExpression(cron)
+                            && new CronExpression(cron).isSatisfiedBy(now)){
                         this.publish(company, env, catalog)
                     }
                 }
