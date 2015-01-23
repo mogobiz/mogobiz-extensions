@@ -285,9 +285,9 @@ final class RiverTools {
             // liste des images associées à ce sku
             List<Map> resources = []
             final nbVariations = variations.size()
-            List<Product2Resource> bindedResources = Product2Resource.executeQuery(
-                    'select distinct pr from Product2Resource pr join pr.resource as r where pr.product=:product and r.xtype=:xtype order by pr.position asc',
-                    [product: product, xtype: ResourceType.PICTURE])
+            Set<Product2Resource> bindedResources = Product2Resource.executeQuery(
+                    'select pr from Product2Resource pr join pr.resource as r where pr.product=:product and r.xtype=:xtype order by pr.position asc',
+                    [product: product, xtype: ResourceType.PICTURE]).toSet()
             bindedResources?.each {Product2Resource product2Resource ->
                 Resource resource = product2Resource.resource
                 def resourceName = resource.name
