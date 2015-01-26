@@ -34,7 +34,9 @@ import com.mogobiz.store.domain.VariationValue
 import com.mogobiz.geolocation.domain.Poi
 import com.mogobiz.json.RenderUtil
 import com.mogobiz.store.vo.Country
+import com.mogobiz.utils.ImageTools
 import com.mogobiz.utils.IperUtil
+import com.mogobiz.utils.MimeTypeTools
 import com.mogobiz.utils.MogopayRate
 import grails.converters.JSON
 import grails.util.Holders
@@ -415,20 +417,61 @@ final class RiverTools {
     static Map asResourceMap(Resource resource, RiverConfig config) {
         def m = resource ? RenderUtil.asIsoMapForJSON([
                 'id',
+                'uuid',
                 'name',
+                'description',
                 'xtype',
                 'active',
                 'deleted',
                 'uploaded',
                 'contentType',
                 'sanitizedName'
-        ], resource) <<
-                [url:extractResourceUrl(resource, config)] <<
-                [smallPicture:extractSmallPictureUrl(resource, config)] : [:]
+        ], resource) : [:]
         if(resource){
-            translate(m, resource.id, ['name'], config.languages, config.defaultLang)
+            def content = resource.content
+            if(!content && resource.uploaded){
+                def path = extractResourcePath(resource)
+                def file = new File(path)
+                if(file.exists()){
+                    content = ImageTools.encodeBase64(file)
+                }
+                else{
+                    log.warn("${path} not found")
+                }
+            }
+            if(content){
+                m << [content: content]
+            }
+            if(ResourceType.PICTURE.equals(resource.xtype)){
+                m << [url:extractResourceUrl(resource, config)] <<
+                        [smallPicture:extractSmallPictureUrl(resource, config)]
+            }
+            translate(m, resource.id, ['name', 'description'], config.languages, config.defaultLang)
         }
         m
+    }
+
+    def static String extractResourcePath(Resource resource) {
+        def path = resource?.url
+        if(!path || !new File(path).exists()){
+            StringBuilder sb = new StringBuilder(Holders.config.resources.path as String).append(File.separator).append('resources').append(File.separator)
+            sb.append(resource.company.code).append(File.separator)
+            def contentType = resource.contentType
+            if (contentType != null) {
+                if (contentType.toLowerCase().contains('audio')) {
+                    sb.append('audio')
+                } else if (contentType.toLowerCase().contains('video')) {
+                    sb.append('video')
+                } else if (contentType.toLowerCase().contains('image')) {
+                    sb.append('image')
+                } else if (contentType.toLowerCase().contains('text')) {
+                    sb.append('text')
+                }
+                sb.append(File.separator)
+            }
+            path = sb.append(resource.id).toString()
+        }
+        path
     }
 
     static Map asFeatureMap(Feature feature, FeatureValue featureValue, RiverConfig config) {
