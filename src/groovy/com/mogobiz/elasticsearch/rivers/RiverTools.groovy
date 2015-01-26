@@ -426,7 +426,7 @@ final class RiverTools {
                 'uploaded',
                 'contentType',
                 'sanitizedName'
-        ], resource) : [:]
+        ], resource) << [url:extractResourceUrl(resource, config)] : [:]
         if(resource){
             def content = resource.content
             if(!content && resource.uploaded){
@@ -443,8 +443,7 @@ final class RiverTools {
                 m << [content: content]
             }
             if(ResourceType.PICTURE.equals(resource.xtype)){
-                m << [url:extractResourceUrl(resource, config)] <<
-                        [smallPicture:extractSmallPictureUrl(resource, config)]
+                m << [smallPicture:extractSmallPictureUrl(resource, config)]
             }
             translate(m, resource.id, ['name', 'description'], config.languages, config.defaultLang)
         }
