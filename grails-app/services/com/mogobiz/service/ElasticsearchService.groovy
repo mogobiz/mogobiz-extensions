@@ -21,7 +21,6 @@ import com.mogobiz.utils.Page
 import grails.transaction.Transactional
 import groovy.json.JsonBuilder
 import org.quartz.CronExpression
-import scala.Function1
 import scala.PartialFunction
 import scala.Unit
 import scala.concurrent.Future
@@ -388,8 +387,8 @@ class ElasticsearchService {
         dir
     }
 
-    def publish(Company company, EsEnv env, Catalog catalog) {
-        if (company && env && env.company == company && catalog && catalog.company == company && catalog.activationDate < new Date() && !env.running) {
+    def publish(Company company, EsEnv env, Catalog catalog, boolean manual = false) {
+        if (company && env && env.company == company && catalog && catalog.company == company && (manual || catalog.activationDate < new Date()) && !env.running) {
             log.info("Export to Elastic Search has started ...")
             env.running = true
             env.save(flush: true)
@@ -676,7 +675,7 @@ curl -XPUT ${url}/$index/_alias/$store
                     def cron = env.cronExpr
                     if(cron && cron.trim().length() > 0 && CronExpression.isValidExpression(cron)
                             && new CronExpression(cron).isSatisfiedBy(now)){
-                        this.publish(company, env, catalog)
+                        this.publish(company, env, catalog, false)
                     }
                 }
             }
