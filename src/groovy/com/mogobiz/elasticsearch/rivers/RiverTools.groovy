@@ -34,9 +34,9 @@ import com.mogobiz.store.domain.VariationValue
 import com.mogobiz.geolocation.domain.Poi
 import com.mogobiz.json.RenderUtil
 import com.mogobiz.store.vo.Country
-import com.mogobiz.utils.ImageTools
+import com.mogobiz.tools.ImageTools
 import com.mogobiz.utils.IperUtil
-import com.mogobiz.utils.MimeTypeTools
+import com.mogobiz.tools.MimeTypeTools
 import com.mogobiz.utils.MogopayRate
 import grails.converters.JSON
 import grails.util.Holders
