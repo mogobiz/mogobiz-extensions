@@ -366,19 +366,26 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- rxjava -->
+        <!-- rxjava
         <dependency>
             <groupId>io.reactivex</groupId>
             <artifactId>rxjava</artifactId>
             <version>1.0.7</version>
             <scope>compile</scope>
         </dependency>
+         -->
         <!-- rxjava-reactive-streams -->
         <dependency>
             <groupId>io.reactivex</groupId>
             <artifactId>rxjava-reactive-streams</artifactId>
             <version>0.3.0</version>
             <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.reactivex</groupId>
+                    <artifactId>rxjava</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- rxjava-groovy -->
         <dependency>
@@ -387,10 +394,6 @@
             <version>0.20.7</version>
             <scope>compile</scope>
             <exclusions>
-                <exclusion>
-                    <groupId>io.reactivex</groupId>
-                    <artifactId>rxjava</artifactId>
-                </exclusion>
                 <exclusion>
                     <groupId>org.codehaus.groovy</groupId>
                     <artifactId>groovy-all</artifactId>
