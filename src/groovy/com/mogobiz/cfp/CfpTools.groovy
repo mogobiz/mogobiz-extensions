@@ -1,7 +1,5 @@
 package com.mogobiz.cfp
 
-import akka.stream.javadsl.OnCompleteCallback
-
 // cfp objects
 import com.mogobiz.rivers.cfp.CfpClient
 import com.mogobiz.rivers.cfp.CfpConferenceDetails
@@ -20,7 +18,6 @@ import com.mogobiz.store.domain.BrandProperty
 import com.mogobiz.store.domain.Catalog
 import com.mogobiz.store.domain.Category
 import com.mogobiz.store.domain.Company
-import com.mogobiz.store.domain.DatePeriod
 import com.mogobiz.store.domain.IntraDayPeriod
 import com.mogobiz.store.domain.Product
 import com.mogobiz.store.domain.ProductCalendar
@@ -30,30 +27,35 @@ import com.mogobiz.store.domain.ProductType
 import com.mogobiz.store.domain.Stock
 import com.mogobiz.store.domain.Tag
 import com.mogobiz.store.domain.TicketType
+import com.mogobiz.tools.MimeTypeTools
 import grails.util.Holders
+import groovy.util.logging.Log4j
 import scala.Function1
-import scala.collection.Seq
 
 import java.text.Normalizer
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import static java.nio.file.Files.*
+import static java.nio.file.Paths.get
 
-// akka-stream
-import org.reactivestreams.api.Producer;
-import akka.stream.javadsl.Flow;
 
-import akka.japi.Procedure
+// rxjava-reactive-streams
+import rx.Subscriber
+import rx.internal.reactivestreams.RxSubscriberToRsSubscriberAdapter
+
+// akka
+
 import akka.actor.ActorSystem
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
 import akka.dispatch.Futures
 
 import java.util.concurrent.Callable
 
 
-import static scala.collection.JavaConversions.*;
+import static scala.collection.JavaConversions.*
 
 /**
  * Created by smanciot on 26/07/14.
  */
+@Log4j
 final class CfpTools {
 
     private CfpTools(){}
@@ -80,24 +82,28 @@ final class CfpTools {
                     company.save()
                 }
                 else{
-                    extractedCompany.errors.allErrors.each {println(it)}
+                    extractedCompany.errors.allErrors.each {log.error(it)}
                 }
             }
             if(company){
-                Producer<Seq<CfpConferenceDetails>> p = CfpClient.loadAllConferences(cfpUrl);
-                Flow.create(p).foreach(new Procedure<Seq<CfpConferenceDetails>>() {
+                Subscriber<CfpConferenceDetails> subscriber = new Subscriber<CfpConferenceDetails>() {
                     @Override
-                    public void apply(Seq<CfpConferenceDetails> conferences) throws Exception {
-                        for(CfpConferenceDetails conference : asJavaCollection(conferences)) {
-                            extractCatalog(company, conference)
-                        }
+                    public void onCompleted() {
+                        log.info("-> finish Cfp ${cfpName} extraction from ${cfpUrl}")
+                        //CfpClient.system().shutdown()
                     }
-                }).onComplete(CfpClient.flowMaterializer(), new OnCompleteCallback(){
-                    public void onComplete(Throwable th){
-                        println("-> finish Cfp ${cfpName} extraction from ${cfpUrl}")
-                        CfpClient.system().shutdown()
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                        log.error(throwable.message, throwable)
                     }
-                })
+
+                    @Override
+                    public void onNext(CfpConferenceDetails conference) {
+                        extractCatalog(company, conference)
+                    }
+                };
+                CfpClient.loadAllConferences(cfpUrl, new RxSubscriberToRsSubscriberAdapter<CfpConferenceDetails>(subscriber));
             }
         }
         company
@@ -128,7 +134,7 @@ final class CfpTools {
                     catalog.save()
                 }
                 else{
-                    extractedCatalog.errors.allErrors.each {println it}
+                    extractedCatalog.errors.allErrors.each {log.error(it)}
                 }
             }
             if(catalog){
@@ -161,7 +167,7 @@ final class CfpTools {
                         brand.save()
                     }
                     else{
-                        brand.errors.allErrors.each {println it}
+                        brand.errors.allErrors.each {log.error(it)}
                     }
                 }
                 if(brand){
@@ -175,40 +181,43 @@ final class CfpTools {
                         if(!property.hasErrors()){
                             property.save()
 
-                            def ec = AVATARS.dispatcher()
+                            final String file = conference.avatarFile(speaker.uuid()).getOrElse(null)
+                            if(file){
+                                def dir = "${Holders.config.resources.path}/brands/logos/${company.code}"
+                                File d = new File(dir)
+                                d.mkdirs()
+                                def to = "$dir/${new File(file).name}"
+                                log.info("moving $file to $to")
+                                move(get(file), get(to), REPLACE_EXISTING)
+                            }
+                            else{
+                                def ec = AVATARS.dispatcher()
 
-                            // download speaker avatar
-                            Futures.future(new Callable<String>() {
-                                @Override
-                                String call() throws Exception {
-                                    def extension = ''
-                                    def index = avatarURL.lastIndexOf('.')
-                                    if (index > 0) {
-                                        extension = avatarURL.substring(index)
+                                // download speaker avatar
+                                Futures.future(new Callable<String>() {
+                                    @Override
+                                    String call() throws Exception {
+                                        def dir = "${Holders.config.resources.path}/brands/logos/${company.code}"
+                                        File d = new File(dir)
+                                        d.mkdirs()
+                                        def destination = "$dir/${brand.id}"
+                                        download(avatarURL, destination)
+                                        File f = new File(destination)
+                                        def extension = MimeTypeTools.toFormat(f)
+                                        if(extension){
+                                            destination = "$dir/${brand.id}$extension"
+                                            move(get(f.absolutePath), get(destination), REPLACE_EXISTING)
+                                        }
+                                        destination
                                     }
-                                    if(extension.contains('/')){
-                                        extension = ''
-                                    }
-                                    index = extension.indexOf('?')
-                                    if(index > 0){
-                                        extension = extension.substring(0, index)
-                                    }
-                                    if(extension.trim().length() == 0){
-                                        extension = ".png" // FIXME
-                                    }
-                                    def dir = "${Holders.config.resources.path}/brands/logos/${company.code}"
-                                    File d = new File(dir)
-                                    d.mkdirs()
-                                    def destination = "${dir}/${brand.id}${extension}"
-                                    download(avatarURL, destination)
-                                    destination
-                                }
-                            }, ec).onComplete({
-                                println("=> AVATAR ${avatarURL} DOWNLOADED")
-                            }as Function1, ec)
+                                }, ec).onComplete({
+                                    log.info("=> AVATAR ${avatarURL} DOWNLOADED")
+                                }as Function1, ec)
+                            }
+
                         }
                         else{
-                            property.errors.allErrors.each {println it}
+                            property.errors.allErrors.each {log.error(it)}
                         }
                     }
                 }
@@ -231,7 +240,7 @@ final class CfpTools {
                         category.save()
                     }
                     else{
-                        extractedCategory.errors.allErrors.each {println it}
+                        extractedCategory.errors.allErrors.each {log.error(it)}
                     }
                 }
                 if(category){
@@ -247,7 +256,7 @@ final class CfpTools {
                                 tag.save()
                             }
                             else{
-                                tag.errors.allErrors.each {println it}
+                                tag.errors.allErrors.each {log.error(it)}
                             }
                         }
                         if(tag){
@@ -265,7 +274,6 @@ final class CfpTools {
                                 code: code,
                                 name: talk.title(),
                                 sanitizedName: sanitizeUrlService.sanitizeWithDashes(talk.title()),
-                                creationDate: Calendar.getInstance(),
                                 xtype: ProductType.OTHER,
                                 price: 0L,
                                 description: talk.summaryAsHtml(),
@@ -283,7 +291,7 @@ final class CfpTools {
                             product.save()
                         }
                         else{
-                            extractedProduct.errors.allErrors.each {println it}
+                            extractedProduct.errors.allErrors.each {log.error(it)}
                         }
                     }
                     if(product){
@@ -327,7 +335,7 @@ final class CfpTools {
                             period.save()
                         }
                         else{
-                            period.errors.allErrors.each {println it}
+                            period.errors.allErrors.each {log.error(it)}
                         }
                         // stock
                         Stock stock = new Stock(stock: Math.max(0, slot.roomCapacity()), stockUnlimited: (slot.roomCapacity() <= 0));
@@ -350,11 +358,11 @@ final class CfpTools {
                                 sku.save()
                             }
                             else{
-                                sku.errors.allErrors.each {println it}
+                                sku.errors.allErrors.each {log.error(it)}
                             }
                         }
                         else{
-                            stock.errors.allErrors.each {println it}
+                            stock.errors.allErrors.each {log.error(it)}
                         }
                     }
                 }
@@ -372,7 +380,7 @@ final class CfpTools {
             out << new URL(url).openStream()
         }
         catch(IOException e){
-            println(e.message)
+            log.error(e.message)
             out?.close()
         }
         finally{
@@ -403,7 +411,7 @@ final class CfpTools {
             if (!property.hasErrors()) {
                 property.save()
             } else {
-                property.errors.allErrors.each { println it }
+                property.errors.allErrors.each { log.error(it) }
             }
         }
     }

@@ -72,7 +72,7 @@ class CfpToolsSpec extends Specification{
         company != null
         Collection<Catalog> catalogs = Catalog.findAllByCompany(company)
         Catalog catalog = catalogs.iterator().next()
-        catalog.name == "devoxxFR2014"
+        catalog.name == "devoxxFR2015"
         Calendar c = DateUtilitaire.parseToCalendar("16/04/2014T09:30:00", "dd/MM/yyyy'T'HH:mm:ss", Locale.FRANCE)
         DateUtilitaire.compareDate(c.time, catalog.activationDate) == 0L
         Collection<Brand> brands = Brand.findAllByCompany(company)
