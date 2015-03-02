@@ -5,9 +5,9 @@ import akka.dispatch.Futures
 import com.mogobiz.google.client.GoogleCategoryItem
 import com.mogobiz.google.client.GoogleCategoryReader
 import com.mogobiz.store.domain.GoogleCategory
-import rx.util.functions.Action0
-import rx.util.functions.Action1
-import rx.util.functions.Func1
+import rx.functions.Action0
+import rx.functions.Action1
+import rx.functions.Func1
 import scala.Function1
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future

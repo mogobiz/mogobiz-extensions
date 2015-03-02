@@ -30,6 +30,8 @@ import com.mogobiz.store.domain.TicketType
 import com.mogobiz.tools.MimeTypeTools
 import grails.util.Holders
 import groovy.util.logging.Log4j
+import org.apache.commons.logging.Log
+import org.apache.commons.logging.LogFactory
 import scala.Function1
 
 import java.text.Normalizer
@@ -55,12 +57,13 @@ import static scala.collection.JavaConversions.*
 /**
  * Created by smanciot on 26/07/14.
  */
-@Log4j
 final class CfpTools {
 
     private CfpTools(){}
 
     private static final SanitizeUrlService sanitizeUrlService = new SanitizeUrlService()
+
+    private static final Log log = LogFactory.getLog(CfpTools.class.name)
 
     static final ActorSystem AVATARS = ActorSystem.create("AVATARS")
 
