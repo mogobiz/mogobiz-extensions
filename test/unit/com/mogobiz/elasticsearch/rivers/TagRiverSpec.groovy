@@ -17,7 +17,7 @@ import grails.test.mixin.support.GrailsUnitTestMixin
 import grails.util.Holders
 import groovy.json.JsonBuilder
 import org.elasticsearch.node.Node as ESNode
-import rx.util.functions.Action1
+import rx.functions.Action1
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
