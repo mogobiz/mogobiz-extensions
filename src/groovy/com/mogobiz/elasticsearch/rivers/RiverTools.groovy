@@ -386,15 +386,17 @@ final class RiverTools {
             switch (rule.xtype) {
                 case ReductionRuleType.DISCOUNT:
                     String discount = rule.discount
-                    if(discount?.endsWith("%")){
-                        reduction += (Long)(prixDeBase * Float.parseFloat(discount.substring(0, discount.length()-1)) / 100)
-                    }
-                    else if (discount.startsWith ("+")){
+                    boolean isPercent = discount?.endsWith("%")
+                    boolean isMinus = discount?.startsWith("-")
+                    boolean isPlus = discount?.startsWith("+")
+                    String discountWithoutSigns = discount?.substring((isMinus || isPlus)? 1 : 0, (isPercent) ? discount.length()-1 : discount.length())
+                    Long reduc = (isPercent) ? (Long)(prixDeBase * Float.parseFloat(discountWithoutSigns) / 100) : Long.parseLong(discountWithoutSigns)
+                    if (isPlus) {
                         //should never be the case
-                        reduction -= Long.parseLong (discount.substring(1))
+                        reduction -= reduc
                     }
-                    else if (discount.startsWith ("-")){
-                        reduction += Long.parseLong (discount.substring(1))
+                    else {
+                        reduction += reduc
                     }
                     break
                 default:
