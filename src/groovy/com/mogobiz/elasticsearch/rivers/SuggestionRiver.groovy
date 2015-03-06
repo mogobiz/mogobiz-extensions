@@ -39,12 +39,8 @@ class SuggestionRiver extends AbstractESRiver<Suggestion>{
 
     @Override
     Observable<Suggestion> retrieveCatalogItems(RiverConfig config) {
-        return Observable.from(Suggestion.executeQuery('FROM Suggestion s WHERE s.pack.category.catalog.id=:idCatalog and s.product.state = :productState',
+        return Observable.from(Suggestion.executeQuery('FROM Suggestion s join fetch s.product WHERE s.pack.category.catalog.id=:idCatalog and s.product.state = :productState',
                 [idCatalog:config.idCatalog, productState:ProductState.ACTIVE]))
-//        DetachedCriteria<Suggestion> query = Suggestion.where{
-//            pack.category.catalog.id == config.idCatalog && product.state == ProductState.ACTIVE
-//        }
-//        return Observable.from(query.list())
     }
 
     @Override
