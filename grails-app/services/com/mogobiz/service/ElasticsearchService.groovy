@@ -387,15 +387,15 @@ class ElasticsearchService {
         dir
     }
 
-    def publish(Company company, EsEnv env, Catalog catalog, boolean manual = false) {
+    def void publish(Company company, EsEnv env, Catalog catalog, boolean manual = false) {
         if (company && env && env.company == company && catalog && catalog.company == company && (manual || catalog.activationDate < new Date()) && !env.running) {
             log.info("Export to Elastic Search has started ...")
             env.running = true
             env.save(flush: true)
             int replicas = grailsApplication.config.elasticsearch.replicas as int ?: 1
-            def languages = Translation.executeQuery('SELECT DISTINCT t.lang FROM Translation t WHERE t.companyId=:idCompany', [idCompany: company.id]) as String[]
-            if (languages.length == 0) {
-                languages = [company.defaultLanguage]
+            def languages = Translation.executeQuery('SELECT DISTINCT t.lang FROM Translation t WHERE t.companyId=:idCompany', [idCompany: company.id]) as List<String>
+            if (languages.size() == 0) {
+                languages = [company.defaultLanguage] as List<String>
             }
             def url = env.url
             def store = company.code
@@ -478,10 +478,13 @@ curl -XPUT ${url}/$index/_alias/$store
                     }
                 } as PartialFunction, ec)
             }
-            catch (Exception e) {
+            catch (Exception ignored) {
                 // this may happen before the future is created
-                env.running = false
-                env.save(flush: true)
+                EsEnv.withTransaction {
+                    env.refresh()
+                    env.running = false
+                    env.save(flush: true)
+                }
             }
 
         }
@@ -668,7 +671,7 @@ curl -XPUT ${url}/$index/_alias/$store
         url
     }
 
-    def publishAll() {
+    def void publishAll() {
         def cal = Calendar.getInstance()
         cal.set(Calendar.SECOND, 0)
         cal.set(Calendar.MILLISECOND, 0)
@@ -685,7 +688,7 @@ curl -XPUT ${url}/$index/_alias/$store
                     def cron = env.cronExpr
                     if (cron && cron.trim().length() > 0 && CronExpression.isValidExpression(cron)
                             && new CronExpression(cron).isSatisfiedBy(now)) {
-                        this.publish(company, env, catalog, false)
+                        publish(company, env, catalog, false)
                     }
                 }
             }
