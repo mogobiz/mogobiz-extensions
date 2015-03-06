@@ -17,25 +17,12 @@ class CouponRiver extends AbstractESRiver<Coupon> {
     @Override
     rx.Observable<Coupon> retrieveCatalogItems(final RiverConfig config) {
         Set<Coupon> results = []
-        results << Coupon.executeQuery('select coupon FROM Coupon coupon left join coupon.products as product where (product.category.catalog.id=:idCatalog and product.state=:productState)',
+        results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.products as product where (product.category.catalog.id=:idCatalog and product.state=:productState)',
                 [idCatalog:config.idCatalog, productState:ProductState.ACTIVE])
-        results << Coupon.executeQuery('select coupon FROM Coupon coupon left join coupon.categories as category where (category.catalog.id=:idCatalog)', [idCatalog:config.idCatalog])
-        results << Coupon.executeQuery('select coupon FROM Coupon coupon left join coupon.ticketTypes as ticketType where (ticketType.product.category.catalog.id=:idCatalog and ticketType.product.state=:productState)',
+        results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.categories as category where (category.catalog.id=:idCatalog)', [idCatalog:config.idCatalog])
+        results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.ticketTypes as ticketType where (ticketType.product.category.catalog.id=:idCatalog and ticketType.product.state=:productState)',
                 [idCatalog:config.idCatalog, productState:ProductState.ACTIVE])
         return rx.Observable.from(results.flatten())
-//        DetachedCriteria<Product> productQuery = Product.where{
-//            category.catalog.id==config.idCatalog && state==ProductState.ACTIVE
-//        }
-//        DetachedCriteria<Category> categoryQuery = Category.where{
-//            catalog.id==config.idCatalog
-//        }
-//        DetachedCriteria<TicketType> skuQuery = TicketType.where{
-//            product.category.catalog.id==config.idCatalog && product.state==ProductState.ACTIVE
-//        }
-//        DetachedCriteria<Coupon> query = Coupon.where {
-//            (products in productQuery) || (categories in categoryQuery) || (ticketTypes in skuQuery)
-//        }
-//        return rx.Observable.from(query.list())
     }
 
     @Override
