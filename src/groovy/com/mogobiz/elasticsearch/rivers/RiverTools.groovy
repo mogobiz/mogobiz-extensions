@@ -36,7 +36,6 @@ import com.mogobiz.json.RenderUtil
 import com.mogobiz.store.vo.Country
 import com.mogobiz.tools.ImageTools
 import com.mogobiz.utils.IperUtil
-import com.mogobiz.tools.MimeTypeTools
 import com.mogobiz.utils.MogopayRate
 import grails.converters.JSON
 import grails.util.Holders
@@ -699,8 +698,9 @@ final class RiverTools {
         [:]
     }
 
-    static Map asStockMap(TicketType sku, RiverConfig config){
-        if(sku){
+    static Map asStockCalendarSkuMap(StockCalendarSku tuple, RiverConfig config){
+        TicketType sku = tuple.sku
+        if(sku) {
             def m = RenderUtil.asIsoMapForJSON([
                     'id',
                     'sku',
@@ -712,36 +712,38 @@ final class RiverTools {
                     'lastUpdated'
             ], sku)
             def product = sku.product
-            if(product){
+            if (product) {
                 m << [productId: product.id]
                 m << [productUuid: product.uuid]
                 m << [stockDisplay: product.stockDisplay]
                 m << [calendarType: product.calendarType]
             }
             def stock = sku.stock
-            if(stock){
+            if (stock) {
                 m << [initialStock: stock.stock]
                 m << [stockUnlimited: stock.stockUnlimited]
                 m << [stockOutSelling: stock.stockOutSelling]
                 if(!stock.stockUnlimited){
-                    if (product?.calendarType == ProductCalendar.NO_DATE) {
-                        StockCalendar stockCalendar = StockCalendar.findByTicketType(sku)
-                        if (stockCalendar) {
-                            m << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)]
+                    def stockCalendars = tuple.stockCalendars
+                    if(stockCalendars){
+                        if (product?.calendarType == ProductCalendar.NO_DATE) {
+                            StockCalendar stockCalendar = stockCalendars.size() > 0 ? stockCalendars.first() : null
+                            if (stockCalendar) {
+                                m << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)]
+                            }
+                            else
+                            {
+                                m << [stock: stock.stock]
+                            }
                         }
-                        else
-                        {
-                            m << [stock: stock.stock]
-                        }
-                    }
-                    else{
-                        def stockCalendars = []
-                        StockCalendar.findAllByTicketType(sku).each {stockCalendar ->
-                            stockCalendars << (RenderUtil.asIsoMapForJSON(['id', 'uuid', 'startDate', 'dateCreated', 'lastUpdated'], stockCalendar)
-                                    << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)])
-                        }
-                        if(!stockCalendars.isEmpty()){
-                            m << [stockByDateTime:stockCalendars]
+                        else{
+                            stockCalendars.each {stockCalendar ->
+                                stockCalendars << (RenderUtil.asIsoMapForJSON(['id', 'uuid', 'startDate', 'dateCreated', 'lastUpdated'], stockCalendar)
+                                        << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)])
+                            }
+                            if(!stockCalendars.isEmpty()){
+                                m << [stockByDateTime:stockCalendars]
+                            }
                         }
                     }
                 }

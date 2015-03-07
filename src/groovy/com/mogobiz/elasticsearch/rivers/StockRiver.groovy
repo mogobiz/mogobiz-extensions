@@ -7,22 +7,34 @@ import com.mogobiz.elasticsearch.client.ESMapping
 import com.mogobiz.elasticsearch.client.ESProperty
 import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
 import com.mogobiz.store.domain.ProductState
+import com.mogobiz.store.domain.StockCalendar
 import com.mogobiz.store.domain.TicketType
+import groovy.transform.TupleConstructor
 
 /**
  *
  * Created by smanciot on 23/09/14.
  */
-class StockRiver  extends AbstractESRiver<TicketType> {
+class StockRiver  extends AbstractESRiver<StockCalendarSku> {
     @Override
-    rx.Observable<TicketType> retrieveCatalogItems(RiverConfig riverConfig) {
-        return rx.Observable.from(TicketType.executeQuery('FROM TicketType s WHERE s.product.category.catalog.id=:idCatalog and s.product.state = :productState',
-                [idCatalog:riverConfig.idCatalog, productState:ProductState.ACTIVE]))
+    rx.Observable<StockCalendarSku> retrieveCatalogItems(RiverConfig riverConfig) {
+        return rx.Observable.from(
+                StockCalendar.executeQuery(
+                    'SELECT sc FROM StockCalendar sc left join fetch sc.ticketType as tt left join fetch tt.product as product left join fetch tt.stock as stock WHERE stock.stockUnlimited = false and product.category.catalog.id=:idCatalog and product.state = :productState',
+                        [idCatalog:riverConfig.idCatalog, productState:ProductState.ACTIVE])
+                        .groupBy {it.ticketType}.collect {k, v -> new StockCalendarSku(k, v)}/*TODO rx way*/
+                .plus(
+                    TicketType.executeQuery(
+                        'SELECT s FROM TicketType s left join s.product as product left join s.stock as stock WHERE (s.stock.stockUnlimited = true or s not in (select tt from StockCalendar sc left join sc.ticketType as tt)) and s.product.category.catalog.id=:idCatalog and s.product.state = :productState',
+                            [idCatalog:riverConfig.idCatalog, productState:ProductState.ACTIVE])
+                            .collect {new StockCalendarSku(it, null)}/*TODO rx way*/
+                )
+        )
     }
 
     @Override
-    Item asItem(TicketType sku, RiverConfig riverConfig) {
-        new Item(id:sku.uuid, type: getType(), map:RiverTools.asStockMap(sku, riverConfig))
+    Item asItem(StockCalendarSku tuple, RiverConfig riverConfig) {
+        new Item(id:tuple.sku?.uuid, type: getType(), map:RiverTools.asStockCalendarSkuMap(tuple, riverConfig))
     }
 
     @Override
@@ -63,4 +75,10 @@ class StockRiver  extends AbstractESRiver<TicketType> {
     String getType() {
         return "stock"
     }
+}
+
+@TupleConstructor
+class StockCalendarSku{
+    TicketType sku
+    List<StockCalendar> stockCalendars
 }
