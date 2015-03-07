@@ -737,12 +737,13 @@ final class RiverTools {
                             }
                         }
                         else{
+                            def stockByDateTime = []
                             stockCalendars.each {stockCalendar ->
-                                stockCalendars << (RenderUtil.asIsoMapForJSON(['id', 'uuid', 'startDate', 'dateCreated', 'lastUpdated'], stockCalendar)
+                                stockByDateTime << (RenderUtil.asIsoMapForJSON(['id', 'uuid', 'startDate', 'dateCreated', 'lastUpdated'], stockCalendar)
                                         << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)])
                             }
-                            if(!stockCalendars.isEmpty()){
-                                m << [stockByDateTime:stockCalendars]
+                            if(!stockByDateTime.isEmpty()){
+                                m << [stockByDateTime: stockByDateTime]
                             }
                         }
                     }
