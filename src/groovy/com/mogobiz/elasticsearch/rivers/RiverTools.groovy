@@ -71,10 +71,7 @@ final class RiverTools {
         }
         // translations for other languages
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
-        def final translationsPerLang = Translation.createCriteria().list {
-            eq ("target", id)
-            inList("lang", _languages)
-        }.groupBy {it.lang}
+        def final translationsPerLang = (TranslationsRiverCache.instance.get(id.toString()) ?: []).groupBy {it.lang}
         _languages.each {lang ->
             // translated properties
             def translations = m[lang] as Map ?: [:]
@@ -1067,6 +1064,19 @@ class VariationValueRiverCache extends AbstractRiverCache<Map> {
             variationValueRiverCache = new VariationValueRiverCache()
         }
         variationValueRiverCache
+    }
+}
+
+class TranslationsRiverCache extends AbstractRiverCache<List<Translation>> {
+    private static TranslationsRiverCache transalationsRiverCache
+
+    private TranslationsRiverCache(){}
+
+    public static TranslationsRiverCache getInstance(){
+        if(!transalationsRiverCache){
+            transalationsRiverCache = new TranslationsRiverCache()
+        }
+        transalationsRiverCache
     }
 }
 

@@ -226,6 +226,13 @@ class ProductRiver extends AbstractESRiver<Product>{
 
     @Override
     Observable<Product> retrieveCatalogItems(RiverConfig config) {
+        def languages = config?.languages ?: ['fr', 'en', 'es', 'de']
+        def defaultLang = config?.defaultLang ?: 'fr'
+        def _defaultLang = defaultLang.trim().toLowerCase()
+        def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
+        Translation.executeQuery('select t from Product p, Translation t where t.target=p.id and t.lang in :languages and (p.category.catalog.id=:idCatalog and p.state=:productState)',
+                [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE]).groupBy {it.id.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+
         Category.executeQuery('select cat FROM Category cat left join fetch cat.features where cat.catalog.id=:idCatalog',
                 [idCatalog:config.idCatalog]).each {CategoryFeaturesRiverCache.instance.put(it.uuid, it.features)}
 
