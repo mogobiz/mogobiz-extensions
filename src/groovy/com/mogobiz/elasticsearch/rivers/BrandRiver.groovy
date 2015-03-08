@@ -1,6 +1,7 @@
 package com.mogobiz.elasticsearch.rivers
 
 import com.mogobiz.common.client.Item
+import com.mogobiz.common.rivers.AbstractRiverCache
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
 import com.mogobiz.store.domain.Brand
@@ -49,4 +50,17 @@ class BrandRiver extends AbstractESRiver<Brand> {
         ['id', 'increments']
     }
 
+}
+
+class BrandRiverCache extends AbstractRiverCache<Map>{
+    private static BrandRiverCache brandRiverCache
+
+    private BrandRiverCache(){}
+
+    public static BrandRiverCache getInstance(){
+        if(!brandRiverCache){
+            brandRiverCache = new BrandRiverCache()
+        }
+        brandRiverCache
+    }
 }

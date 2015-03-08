@@ -1,6 +1,7 @@
 package com.mogobiz.elasticsearch.rivers
 
 import com.mogobiz.common.client.Item
+import com.mogobiz.common.rivers.AbstractRiverCache
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
 import com.mogobiz.store.domain.Tag
@@ -46,5 +47,19 @@ class TagRiver extends AbstractESRiver<Tag>{
     @Override
     List<String> previousProperties(){
         ['id', 'increments']
+    }
+
+}
+
+class TagRiverCache extends AbstractRiverCache<Map> {
+    private static TagRiverCache tagRiverCache
+
+    private TagRiverCache(){}
+
+    public static TagRiverCache getInstance(){
+        if(!tagRiverCache){
+            tagRiverCache = new TagRiverCache()
+        }
+        tagRiverCache
     }
 }

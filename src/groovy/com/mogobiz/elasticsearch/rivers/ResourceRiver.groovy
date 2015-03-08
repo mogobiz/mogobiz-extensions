@@ -1,6 +1,7 @@
 package com.mogobiz.elasticsearch.rivers
 
 import com.mogobiz.common.client.Item
+import com.mogobiz.common.rivers.AbstractRiverCache
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.elasticsearch.client.ESClient
 import com.mogobiz.elasticsearch.client.ESMapping
@@ -52,3 +53,17 @@ class ResourceRiver  extends AbstractESRiver<Resource> {
         return 'resource'
     }
 }
+
+class ResourceRiverCache extends AbstractRiverCache<Map> {
+    private static ResourceRiverCache resourceRiverCache
+
+    private ResourceRiverCache(){}
+
+    public static ResourceRiverCache getInstance(){
+        if(!resourceRiverCache){
+            resourceRiverCache = new ResourceRiverCache()
+        }
+        resourceRiverCache
+    }
+}
+

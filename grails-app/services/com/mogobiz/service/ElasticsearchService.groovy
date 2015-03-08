@@ -32,8 +32,9 @@ import java.text.SimpleDateFormat
  *
  * Created by smanciot on 01/09/14.
  */
-@Transactional
 class ElasticsearchService {
+
+    static transactional = false
 
     public static final int DEFAULT_MAX_ITEMS = Integer.MAX_VALUE / 2
 

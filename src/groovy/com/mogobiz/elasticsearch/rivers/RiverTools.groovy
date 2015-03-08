@@ -1,5 +1,6 @@
 package com.mogobiz.elasticsearch.rivers
 
+import com.mogobiz.common.rivers.AbstractRiverCache
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.http.client.HTTPClient
 import com.mogobiz.store.domain.Brand
@@ -8,11 +9,9 @@ import com.mogobiz.store.domain.Catalog
 import com.mogobiz.store.domain.Category
 import com.mogobiz.store.domain.Company
 import com.mogobiz.store.domain.Coupon
-import com.mogobiz.store.domain.DatePeriod
 import com.mogobiz.store.domain.Feature
 import com.mogobiz.store.domain.FeatureValue
 import com.mogobiz.store.domain.Ibeacon
-import com.mogobiz.store.domain.IntraDayPeriod
 import com.mogobiz.store.domain.LocalTaxRate
 import com.mogobiz.store.domain.Product
 import com.mogobiz.store.domain.Product2Resource
@@ -72,14 +71,14 @@ final class RiverTools {
         }
         // translations for other languages
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
+        def final translationsPerLang = Translation.createCriteria().list {
+            eq ("target", id)
+            inList("lang", _languages)
+        }.groupBy {it.lang}
         _languages.each {lang ->
-            def final list = Translation.createCriteria().list {
-                eq ("target", id)
-                eq("lang", lang, [ignoreCase: true])
-            }
             // translated properties
             def translations = m[lang] as Map ?: [:]
-            list.each {translation ->
+            translationsPerLang.get(lang)?.each {translation ->
                 new JsonSlurper().parseText(translation.value).each {k, v ->
                     if(included.contains(k)){
                         translations[k] = v
@@ -107,98 +106,114 @@ final class RiverTools {
     }
 
     static Map asBrandMap(final Brand b, final RiverConfig config) {
-        def m = [:]
         if(b){
-            m = translate(
-                    RenderUtil.asIsoMapForJSON(
-                            [
-                                    "id",
-                                    "name",
-                                    "website",
-                                    "hide",
-                                    'description',
-                                    "twitter"
-                            ],
-                            b
-                    ),
-                    b.id,
-                    [
-                            'name',
-                            'website'
-                    ],
-                    config?.languages,
-                    config?.defaultLang
-            ) << [increments:0]
+            def m = BrandRiverCache.instance.get(b.uuid)
+            if(!m){
+                m = translate(
+                        RenderUtil.asIsoMapForJSON(
+                                [
+                                        "id",
+                                        "name",
+                                        "website",
+                                        "hide",
+                                        'description',
+                                        "twitter"
+                                ],
+                                b
+                        ),
+                        b.id,
+                        [
+                                'name',
+                                'website'
+                        ],
+                        config?.languages,
+                        config?.defaultLang
+                ) << [increments:0]
 
-            StringBuffer buffer = new StringBuffer('/api/store/')
-                    .append(config.clientConfig.store)
-                    .append('/resources/')
-                    .append(b.id)
-            String url = retrieveResourceUrl(buffer.toString())
-            m << [picture: url, smallPicture: "$url/SMALL"]
+                StringBuffer buffer = new StringBuffer('/api/store/')
+                        .append(config.clientConfig.store)
+                        .append('/resources/')
+                        .append(b.id)
+                String url = retrieveResourceUrl(buffer.toString())
+                m << [picture: url, smallPicture: "$url/SMALL"]
 
-            BrandProperty.findAllByBrand(b).each {BrandProperty property ->
-                m << ["${property.name}":property.value]
+                BrandProperty.findAllByBrand(b).each {BrandProperty property ->
+                    m << ["${property.name}":property.value]
+                }
+                BrandRiverCache.instance.put(b.uuid, m)
             }
+            return m
         }
-        m
+        [:]
     }
 
     static Map asCatalogMap(final Catalog catalog, final RiverConfig config){
-        catalog ? translate(
-                RenderUtil.asIsoMapForJSON(
+        if(catalog){
+            def m = CatalogRiverCache.instance.get(catalog.uuid)
+            if(!m){
+                m = translate(
+                        RenderUtil.asIsoMapForJSON(
+                                [
+                                        "id",
+                                        "name",
+                                        "description",
+                                        "uuid",
+                                        "activationdate"
+                                ],
+                                catalog
+                        ),
+                        catalog.id,
                         [
-                                "id",
-                                "name",
-                                "description",
-                                "uuid",
-                                "activationdate"
+                                'name',
+                                'description'
                         ],
-                        catalog
-                ),
-                catalog.id,
-                [
-                        'name',
-                        'description'
-                ],
-                config?.languages,
-                config?.defaultLang
-        ) : [:]
+                        config?.languages,
+                        config?.defaultLang
+                )
+                CatalogRiverCache.instance.put(catalog.uuid, m)
+            }
+            return m
+        }
+        [:]
     }
 
     static Map asCategoryMap(Category category, RiverConfig config) {
-        def m = [:]
         if(category){
-            m =  translate(
-                    RenderUtil.asIsoMapForJSON(
-                            [
-                                    "id",
-                                    "name",
-                                    "description",
-                                    "uuid",
-                                    "keywords",
-                                    "hide"
-                            ],
-                            category
-                    ),
-                    category.id,
-                    [
-                            'name',
-                            'description',
-                            'keywords'
-                    ],
-                    config.languages,
-                    config.defaultLang
-            ) << [path: retrieveCategoryPath(category, category.sanitizedName)] << [parentId:category.parent?.id] << [increments:0]
-            def coupons = []
-            extractCategoryCoupons(category).each {coupon ->
-                coupons << coupon.id
+            def m = CategoryRiverCache.instance.get(category.uuid)
+            if(!m){
+                m =  translate(
+                        RenderUtil.asIsoMapForJSON(
+                                [
+                                        "id",
+                                        "name",
+                                        "description",
+                                        "uuid",
+                                        "keywords",
+                                        "hide"
+                                ],
+                                category
+                        ),
+                        category.id,
+                        [
+                                'name',
+                                'description',
+                                'keywords'
+                        ],
+                        config.languages,
+                        config.defaultLang
+                ) << [path: retrieveCategoryPath(category, category.sanitizedName)] << [parentId:category.parent?.id] << [increments:0]
+                def coupons = []
+                extractCategoryCoupons(category).each {coupon ->
+                    coupons << coupon.id
+                }
+                if(!coupons.isEmpty()){
+                    m << [coupons:coupons]
+                }
+                CategoryRiverCache.instance.put(category.uuid, m)
             }
-            if(!coupons.isEmpty()){
-                m << [coupons:coupons]
-            }
+            return m
         }
-        m
+        [:]
     }
 
     static String retrieveCategoryPath(Category cat, String path = cat?.sanitizedName){
@@ -224,21 +239,28 @@ final class RiverTools {
     }
 
     static Map asTagMap(Tag tag, RiverConfig config) {
-        tag ? translate(
-                RenderUtil.asIsoMapForJSON(
+        if(tag){
+            def m = TagRiverCache.instance.get(tag.uuid)
+            if(!m){
+                m = translate(
+                        RenderUtil.asIsoMapForJSON(
+                                [
+                                        "id",
+                                        "name"
+                                ],
+                                tag
+                        ),
+                        tag.id,
                         [
-                                "id",
-                                "name"
+                                'name'
                         ],
-                        tag
-                ),
-                tag.id,
-                [
-                        'name'
-                ],
-                config.languages,
-                config.defaultLang
-        ) << [increments:0] : [:]
+                        config.languages,
+                        config.defaultLang
+                ) << [increments:0]
+            }
+            return m
+        }
+        [:]
     }
 
     static Map asSkuMap(TicketType sku, RiverConfig config){
@@ -286,9 +308,7 @@ final class RiverTools {
             // liste des images associées à ce sku
             List<Map> resources = []
             final nbVariations = variations.size()
-            Set<Product2Resource> bindedResources = Product2Resource.executeQuery(
-                    'select pr from Product2Resource pr join pr.resource as r where pr.product=:product and r.xtype=:xtype order by pr.position asc',
-                    [product: product, xtype: ResourceType.PICTURE]).toSet()
+            Set<Product2Resource> bindedResources = product.product2Resources.findAll {it.resource.xtype = ResourceType.PICTURE}.toSet()
             bindedResources?.each {Product2Resource product2Resource ->
                 Resource resource = product2Resource.resource
                 def resourceName = resource.name
@@ -314,19 +334,21 @@ final class RiverTools {
             if(!resources.isEmpty()){
                 m << [resources:resources]
             }
-
-            // liste des coupons associés à ce sku
-            Set<Coupon> coupons = extractProductCoupons(product)
-            coupons << Coupon.executeQuery('select coupon FROM Coupon coupon left join coupon.ticketTypes as ticketType where (ticketType.id=:idSku)',
-                    [idSku:sku.id])
-
-            asPromotionsAndCouponsMap(coupons, sku.price).each {k, v ->
+// TODO
+            asPromotionsAndCouponsMap(extractSkuCoupons(sku), sku.price).each {k, v ->
                 m[k] = v
             }
 
             return m
         }
         [:]
+    }
+
+    private static Set<Coupon> extractSkuCoupons(TicketType sku) {
+        Set<Coupon> coupons = extractProductCoupons(sku.product)
+        coupons << Coupon.executeQuery('select coupon FROM Coupon coupon left join coupon.ticketTypes as ticketType where (ticketType.id=:idSku)',
+                [idSku:sku.id])
+        coupons.flatten()
     }
 
     private static Set<Coupon> extractProductCoupons(Product product) {
@@ -338,13 +360,18 @@ final class RiverTools {
     }
 
     private static Set<Coupon> extractCategoryCoupons(Category category) {
-        Set<Coupon> coupons = []
-        def idCategories = []
-        categoryWithParents(category).each { Category c ->
-            idCategories << c.id
+        Set<Coupon> coupons = CouponsRiverCache.instance.get(category.uuid)
+        if(!coupons){
+            coupons = []
+            def idCategories = []
+            categoryWithParents(category).each { Category c ->
+                idCategories << c.id
+            }
+            coupons << Coupon.executeQuery('select coupon FROM Coupon coupon left join coupon.categories as category where (category.id in (:idCategories))', ['idCategories': idCategories])
+            coupons.flatten()
+            CouponsRiverCache.instance.put(category.uuid, coupons)
         }
-        coupons << Coupon.executeQuery('select coupon FROM Coupon coupon left join coupon.categories as category where (category.id in (:idCategories))', ['idCategories': idCategories])
-        coupons.flatten()
+        coupons
     }
 
     private static Map asPromotionsAndCouponsMap(Set<Coupon> coupons, Long price){
@@ -406,49 +433,59 @@ final class RiverTools {
     }
 
     static Map asVariationMap(VariationValue variationValue, RiverConfig config){
-        def m = variationValue ? RenderUtil.asIsoMapForJSON(['value'], variationValue) << RenderUtil.asIsoMapForJSON([
-                'name', 'position', 'uuid', 'hide'], variationValue.variation) : [:]
         if(variationValue){
-            translate(m, variationValue.id, ['value'], config.languages, config.defaultLang)
-            translate(m, variationValue.variation.id, ['name'], config.languages, config.defaultLang)
+            def m = VariationValueRiverCache.instance.get(variationValue.uuid)
+            if(!m){
+                m = RenderUtil.asIsoMapForJSON(['value'], variationValue) << RenderUtil.asIsoMapForJSON([
+                        'name', 'position', 'uuid', 'hide'], variationValue.variation)
+                translate(m, variationValue.id, ['value'], config.languages, config.defaultLang)
+                translate(m, variationValue.variation.id, ['name'], config.languages, config.defaultLang)
+                VariationValueRiverCache.instance.put(variationValue.uuid, m)
+            }
+            return m
         }
-        m
+        [:]
     }
 
     static Map asResourceMap(Resource resource, RiverConfig config) {
-        def m = resource ? RenderUtil.asIsoMapForJSON([
-                'id',
-                'uuid',
-                'name',
-                'description',
-                'xtype',
-                'active',
-                'deleted',
-                'uploaded',
-                'contentType',
-                'sanitizedName'
-        ], resource) << [url:extractResourceUrl(resource, config)] : [:]
         if(resource){
-            def content = resource.content
-            if(!content && resource.uploaded){
-                def path = extractResourcePath(resource)
-                def file = new File(path)
-                if(file.exists()){
-                    content = ImageTools.encodeBase64(file)
+            def m = ResourceRiverCache.instance.get(resource.uuid)
+            if(!m){
+                m = RenderUtil.asIsoMapForJSON([
+                        'id',
+                        'uuid',
+                        'name',
+                        'description',
+                        'xtype',
+                        'active',
+                        'deleted',
+                        'uploaded',
+                        'contentType',
+                        'sanitizedName'
+                ], resource) << [url:extractResourceUrl(resource, config)]
+                def content = resource.content
+                if(!content && resource.uploaded){
+                    def path = extractResourcePath(resource)
+                    def file = new File(path)
+                    if(file.exists()){
+                        content = ImageTools.encodeBase64(file)
+                    }
+                    else{
+                        log.warn("${path} not found")
+                    }
                 }
-                else{
-                    log.warn("${path} not found")
+                if(content){
+                    m << [content: content]
                 }
+                if(ResourceType.PICTURE.equals(resource.xtype)){
+                    m << [smallPicture:extractSmallPictureUrl(resource, config)]
+                }
+                translate(m, resource.id, ['name', 'description'], config.languages, config.defaultLang)
+                ResourceRiverCache.instance.put(resource.uuid, m)
             }
-            if(content){
-                m << [content: content]
-            }
-            if(ResourceType.PICTURE.equals(resource.xtype)){
-                m << [smallPicture:extractSmallPictureUrl(resource, config)]
-            }
-            translate(m, resource.id, ['name', 'description'], config.languages, config.defaultLang)
+            return m
         }
-        m
+        [:]
     }
 
     def static String extractResourcePath(Resource resource) {
@@ -475,36 +512,47 @@ final class RiverTools {
     }
 
     static Map asFeatureMap(Feature feature, FeatureValue featureValue, RiverConfig config) {
-        def m = feature ? RenderUtil.asIsoMapForJSON([
-                'name',
-                'position',
-                'domain',
-                'uuid',
-                'hide'
-        ], feature) << [value: featureValue?.value ?: feature.value] : [:]
         if(feature){
-            translate(m, feature.id, ['name', 'value'], config.languages, config.defaultLang)
-            if(featureValue){
-                translate(m, featureValue.id, ['value'], config.languages, config.defaultLang)
+            def key = "${feature?.uuid}-${featureValue?.uuid}"
+            def m = FeatureRiverCache.instance.get(key)
+            if(!m){
+                m = RenderUtil.asIsoMapForJSON([
+                        'name',
+                        'position',
+                        'domain',
+                        'uuid',
+                        'hide'
+                ], feature) << [value: featureValue?.value ?: feature.value]
+                translate(m, feature.id, ['name', 'value'], config.languages, config.defaultLang)
+                if(featureValue){
+                    translate(m, featureValue.id, ['value'], config.languages, config.defaultLang)
+                }
+                FeatureRiverCache.instance.put(key, m)
             }
+            return m
         }
-        m
+        [:]
     }
 
     static Map asShippingMap(Shipping shipping, RiverConfig config) {
-        def m = shipping ? RenderUtil.asIsoMapForJSON([
-                'name',
-                'weight',
-                'width',
-                'height',
-                'depth',
-                'amount',
-                'free'
-        ], shipping) : [:]
         if(shipping){
-            translate(m, shipping.id, ['name'], config.languages, config.defaultLang)
+            def m = ShippingRiverCache.instance.get(shipping.uuid)
+            if(!m){
+                m = RenderUtil.asIsoMapForJSON([
+                        'name',
+                        'weight',
+                        'width',
+                        'height',
+                        'depth',
+                        'amount',
+                        'free'
+                ], shipping)
+                translate(m, shipping.id, ['name'], config.languages, config.defaultLang)
+                ShippingRiverCache.instance.put(shipping.uuid, m)
+            }
+            return m
         }
-        m
+        [:]
     }
 
     static Map asPoiMap(Poi poi, RiverConfig config) {
@@ -562,13 +610,7 @@ final class RiverTools {
 
             translate(m, p.id, ['name', 'description', 'descriptionAsText', 'keywords'])
 
-//            DetachedCriteria<Product2Resource> query = Product2Resource.where {
-//                product==p && resource.xtype==ResourceType.PICTURE
-//            }
-//            List<Product2Resource> bindedResources = query.list([sort:'position', order:'asc'] as Map)
-            List<Product2Resource> bindedResources = Product2Resource.executeQuery(
-                    'select distinct pr from Product2Resource pr join pr.resource as r where pr.product=:product and r.xtype=:xtype order by pr.position asc',
-                    [product: p, xtype: ResourceType.PICTURE])
+            List<Product2Resource> bindedResources = p.product2Resources.findAll {it.resource.xtype = ResourceType.PICTURE}.toList()
             def picture = bindedResources.size() > 0 ? bindedResources.get(0).resource : null
             if(picture){
                 m << [picture:extractResourceUrl(picture, config)]
@@ -602,9 +644,14 @@ final class RiverTools {
             }
 
             def features = []
-            List<Feature> productFeatures = Feature.findAllByProduct(p)
-            productFeatures.addAll(Feature.findAllByCategoryInListAndProductNotEqual(categoryWithParents(p.category), p))
-            final featureValues = FeatureValue.findAllByProduct(p)
+            Set<Feature> productFeatures = p.features
+            def categoryFeatures = CategoryFeaturesRiverCache.instance.get(p.category.uuid)
+            if(!categoryFeatures){
+                categoryFeatures = Feature.findAllByCategoryInList(categoryWithParents(p.category))
+                CategoryFeaturesRiverCache.instance.put(p.category.uuid, categoryFeatures.toSet())
+            }
+            productFeatures.addAll(categoryFeatures)
+            final featureValues = p.featureValues
             productFeatures.each { feature ->
                 final featureValue = featureValues.find {it.feature.id == feature.id}
                 features << asFeatureMap(feature, featureValue, config)
@@ -622,7 +669,7 @@ final class RiverTools {
             }
 
             List<Map> skus = []
-            TicketType.findAllByProduct(p).each {sku ->
+            p.ticketTypes.each {sku ->
                 skus << asSkuMap(sku, config)
             }
             if(!skus.isEmpty()){
@@ -642,7 +689,7 @@ final class RiverTools {
                 }
             }
             def resources = []
-            Product2Resource.findAllByProduct(p).each {Product2Resource pr ->
+            p.product2Resources.each {Product2Resource pr ->
                 final r = pr.resource
                 if(!skuResources.contains(r.id)){
                     resources << asResourceMap(r, config)
@@ -654,7 +701,7 @@ final class RiverTools {
 
             if (p.calendarType != ProductCalendar.NO_DATE) {
                 def datePeriods = []
-                DatePeriod.findAllByProduct(p, [sort: "startDate", order: "asc"]).each {datePeriod ->
+                p.datePeriods.sort {a,b -> a.startDate <=> b.startDate}.each {datePeriod ->
                     datePeriods << RenderUtil.asIsoMapForJSON(['startDate', 'endDate'], datePeriod)
                 }
                 if(!datePeriods.isEmpty()){
@@ -662,7 +709,7 @@ final class RiverTools {
                 }
 
                 def intraDayPeriods = []
-                IntraDayPeriod.findAllByProduct(p, [sort: "startDate", order: "asc"]).each {intraDayPeriod ->
+                p.intraDayPeriods.sort {a,b -> a.startDate <=> b.startDate}.each {intraDayPeriod ->
                     intraDayPeriods << RenderUtil.asIsoMapForJSON([
                             'id',
                             'weekday1',
@@ -685,10 +732,11 @@ final class RiverTools {
 
             m  << [increments:0]
 
-            ProductProperty.findAllByProduct(p).each {ProductProperty property ->
+            p.productProperties.each {ProductProperty property ->
                 m << ["${property.name}":property.value]
             }
 
+//TODO
             asPromotionsAndCouponsMap(extractProductCoupons(p), p.price).each {k, v ->
                 m[k] = v
             }
@@ -983,3 +1031,69 @@ final class RiverTools {
         ], company) : [:]
     }
 }
+
+class FeatureRiverCache extends AbstractRiverCache<Map> {
+    private static FeatureRiverCache featureRiverCache
+
+    private FeatureRiverCache(){}
+
+    public static FeatureRiverCache getInstance(){
+        if(!featureRiverCache){
+            featureRiverCache = new FeatureRiverCache()
+        }
+        featureRiverCache
+    }
+}
+
+class CategoryFeaturesRiverCache extends AbstractRiverCache<Set<Feature>> {
+    private static CategoryFeaturesRiverCache categoryFeaturesRiverCache
+
+    private CategoryFeaturesRiverCache(){}
+
+    public static CategoryFeaturesRiverCache getInstance(){
+        if(!categoryFeaturesRiverCache){
+            categoryFeaturesRiverCache = new CategoryFeaturesRiverCache()
+        }
+        categoryFeaturesRiverCache
+    }
+}
+
+class ShippingRiverCache extends AbstractRiverCache<Map> {
+    private static ShippingRiverCache shippingRiverCache
+
+    private ShippingRiverCache(){}
+
+    public static ShippingRiverCache getInstance(){
+        if(!shippingRiverCache){
+            shippingRiverCache = new ShippingRiverCache()
+        }
+        shippingRiverCache
+    }
+}
+
+class VariationValueRiverCache extends AbstractRiverCache<Map> {
+    private static VariationValueRiverCache variationValueRiverCache
+
+    private VariationValueRiverCache(){}
+
+    public static VariationValueRiverCache getInstance(){
+        if(!variationValueRiverCache){
+            variationValueRiverCache = new VariationValueRiverCache()
+        }
+        variationValueRiverCache
+    }
+}
+
+class CouponsRiverCache extends AbstractRiverCache<Set<Coupon>> {
+    private static CouponsRiverCache couponsRiverCache
+
+    private CouponsRiverCache(){}
+
+    public static CouponsRiverCache getInstance(){
+        if(!couponsRiverCache){
+            couponsRiverCache = new CouponsRiverCache()
+        }
+        couponsRiverCache
+    }
+}
+

@@ -1,6 +1,7 @@
 package com.mogobiz.elasticsearch.rivers
 
 import com.mogobiz.common.client.Item
+import com.mogobiz.common.rivers.AbstractRiverCache
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
 import com.mogobiz.store.domain.Catalog
@@ -40,4 +41,19 @@ class CatalogRiver extends AbstractESRiver<Catalog> {
     Item asItem(Catalog catalog, RiverConfig config) {
         new Item(id:catalog.id, type: getType(), map:RiverTools.asCatalogMap(catalog, config))
     }
+
 }
+
+class CatalogRiverCache extends AbstractRiverCache<Map> {
+    private static CatalogRiverCache catalogRiverCache
+
+    private CatalogRiverCache(){}
+
+    public static CatalogRiverCache getInstance(){
+        if(!catalogRiverCache){
+            catalogRiverCache = new CatalogRiverCache()
+        }
+        catalogRiverCache
+    }
+}
+
