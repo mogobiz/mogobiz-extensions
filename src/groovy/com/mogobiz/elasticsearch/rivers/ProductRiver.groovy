@@ -226,8 +226,26 @@ class ProductRiver extends AbstractESRiver<Product>{
 
     @Override
     Observable<Product> retrieveCatalogItems(RiverConfig config) {
-        return Observable.from(Product.executeQuery('SELECT p FROM Product p left join fetch p.ticketTypes left join fetch p.features left join fetch p.featureValues left join fetch p.productProperties left join fetch p.product2Resources as pr left join fetch pr.resource left join fetch p.intraDayPeriods left join fetch p.datePeriods WHERE p.category.catalog.id=:idCatalog and p.state = :productState and p.deleted = false',
-                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE]))
+        return Observable.from(Product.executeQuery(
+                'SELECT p FROM Product p ' +
+                'left join fetch p.ticketTypes ' +
+                'left join fetch p.features ' +
+                'left join fetch p.featureValues ' +
+                'left join fetch p.productProperties ' +
+                'left join fetch p.product2Resources as pr ' +
+                'left join fetch pr.resource ' +
+                'left join fetch p.intraDayPeriods ' +
+                'left join fetch p.datePeriods ' +
+                'left join fetch p.tags ' +
+                'left join fetch p.poi ' +
+                'left join fetch p.category ' +
+                'left join fetch p.brand ' +
+                'left join fetch p.shipping ' +
+                'left join fetch p.taxRate ' +
+                'left join fetch p.ibeacon ' +
+                'WHERE p.category.catalog.id=:idCatalog and p.state = :productState and p.deleted = false',
+                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE]
+        ))
 //        DetachedCriteria<Product> query = Product.where{
 //            category.catalog.id==config.idCatalog && state==ProductState.ACTIVE
 //        }
