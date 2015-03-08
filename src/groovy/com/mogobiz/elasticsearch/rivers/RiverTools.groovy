@@ -263,7 +263,7 @@ final class RiverTools {
         [:]
     }
 
-    static Map asSkuMap(TicketType sku, RiverConfig config){
+    static Map asSkuMap(TicketType sku, Product product = sku.product, RiverConfig config){
         if(sku){
             def m = RenderUtil.asIsoMapForJSON([
                     'id',
@@ -303,8 +303,6 @@ final class RiverTools {
             }
             m << [variation3:asVariationMap(variation3, config)]
 
-            def product = sku.product
-
             // liste des images associées à ce sku
             List<Map> resources = []
             final nbVariations = variations.size()
@@ -334,7 +332,7 @@ final class RiverTools {
             if(!resources.isEmpty()){
                 m << [resources:resources]
             }
-// TODO
+
             asPromotionsAndCouponsMap(extractSkuCoupons(sku), sku.price).each {k, v ->
                 m[k] = v
             }
@@ -345,33 +343,23 @@ final class RiverTools {
     }
 
     private static Set<Coupon> extractSkuCoupons(TicketType sku) {
-        Set<Coupon> coupons = extractProductCoupons(sku.product)
-        coupons << Coupon.executeQuery('select coupon FROM Coupon coupon left join coupon.ticketTypes as ticketType where (ticketType.id=:idSku)',
-                [idSku:sku.id])
+        Set<Coupon> coupons = CouponsRiverCache.instance.get(sku.uuid) ?: []
+        coupons.addAll(extractProductCoupons(sku.product))
         coupons.flatten()
     }
 
     private static Set<Coupon> extractProductCoupons(Product product) {
-        Set<Coupon> coupons = []
-        coupons << Coupon.executeQuery('select coupon FROM Coupon coupon left join coupon.products as product where (product.id=:idProduct)',
-                [idProduct: product.id])
-        coupons << extractCategoryCoupons(product.category)
+        Set<Coupon> coupons = CouponsRiverCache.instance.get(product.uuid) ?: []
+        coupons.addAll(extractCategoryCoupons(product.category))
         coupons.flatten()
     }
 
     private static Set<Coupon> extractCategoryCoupons(Category category) {
-        Set<Coupon> coupons = CouponsRiverCache.instance.get(category.uuid)
-        if(!coupons){
-            coupons = []
-            def idCategories = []
-            categoryWithParents(category).each { Category c ->
-                idCategories << c.id
-            }
-            coupons << Coupon.executeQuery('select coupon FROM Coupon coupon left join coupon.categories as category where (category.id in (:idCategories))', ['idCategories': idCategories])
-            coupons.flatten()
-            CouponsRiverCache.instance.put(category.uuid, coupons)
+        Set<Coupon> coupons = []
+        categoryWithParents(category).each { Category c ->
+            coupons.addAll(CouponsRiverCache.instance.get(c.uuid) ?: [])
         }
-        coupons
+        coupons.flatten()
     }
 
     private static Map asPromotionsAndCouponsMap(Set<Coupon> coupons, Long price){
@@ -513,7 +501,7 @@ final class RiverTools {
 
     static Map asFeatureMap(Feature feature, FeatureValue featureValue, RiverConfig config) {
         if(feature){
-            def key = "${feature?.uuid}-${featureValue?.uuid}"
+            def key = "${feature.uuid}-${featureValue?.uuid}"
             def m = FeatureRiverCache.instance.get(key)
             if(!m){
                 m = RenderUtil.asIsoMapForJSON([
@@ -645,12 +633,11 @@ final class RiverTools {
 
             def features = []
             Set<Feature> productFeatures = p.features
-            def categoryFeatures = CategoryFeaturesRiverCache.instance.get(p.category.uuid)
-            if(!categoryFeatures){
-                categoryFeatures = Feature.findAllByCategoryInList(categoryWithParents(p.category))
-                CategoryFeaturesRiverCache.instance.put(p.category.uuid, categoryFeatures.toSet())
+            categoryWithParents(p.category).each {cat ->
+                productFeatures.addAll(CategoryFeaturesRiverCache.instance.get(cat.uuid) ?: [])
             }
-            productFeatures.addAll(categoryFeatures)
+            productFeatures.flatten()
+
             final featureValues = p.featureValues
             productFeatures.each { feature ->
                 final featureValue = featureValues.find {it.feature.id == feature.id}
@@ -670,7 +657,7 @@ final class RiverTools {
 
             List<Map> skus = []
             p.ticketTypes.each {sku ->
-                skus << asSkuMap(sku, config)
+                skus << asSkuMap(sku, p, config)
             }
             if(!skus.isEmpty()){
                 m << [skus:skus]
@@ -736,7 +723,6 @@ final class RiverTools {
                 m << ["${property.name}":property.value]
             }
 
-//TODO
             asPromotionsAndCouponsMap(extractProductCoupons(p), p.price).each {k, v ->
                 m[k] = v
             }
@@ -932,14 +918,14 @@ final class RiverTools {
         return categories
     }
 
-    static List<Category> categoryWithChildren(Category category, List<Category> categories = []){
-        categories << category
-        def children = Category.findAllByParent(category)
-        children.each {Category child ->
-            categoryWithChildren(child, categories)
-        }
-        return categories
-    }
+//    static List<Category> categoryWithChildren(Category category, List<Category> categories = []){
+//        categories << category
+//        def children = Category.findAllByParent(category)
+//        children.each {Category child ->
+//            categoryWithChildren(child, categories)
+//        }
+//        return categories
+//    }
 
     /**
      * Format the given amount (in the Mogobiz unit) into the given currency by using
