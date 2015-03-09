@@ -421,6 +421,7 @@ class ElasticsearchService {
             try {
                 future = ESRivers.instance.export(config, ec)
                 future.onFailure({ Throwable th ->
+                    log.error(th.message)
                     EsEnv.withTransaction {
                         env.refresh()
                         env.running = false
