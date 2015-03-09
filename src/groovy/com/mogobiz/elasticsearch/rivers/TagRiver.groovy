@@ -8,6 +8,7 @@ import com.mogobiz.store.domain.Tag
 import com.mogobiz.elasticsearch.client.ESClient
 import com.mogobiz.elasticsearch.client.ESMapping
 import com.mogobiz.elasticsearch.client.ESProperty
+import com.mogobiz.store.domain.Translation
 import rx.Observable
 
 /**
@@ -17,11 +18,14 @@ class TagRiver extends AbstractESRiver<Tag>{
 
     @Override
     Observable<Tag> retrieveCatalogItems(final RiverConfig config){
+        def languages = config?.languages ?: ['fr', 'en', 'es', 'de']
+        def defaultLang = config?.defaultLang ?: 'fr'
+        def _defaultLang = defaultLang.trim().toLowerCase()
+        def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
+        Translation.executeQuery('select t from Tag tag, Translation t where t.target=tag.id and t.lang in :languages and tag.company in (select c.company from Catalog c where c.id=:idCatalog)',
+                [languages:_languages, idCatalog:config.idCatalog]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+
         return Observable.from(Tag.executeQuery('SELECT DISTINCT p.tags FROM Product p WHERE p.category.catalog.id=:idCatalog', [idCatalog:config.idCatalog]))
-//        DetachedCriteria<Product> query = Product.where{
-//            category.catalog.id==config.idCatalog && state==ProductState.ACTIVE
-//        }.distinct("tags")
-//        return Observable.from(query.list().flatten() as Collection<Tag>)
     }
 
     @Override

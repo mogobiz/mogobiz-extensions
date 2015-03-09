@@ -9,6 +9,7 @@ import com.mogobiz.store.domain.Catalog
 import com.mogobiz.elasticsearch.client.ESClient
 import com.mogobiz.elasticsearch.client.ESMapping
 import com.mogobiz.elasticsearch.client.ESProperty
+import com.mogobiz.store.domain.Translation
 import rx.Observable
 
 /**
@@ -34,6 +35,13 @@ class CategoryRiver extends AbstractESRiver<Category>{
 
     @Override
     Observable<Category> retrieveCatalogItems(final RiverConfig config){
+        def languages = config?.languages ?: ['fr', 'en', 'es', 'de']
+        def defaultLang = config?.defaultLang ?: 'fr'
+        def _defaultLang = defaultLang.trim().toLowerCase()
+        def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
+        Translation.executeQuery('select t from Category cat, Translation t where t.target=cat.id and t.lang in :languages and cat.catalog.id=:idCatalog',
+                [languages:_languages, idCatalog:config.idCatalog]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+
         return Observable.from(Category.findAllByCatalogAndDeleted(Catalog.get(config.idCatalog), false))
     }
 

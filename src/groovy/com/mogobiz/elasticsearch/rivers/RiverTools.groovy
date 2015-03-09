@@ -62,7 +62,8 @@ final class RiverTools {
             final Long id,
             final List<String> included = [],
             final List<String> languages = ['fr', 'en', 'es', 'de'],
-            final String defaultLang = 'fr'){
+            final String defaultLang = 'fr',
+            boolean force = true){
         // translations for default language
         def _defaultLang = defaultLang.trim().toLowerCase()
         m[_defaultLang] = m[_defaultLang] as Map ?: [:]
@@ -71,7 +72,10 @@ final class RiverTools {
         }
         // translations for other languages
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
-        def final translationsPerLang = (TranslationsRiverCache.instance.get(id.toString()) ?: []).groupBy {it.lang}
+        def final translationsPerLang = (TranslationsRiverCache.instance.get(id.toString()) ?: force ? Translation.createCriteria().list {
+            eq ("target", id)
+            inList("lang", _languages)
+        } : []).groupBy {it.lang}
         _languages.each {lang ->
             // translated properties
             def translations = m[lang] as Map ?: [:]
@@ -124,7 +128,8 @@ final class RiverTools {
                                 'website'
                         ],
                         config?.languages,
-                        config?.defaultLang
+                        config?.defaultLang,
+                        false
                 ) << [increments:0]
 
                 StringBuffer buffer = new StringBuffer('/api/store/')
@@ -134,7 +139,7 @@ final class RiverTools {
                 String url = retrieveResourceUrl(buffer.toString())
                 m << [picture: url, smallPicture: "$url/SMALL"]
 
-                BrandProperty.findAllByBrand(b).each {BrandProperty property ->
+                b.brandProperties.each {BrandProperty property ->
                     m << ["${property.name}":property.value]
                 }
                 BrandRiverCache.instance.put(b.uuid, m)
@@ -197,7 +202,8 @@ final class RiverTools {
                                 'keywords'
                         ],
                         config.languages,
-                        config.defaultLang
+                        config.defaultLang,
+                        false
                 ) << [path: retrieveCategoryPath(category, category.sanitizedName)] << [parentId:category.parent?.id] << [increments:0]
                 def coupons = []
                 extractCategoryCoupons(category).each {coupon ->
@@ -252,7 +258,8 @@ final class RiverTools {
                                 'name'
                         ],
                         config.languages,
-                        config.defaultLang
+                        config.defaultLang,
+                        false
                 ) << [increments:0]
             }
             return m
@@ -279,7 +286,7 @@ final class RiverTools {
                     'position'
             ], sku)
 
-            translate(m, sku.id, ['name', 'description'], config.languages, config.defaultLang)
+            translate(m, sku.id, ['name', 'description'], config.languages, config.defaultLang, false)
 
             List<VariationValue> variations = []
             final variation1 = sku.variation1
@@ -465,7 +472,7 @@ final class RiverTools {
                 if(ResourceType.PICTURE.equals(resource.xtype)){
                     m << [smallPicture:extractSmallPictureUrl(resource, config)]
                 }
-                translate(m, resource.id, ['name', 'description'], config.languages, config.defaultLang)
+                translate(m, resource.id, ['name', 'description'], config.languages, config.defaultLang, false)
                 ResourceRiverCache.instance.put(resource.uuid, m)
             }
             return m
@@ -532,7 +539,7 @@ final class RiverTools {
                         'amount',
                         'free'
                 ], shipping)
-                translate(m, shipping.id, ['name'], config.languages, config.defaultLang)
+                translate(m, shipping.id, ['name'], config.languages, config.defaultLang, false)
                 ShippingRiverCache.instance.put(shipping.uuid, m)
             }
             return m
@@ -593,7 +600,7 @@ final class RiverTools {
             m << [calendarType:p.calendarType?.name()]
             m << [xtype:p.xtype?.name()]
 
-            translate(m, p.id, ['name', 'description', 'descriptionAsText', 'keywords'])
+            translate(m, p.id, ['name', 'description', 'descriptionAsText', 'keywords'], config.languages, config.defaultLang, false)
 
             List<Product2Resource> bindedResources = p.product2Resources.findAll {it.resource.xtype = ResourceType.PICTURE}.toList()
             def picture = bindedResources.size() > 0 ? bindedResources.get(0).resource : null

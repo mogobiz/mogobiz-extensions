@@ -9,6 +9,7 @@ import com.mogobiz.store.domain.Catalog
 import com.mogobiz.elasticsearch.client.ESClient
 import com.mogobiz.elasticsearch.client.ESMapping
 import com.mogobiz.elasticsearch.client.ESProperty
+import com.mogobiz.store.domain.Translation
 import rx.Observable
 
 /**
@@ -32,7 +33,14 @@ class BrandRiver extends AbstractESRiver<Brand> {
 
     @Override
     Observable<Brand> retrieveCatalogItems(final RiverConfig config){
-        return Observable.from(Brand.findAllByCompany(Catalog.get(config.idCatalog)?.company))
+        def languages = config?.languages ?: ['fr', 'en', 'es', 'de']
+        def defaultLang = config?.defaultLang ?: 'fr'
+        def _defaultLang = defaultLang.trim().toLowerCase()
+        def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
+        Translation.executeQuery('select t from Brand brand, Translation t where t.target=brand.id and t.lang in :languages and brand.company in (select c.company from Catalog c where c.id=:idCatalog)',
+                [languages:_languages, idCatalog:config.idCatalog]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+        return Observable.from(Brand.executeQuery('select brand from Brand brand left join fetch brand.brandProperties where brand.company in (select c.company from Catalog c where c.id=:idCatalog)',
+                [idCatalog:config.idCatalog]))
     }
 
     @Override
