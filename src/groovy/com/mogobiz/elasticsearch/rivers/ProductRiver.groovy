@@ -2,6 +2,9 @@ package com.mogobiz.elasticsearch.rivers
 
 import com.mogobiz.common.client.Item
 import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.elasticsearch.rivers.cache.CategoryFeaturesRiverCache
+import com.mogobiz.elasticsearch.rivers.cache.CouponsRiverCache
+import com.mogobiz.elasticsearch.rivers.cache.TranslationsRiverCache
 import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
 import com.mogobiz.store.domain.*
 import com.mogobiz.elasticsearch.client.ESClient

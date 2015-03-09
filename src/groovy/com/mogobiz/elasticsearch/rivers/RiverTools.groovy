@@ -1,7 +1,15 @@
 package com.mogobiz.elasticsearch.rivers
 
-import com.mogobiz.common.rivers.AbstractRiverCache
 import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.elasticsearch.rivers.cache.BrandRiverCache
+import com.mogobiz.elasticsearch.rivers.cache.CategoryFeaturesRiverCache
+import com.mogobiz.elasticsearch.rivers.cache.CategoryRiverCache
+import com.mogobiz.elasticsearch.rivers.cache.CouponsRiverCache
+import com.mogobiz.elasticsearch.rivers.cache.FeatureRiverCache
+import com.mogobiz.elasticsearch.rivers.cache.ResourceRiverCache
+import com.mogobiz.elasticsearch.rivers.cache.ShippingRiverCache
+import com.mogobiz.elasticsearch.rivers.cache.TagRiverCache
+import com.mogobiz.elasticsearch.rivers.cache.TranslationsRiverCache
 import com.mogobiz.http.client.HTTPClient
 import com.mogobiz.store.domain.Brand
 import com.mogobiz.store.domain.BrandProperty
@@ -151,29 +159,25 @@ final class RiverTools {
 
     static Map asCatalogMap(final Catalog catalog, final RiverConfig config){
         if(catalog){
-            def m = CatalogRiverCache.instance.get(catalog.uuid)
-            if(!m){
-                m = translate(
-                        RenderUtil.asIsoMapForJSON(
-                                [
-                                        "id",
-                                        "name",
-                                        "description",
-                                        "uuid",
-                                        "activationdate"
-                                ],
-                                catalog
-                        ),
-                        catalog.id,
-                        [
-                                'name',
-                                'description'
-                        ],
-                        config?.languages,
-                        config?.defaultLang
-                )
-                CatalogRiverCache.instance.put(catalog.uuid, m)
-            }
+            def m = translate(
+                    RenderUtil.asIsoMapForJSON(
+                            [
+                                    "id",
+                                    "name",
+                                    "description",
+                                    "uuid",
+                                    "activationdate"
+                            ],
+                            catalog
+                    ),
+                    catalog.id,
+                    [
+                            'name',
+                            'description'
+                    ],
+                    config?.languages,
+                    config?.defaultLang
+            )
             return m
         }
         [:]
@@ -246,21 +250,22 @@ final class RiverTools {
             def m = TagRiverCache.instance.get(tag.uuid)
             if(!m){
                 m = translate(
-                        RenderUtil.asIsoMapForJSON(
-                                [
-                                        "id",
-                                        "name"
-                                ],
-                                tag
-                        ),
-                        tag.id,
-                        [
-                                'name'
-                        ],
-                        config.languages,
-                        config.defaultLang,
-                        false
+                    RenderUtil.asIsoMapForJSON(
+                            [
+                                    "id",
+                                    "name"
+                            ],
+                            tag
+                    ),
+                    tag.id,
+                    [
+                            'name'
+                    ],
+                    config.languages,
+                    config.defaultLang,
+                    false
                 ) << [increments:0]
+                TagRiverCache.instance.put(tag.uuid, m)
             }
             return m
         }
@@ -505,16 +510,16 @@ final class RiverTools {
             def m = FeatureRiverCache.instance.get(key)
             if(!m){
                 m = RenderUtil.asIsoMapForJSON([
-                        'name',
-                        'position',
-                        'domain',
-                        'uuid',
-                        'hide'
-                ], feature) << [value: featureValue?.value ?: feature.value]
-                translate(m, feature.id, ['name', 'value'], config.languages, config.defaultLang, false)
-                if(featureValue){
-                    translate(m, featureValue.id, ['value'], config.languages, config.defaultLang, false)
-                }
+                    'name',
+                    'position',
+                    'domain',
+                    'uuid',
+                    'hide'
+            ], feature) << [value: featureValue?.value ?: feature.value]
+            translate(m, feature.id, ['name', 'value'], config.languages, config.defaultLang, false)
+            if(featureValue){
+                translate(m, featureValue.id, ['value'], config.languages, config.defaultLang, false)
+            }
                 FeatureRiverCache.instance.put(key, m)
             }
             return m
@@ -527,15 +532,15 @@ final class RiverTools {
             def m = ShippingRiverCache.instance.get(shipping.uuid)
             if(!m){
                 m = RenderUtil.asIsoMapForJSON([
-                        'name',
-                        'weight',
-                        'width',
-                        'height',
-                        'depth',
-                        'amount',
-                        'free'
-                ], shipping)
-                translate(m, shipping.id, ['name'], config.languages, config.defaultLang, false)
+                    'name',
+                    'weight',
+                    'width',
+                    'height',
+                    'depth',
+                    'amount',
+                    'free'
+            ], shipping)
+            translate(m, shipping.id, ['name'], config.languages, config.defaultLang, false)
                 ShippingRiverCache.instance.put(shipping.uuid, m)
             }
             return m
@@ -918,15 +923,6 @@ final class RiverTools {
         return categories
     }
 
-//    static List<Category> categoryWithChildren(Category category, List<Category> categories = []){
-//        categories << category
-//        def children = Category.findAllByParent(category)
-//        children.each {Category child ->
-//            categoryWithChildren(child, categories)
-//        }
-//        return categories
-//    }
-
     /**
      * Format the given amount (in the Mogobiz unit) into the given currency by using
      * the number format of the given country
@@ -1018,68 +1014,7 @@ final class RiverTools {
     }
 }
 
-class FeatureRiverCache extends AbstractRiverCache<Map> {
-    private static FeatureRiverCache featureRiverCache
 
-    private FeatureRiverCache(){}
 
-    public static FeatureRiverCache getInstance(){
-        if(!featureRiverCache){
-            featureRiverCache = new FeatureRiverCache()
-        }
-        featureRiverCache
-    }
-}
 
-class CategoryFeaturesRiverCache extends AbstractRiverCache<Set<Feature>> {
-    private static CategoryFeaturesRiverCache categoryFeaturesRiverCache
-
-    private CategoryFeaturesRiverCache(){}
-
-    public static CategoryFeaturesRiverCache getInstance(){
-        if(!categoryFeaturesRiverCache){
-            categoryFeaturesRiverCache = new CategoryFeaturesRiverCache()
-        }
-        categoryFeaturesRiverCache
-    }
-}
-
-class ShippingRiverCache extends AbstractRiverCache<Map> {
-    private static ShippingRiverCache shippingRiverCache
-
-    private ShippingRiverCache(){}
-
-    public static ShippingRiverCache getInstance(){
-        if(!shippingRiverCache){
-            shippingRiverCache = new ShippingRiverCache()
-        }
-        shippingRiverCache
-    }
-}
-
-class TranslationsRiverCache extends AbstractRiverCache<List<Translation>> {
-    private static TranslationsRiverCache transalationsRiverCache
-
-    private TranslationsRiverCache(){}
-
-    public static TranslationsRiverCache getInstance(){
-        if(!transalationsRiverCache){
-            transalationsRiverCache = new TranslationsRiverCache()
-        }
-        transalationsRiverCache
-    }
-}
-
-class CouponsRiverCache extends AbstractRiverCache<Set<Coupon>> {
-    private static CouponsRiverCache couponsRiverCache
-
-    private CouponsRiverCache(){}
-
-    public static CouponsRiverCache getInstance(){
-        if(!couponsRiverCache){
-            couponsRiverCache = new CouponsRiverCache()
-        }
-        couponsRiverCache
-    }
-}
 

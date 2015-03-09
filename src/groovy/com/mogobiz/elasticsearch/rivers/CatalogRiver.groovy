@@ -43,17 +43,3 @@ class CatalogRiver extends AbstractESRiver<Catalog> {
     }
 
 }
-
-class CatalogRiverCache extends AbstractRiverCache<Map> {
-    private static CatalogRiverCache catalogRiverCache
-
-    private CatalogRiverCache(){}
-
-    public static CatalogRiverCache getInstance(){
-        if(!catalogRiverCache){
-            catalogRiverCache = new CatalogRiverCache()
-        }
-        catalogRiverCache
-    }
-}
-

@@ -1,11 +1,10 @@
 package com.mogobiz.elasticsearch.rivers
 
 import com.mogobiz.common.client.Item
-import com.mogobiz.common.rivers.AbstractRiverCache
 import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.elasticsearch.rivers.cache.TranslationsRiverCache
 import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
 import com.mogobiz.store.domain.Brand
-import com.mogobiz.store.domain.Catalog
 import com.mogobiz.elasticsearch.client.ESClient
 import com.mogobiz.elasticsearch.client.ESMapping
 import com.mogobiz.elasticsearch.client.ESProperty
@@ -60,15 +59,3 @@ class BrandRiver extends AbstractESRiver<Brand> {
 
 }
 
-class BrandRiverCache extends AbstractRiverCache<Map>{
-    private static BrandRiverCache brandRiverCache
-
-    private BrandRiverCache(){}
-
-    public static BrandRiverCache getInstance(){
-        if(!brandRiverCache){
-            brandRiverCache = new BrandRiverCache()
-        }
-        brandRiverCache
-    }
-}

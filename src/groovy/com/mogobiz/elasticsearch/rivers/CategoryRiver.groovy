@@ -1,8 +1,8 @@
 package com.mogobiz.elasticsearch.rivers
 
 import com.mogobiz.common.client.Item
-import com.mogobiz.common.rivers.AbstractRiverCache
 import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.elasticsearch.rivers.cache.TranslationsRiverCache
 import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
 import com.mogobiz.store.domain.Category
 import com.mogobiz.store.domain.Catalog
@@ -61,16 +61,4 @@ class CategoryRiver extends AbstractESRiver<Category>{
     }
 }
 
-class CategoryRiverCache extends AbstractRiverCache<Map> {
-    private static CategoryRiverCache categoryRiverCache
-
-    private CategoryRiverCache(){}
-
-    public static CategoryRiverCache getInstance(){
-        if(!categoryRiverCache){
-            categoryRiverCache = new CategoryRiverCache()
-        }
-        categoryRiverCache
-    }
-}
 
