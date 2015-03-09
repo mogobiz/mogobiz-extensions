@@ -252,6 +252,8 @@ class ProductRiver extends AbstractESRiver<Product>{
                 [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
         Translation.executeQuery('select t from Product p left join p.shipping as s, Translation t where t.target=s.id and t.lang in :languages and (p.category.catalog.id=:idCatalog and p.state=:productState)',
                 [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+        Translation.executeQuery('select t from Product p left join p.poi as poi, Translation t where t.target=poi.id and t.lang in :languages and (p.category.catalog.id=:idCatalog and p.state=:productState)',
+                [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
 
         Category.executeQuery('select cat FROM Category cat left join fetch cat.features where cat.catalog.id=:idCatalog',
                 [idCatalog:config.idCatalog]).each {CategoryFeaturesRiverCache.instance.put(it.uuid, it.features)}

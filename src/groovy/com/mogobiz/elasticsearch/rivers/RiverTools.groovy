@@ -549,7 +549,7 @@ final class RiverTools {
         mpoi << [description: poi.description]
         mpoi << [picture: poi.picture]
         mpoi << [xtype: poi.poiType?.xtype]
-        translate(mpoi, poi.id, ['name', 'description'], config.languages, config.defaultLang)
+        translate(mpoi, poi.id, ['name', 'description'], config.languages, config.defaultLang, false)
         def location = [:]
         location << [latitude: poi.latitude]
         location << [longitude: poi.longitude]
