@@ -426,14 +426,10 @@ final class RiverTools {
 
     static Map asVariationMap(VariationValue variationValue, RiverConfig config){
         if(variationValue){
-            def m = VariationValueRiverCache.instance.get(variationValue.uuid)
-            if(!m){
-                m = RenderUtil.asIsoMapForJSON(['value'], variationValue) << RenderUtil.asIsoMapForJSON([
-                        'name', 'position', 'uuid', 'hide'], variationValue.variation)
-                translate(m, variationValue.id, ['value'], config.languages, config.defaultLang)
-                translate(m, variationValue.variation.id, ['name'], config.languages, config.defaultLang)
-                VariationValueRiverCache.instance.put(variationValue.uuid, m)
-            }
+            def m = RenderUtil.asIsoMapForJSON(['value'], variationValue) << RenderUtil.asIsoMapForJSON([
+                    'name', 'position', 'uuid', 'hide'], variationValue.variation)
+            translate(m, variationValue.id, ['value'], config.languages, config.defaultLang, false)
+            translate(m, variationValue.variation.id, ['name'], config.languages, config.defaultLang, false)
             return m
         }
         [:]
@@ -515,9 +511,9 @@ final class RiverTools {
                         'uuid',
                         'hide'
                 ], feature) << [value: featureValue?.value ?: feature.value]
-                translate(m, feature.id, ['name', 'value'], config.languages, config.defaultLang)
+                translate(m, feature.id, ['name', 'value'], config.languages, config.defaultLang, false)
                 if(featureValue){
-                    translate(m, featureValue.id, ['value'], config.languages, config.defaultLang)
+                    translate(m, featureValue.id, ['value'], config.languages, config.defaultLang, false)
                 }
                 FeatureRiverCache.instance.put(key, m)
             }
@@ -1058,19 +1054,6 @@ class ShippingRiverCache extends AbstractRiverCache<Map> {
             shippingRiverCache = new ShippingRiverCache()
         }
         shippingRiverCache
-    }
-}
-
-class VariationValueRiverCache extends AbstractRiverCache<Map> {
-    private static VariationValueRiverCache variationValueRiverCache
-
-    private VariationValueRiverCache(){}
-
-    public static VariationValueRiverCache getInstance(){
-        if(!variationValueRiverCache){
-            variationValueRiverCache = new VariationValueRiverCache()
-        }
-        variationValueRiverCache
     }
 }
 
