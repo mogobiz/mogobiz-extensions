@@ -382,7 +382,7 @@ final class RiverTools {
         String pastille = null
         coupons.flatten().each {Coupon coupon ->
             mCoupons << [id: coupon.id]
-            if(coupon.active && coupon.anonymous && coupon.startDate?.compareTo(Calendar.getInstance()) <= 0 && coupon.endDate?.compareTo(Calendar.getInstance()) >= 0){
+            if(coupon.active && coupon.anonymous && (coupon.startDate == null || coupon.startDate?.compareTo(Calendar.getInstance()) <= 0) && (coupon.endDate == null || coupon.endDate?.compareTo(Calendar.getInstance()) >= 0)){
                 if(!name){
                     name = coupon.name
                 }
