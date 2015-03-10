@@ -80,20 +80,22 @@ final class RiverTools {
         }
         // translations for other languages
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
-        def final translationsPerLang = (TranslationsRiverCache.instance.get(id.toString()) ?: force ? Translation.createCriteria().list {
-            eq ("target", id)
-            inList("lang", _languages)
-        } : []).groupBy {it.lang}
-        _languages.each {lang ->
-            // translated properties
-            def translations = m[lang] as Map ?: [:]
-            translationsPerLang.get(lang)?.each {translation ->
-                new JsonSlurper().parseText(translation.value).each {k, v ->
-                    if(included.contains(k)){
-                        translations[k] = v
+        if(!_languages.flatten().isEmpty()){
+            def final translationsPerLang = (TranslationsRiverCache.instance.get(id.toString()) ?: force ? Translation.createCriteria().list {
+                eq ("target", id)
+                inList("lang", _languages)
+            } : []).groupBy {it.lang}
+            _languages.each {lang ->
+                // translated properties
+                def translations = m[lang] as Map ?: [:]
+                translationsPerLang.get(lang)?.each {translation ->
+                    new JsonSlurper().parseText(translation.value).each {k, v ->
+                        if(included.contains(k)){
+                            translations[k] = v
+                        }
                     }
+                    m[lang] = translations
                 }
-                m[lang] = translations
             }
         }
         m
