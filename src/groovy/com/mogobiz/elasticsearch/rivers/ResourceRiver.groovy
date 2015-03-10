@@ -24,9 +24,12 @@ class ResourceRiver  extends AbstractESRiver<Resource> {
         def defaultLang = config?.defaultLang ?: 'fr'
         def _defaultLang = defaultLang.trim().toLowerCase()
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
-        Translation.executeQuery('select t from Product2Resource pr left join pr.product as p left join pr.resource as r, Translation t where t.target=r.id and t.lang in :languages and (p.category.catalog.id=:idCatalog and p.state=:productState)',
-                [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
-
+        if(!_languages.flatten().isEmpty()) {
+            Translation.executeQuery('select t from Product2Resource pr left join pr.product as p left join pr.resource as r, Translation t where t.target=r.id and t.lang in :languages and (p.category.catalog.id=:idCatalog and p.state=:productState)',
+                    [languages: _languages, idCatalog: config.idCatalog, productState: ProductState.ACTIVE]).groupBy {
+                it.target.toString()
+            }.each { k, v -> TranslationsRiverCache.instance.put(k, v) }
+        }
         Observable.from(Resource.executeQuery('SELECT r FROM Product2Resource pr left join pr.product as p left join pr.resource as r WHERE p.category.catalog.id=:idCatalog and p.state=:productState and p.deleted=false and r.active=true and r.deleted=false',
                 [idCatalog:config.idCatalog, productState:ProductState.ACTIVE]).toSet())
     }

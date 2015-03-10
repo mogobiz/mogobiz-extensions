@@ -39,8 +39,12 @@ class CategoryRiver extends AbstractESRiver<Category>{
         def defaultLang = config?.defaultLang ?: 'fr'
         def _defaultLang = defaultLang.trim().toLowerCase()
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
-        Translation.executeQuery('select t from Category cat, Translation t where t.target=cat.id and t.lang in :languages and cat.catalog.id=:idCatalog',
-                [languages:_languages, idCatalog:config.idCatalog]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+        if(!_languages.flatten().isEmpty()) {
+            Translation.executeQuery('select t from Category cat, Translation t where t.target=cat.id and t.lang in :languages and cat.catalog.id=:idCatalog',
+                    [languages: _languages, idCatalog: config.idCatalog]).groupBy {
+                it.target.toString()
+            }.each { k, v -> TranslationsRiverCache.instance.put(k, v) }
+        }
 
         return Observable.from(Category.findAllByCatalogAndDeleted(Catalog.get(config.idCatalog), false))
     }

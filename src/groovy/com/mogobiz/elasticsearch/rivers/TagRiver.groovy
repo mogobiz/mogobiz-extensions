@@ -22,9 +22,12 @@ class TagRiver extends AbstractESRiver<Tag>{
         def defaultLang = config?.defaultLang ?: 'fr'
         def _defaultLang = defaultLang.trim().toLowerCase()
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
-        Translation.executeQuery('select t from Tag tag, Translation t where t.target=tag.id and t.lang in :languages and tag.company in (select c.company from Catalog c where c.id=:idCatalog)',
-                [languages:_languages, idCatalog:config.idCatalog]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
-
+        if(!_languages.flatten().isEmpty()) {
+            Translation.executeQuery('select t from Tag tag, Translation t where t.target=tag.id and t.lang in :languages and tag.company in (select c.company from Catalog c where c.id=:idCatalog)',
+                    [languages: _languages, idCatalog: config.idCatalog]).groupBy {
+                it.target.toString()
+            }.each { k, v -> TranslationsRiverCache.instance.put(k, v) }
+        }
         return Observable.from(Tag.executeQuery('SELECT DISTINCT p.tags FROM Product p WHERE p.category.catalog.id=:idCatalog', [idCatalog:config.idCatalog]))
     }
 
