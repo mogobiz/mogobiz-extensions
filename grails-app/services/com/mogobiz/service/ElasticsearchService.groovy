@@ -421,7 +421,7 @@ class ElasticsearchService {
             try {
                 future = ESRivers.instance.export(config, ec)
                 future.onFailure({ Throwable th ->
-                    log.error(th.message)
+                    log.error(th.message, th)
                     EsEnv.withTransaction {
                         env.refresh()
                         env.running = false
@@ -480,7 +480,8 @@ curl -XPUT ${url}/$index/_alias/$store
                     }
                 } as PartialFunction, ec)
             }
-            catch (Exception ignored) {
+            catch (Exception e) {
+                log.error(e.message, e)
                 // this may happen before the future is created
                 EsEnv.withTransaction {
                     env.refresh()
