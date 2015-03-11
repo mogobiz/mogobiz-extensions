@@ -1,13 +1,13 @@
 package com.mogobiz.elasticsearch.rivers
 
 import com.mogobiz.common.client.Item
-import com.mogobiz.common.rivers.AbstractRiverCache
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
 import com.mogobiz.store.domain.Catalog
 import com.mogobiz.elasticsearch.client.ESClient
 import com.mogobiz.elasticsearch.client.ESMapping
 import com.mogobiz.elasticsearch.client.ESProperty
+import org.springframework.transaction.TransactionDefinition
 import rx.Observable
 
 /**
@@ -39,7 +39,16 @@ class CatalogRiver extends AbstractESRiver<Catalog> {
 
     @Override
     Item asItem(Catalog catalog, RiverConfig config) {
-        new Item(id:catalog.id, type: getType(), map:RiverTools.asCatalogMap(catalog, config))
+        new Item(id:catalog.id, type: getType(), map:
+                Catalog.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
+                    RiverTools.asCatalogMap(catalog, config)
+                }
+        )
+    }
+
+    @Override
+    String getUuid(Catalog c){
+        c.uuid
     }
 
 }

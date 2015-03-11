@@ -9,6 +9,8 @@ import com.mogobiz.elasticsearch.client.ESClient
 import com.mogobiz.elasticsearch.client.ESMapping
 import com.mogobiz.elasticsearch.client.ESProperty
 import com.mogobiz.store.domain.Translation
+import org.hibernate.FlushMode
+import org.springframework.transaction.TransactionDefinition
 import rx.Observable
 
 /**
@@ -38,12 +40,12 @@ class BrandRiver extends AbstractESRiver<Brand> {
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
         if(!_languages.flatten().isEmpty()) {
             Translation.executeQuery('select t from Brand brand, Translation t where t.target=brand.id and t.lang in :languages and brand.company in (select c.company from Catalog c where c.id=:idCatalog)',
-                    [languages: _languages, idCatalog: config.idCatalog]).groupBy {
+                    [languages: _languages, idCatalog: config.idCatalog], [flushMode: FlushMode.MANUAL]).groupBy {
                 it.target.toString()
             }.each { k, v -> TranslationsRiverCache.instance.put(k, v) }
         }
         return Observable.from(Brand.executeQuery('select brand from Brand brand left join fetch brand.brandProperties where brand.company in (select c.company from Catalog c where c.id=:idCatalog)',
-                [idCatalog:config.idCatalog]))
+                [idCatalog:config.idCatalog], [flushMode: FlushMode.MANUAL]))
     }
 
     @Override
@@ -53,12 +55,21 @@ class BrandRiver extends AbstractESRiver<Brand> {
 
     @Override
     Item asItem(Brand b, RiverConfig config) {
-        new Item(id:b.id, type: getType(), map: RiverTools.asBrandMap(b, config))
+        new Item(id:b.id, type: getType(), map:
+                Brand.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]){
+                    RiverTools.asBrandMap(b, config)
+                }
+        )
     }
 
     @Override
     List<String> previousProperties(){
         ['id', 'increments']
+    }
+
+    @Override
+    String getUuid(Brand b){
+        b.uuid
     }
 
 }

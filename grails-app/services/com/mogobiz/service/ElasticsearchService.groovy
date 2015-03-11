@@ -2,9 +2,11 @@ package com.mogobiz.service
 
 import com.mogobiz.common.client.BulkResponse
 import com.mogobiz.common.client.ClientConfig
+import com.mogobiz.common.rivers.AbstractRiverCache
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.constant.IperConstant
 import com.mogobiz.elasticsearch.client.ESClient
+import com.mogobiz.elasticsearch.client.ESIndexResponse
 import com.mogobiz.elasticsearch.client.ESIndexSettings
 import com.mogobiz.elasticsearch.client.ESRequest
 import com.mogobiz.elasticsearch.client.ESSearchResponse
@@ -16,17 +18,18 @@ import com.mogobiz.store.domain.Company
 import com.mogobiz.store.domain.EsEnv
 import com.mogobiz.store.domain.ProductCalendar
 import com.mogobiz.store.domain.Translation
+import com.mogobiz.utils.DateUtilitaire
 import com.mogobiz.utils.IperUtil
 import com.mogobiz.utils.Page
-import grails.transaction.Transactional
 import groovy.json.JsonBuilder
 import org.quartz.CronExpression
-import scala.PartialFunction
-import scala.Unit
-import scala.concurrent.Future
 
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
+
+import rx.Subscriber
+import rx.internal.reactivestreams.RxSubscriberToRsSubscriberAdapter
+import com.mogobiz.elasticsearch.rivers.ESRiversFlow
 
 /**
  *
@@ -402,7 +405,6 @@ class ElasticsearchService {
             def store = company.code
             def index = "${store.toLowerCase()}_${System.currentTimeMillis()}"
             def debug = true
-            def ec = ESRivers.dispatcher()
             RiverConfig config = new RiverConfig(
                     clientConfig: new ClientConfig(
                             store: store,
@@ -417,77 +419,86 @@ class ElasticsearchService {
                     languages: languages,
                     defaultLang: company.defaultLanguage
             )
-            Future<Collection<BulkResponse>> future;
-            try {
-                future = ESRivers.instance.export(config, ec)
-                future.onFailure({ Throwable th ->
-                    log.error(th.message, th)
-                    EsEnv.withTransaction {
-                        env.refresh()
-                        env.running = false
-                        env.success = false
-                        env.extra = th.message
-                        env.save(flush: true)
-                    }
-                } as PartialFunction<Throwable, Unit>, ec)
-                future.onSuccess({ a, b ->
-                    def extra = ""
-                    def success = true
-                    def conf = [debug: debug]
-                    def previousIndices = client.retrieveAliasIndexes(url, store, conf)
-                    if (previousIndices.empty || (!previousIndices.any { String previous -> !client.removeAlias(conf, url, store, previous).acknowledged })) {
-                        if (!client.createAlias(conf, url, store, index)) {
-                            def revert = env?.idx
-                            if (previousIndices.any { previous -> revert = previous; client.createAlias(conf, url, store, previous) }) {
-                                success = false
-                                extra = """
+
+            AbstractRiverCache.purgeAll()
+
+            ESIndexResponse response = ESRivers.instance.createCompanyIndex(config)
+
+            if(response.acknowledged){
+                def subscriber = new Subscriber<BulkResponse>() {
+                    @Override
+                    void onCompleted() {
+                        def extra = ""
+                        def success = true
+                        def conf = [debug: debug]
+                        def previousIndices = client.retrieveAliasIndexes(url, store, conf)
+                        if (previousIndices.empty || (!previousIndices.any { String previous -> !client.removeAlias(conf, url, store, previous).acknowledged })) {
+                            if (!client.createAlias(conf, url, store, index)) {
+                                def revert = env?.idx
+                                if (previousIndices.any { previous -> revert = previous; client.createAlias(conf, url, store, previous) }) {
+                                    success = false
+                                    extra = """
 Failed to create alias ${store} for ${index} -> revert to previous index ${revert}
 The alias can be created by executing the following command :
 curl -XPUT ${url}/$index/_alias/$store
 """
-                                log.warn(extra)
-                            } else {
-                                success = false
-                                extra = """
+                                    log.warn(extra)
+                                } else {
+                                    success = false
+                                    extra = """
 Failed to create alias ${store} for ${index}.
 The alias can be created by executing the following command :
 curl -XPUT ${url}/$index/_alias/$store
 """
-                                log.warn(extra)
+                                    log.warn(extra)
+                                }
+                            } else {
+                                previousIndices.each { previous -> client.removeIndex(url, previous, conf) }
+                                client.updateIndex(url, index, new ESIndexSettings(number_of_replicas: replicas), conf)
+                                File dir = new File("${grailsApplication.config.resources.path}/stores/${store}")
+                                dir.delete()
+                                File file = new File("${grailsApplication.config.resources.path}/stores/${store}.zip")
+                                file.getParentFile().mkdirs()
+                                file.delete()
+                                catalog.refresh()
+                                extra = "${catalog.name} - ${DateUtilitaire.format(new Date(), "dd/MM/yyyy HH:mm")}"
+                                log.info("End ElasticSearch export for ${store} -> ${index}")
                             }
-                        } else {
-                            previousIndices.each { previous -> client.removeIndex(url, previous, conf) }
-                            client.updateIndex(url, index, new ESIndexSettings(number_of_replicas: replicas), conf)
-                            File dir = new File("${grailsApplication.config.resources.path}/stores/${store}")
-                            dir.delete()
-                            File file = new File("${grailsApplication.config.resources.path}/stores/${store}.zip")
-                            file.getParentFile().mkdirs()
-                            file.delete()
-                            catalog.refresh()
-                            extra = "${catalog.name} - ${com.mogobiz.utils.DateUtilitaire.format(new Date(), "dd/MM/yyyy HH:mm")}"
-                            log.info("End ElasticSearch export for ${store} -> ${index}")
+                        }
+                        EsEnv.withTransaction {
+                            env.refresh()
+                            env.running = false
+                            env.success = success
+                            if (success) {
+                                env.idx = index
+                            }
+                            env.extra = extra
+                            env.save(flush: true)
                         }
                     }
-                    EsEnv.withTransaction {
-                        env.refresh()
-                        env.running = false
-                        env.success = success
-                        if (success) {
-                            env.idx = index
+
+                    @Override
+                    void onError(Throwable th) {
+                        log.error(th.message, th)
+                        EsEnv.withTransaction {
+                            env.refresh()
+                            env.running = false
+                            env.success = false
+                            env.extra = th.message
+                            env.save(flush: true)
                         }
-                        env.extra = extra
-                        env.save(flush: true)
                     }
-                } as PartialFunction, ec)
-            }
-            catch (Exception e) {
-                log.error(e.message, e)
-                // this may happen before the future is created
-                EsEnv.withTransaction {
-                    env.refresh()
-                    env.running = false
-                    env.save(flush: true)
+
+                    @Override
+                    void onNext(BulkResponse bulkResponse) {
+                        log.info("export ${bulkResponse?.items?.size()} items -> ${bulkResponse?.items?.collect {"${it.id}"}?.join(",")}")
+                    }
                 }
+
+                ESRiversFlow.exportRiversItemsWithSubscription(config, 1, 10, new RxSubscriberToRsSubscriberAdapter(subscriber))
+            }
+            else{
+                log.error("an error occured while creating index ${response.error}")
             }
 
         }
@@ -579,7 +590,7 @@ curl -XPUT ${url}/$index/_alias/$store
      * @param excluded - the fields to exclude from response
      * @return elastic search request or null if no elastic search environment is associated to this store
      */
-    private ESRequest generateRequest(
+    private static ESRequest generateRequest(
             String store,
             String type,
             Map query = [:],
@@ -664,7 +675,7 @@ curl -XPUT ${url}/$index/_alias/$store
     }
 
 
-    private String getStoreUrl(String store) {
+    private static String getStoreUrl(String store) {
         String url = null
         Collection envs = EsEnv.executeQuery(
                 'from EsEnv env where env.active=true and env.company.code=:code', [code: store])

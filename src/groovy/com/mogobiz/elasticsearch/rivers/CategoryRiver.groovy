@@ -10,6 +10,8 @@ import com.mogobiz.elasticsearch.client.ESClient
 import com.mogobiz.elasticsearch.client.ESMapping
 import com.mogobiz.elasticsearch.client.ESProperty
 import com.mogobiz.store.domain.Translation
+import org.hibernate.FlushMode
+import org.springframework.transaction.TransactionDefinition
 import rx.Observable
 
 /**
@@ -41,12 +43,12 @@ class CategoryRiver extends AbstractESRiver<Category>{
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
         if(!_languages.flatten().isEmpty()) {
             Translation.executeQuery('select t from Category cat, Translation t where t.target=cat.id and t.lang in :languages and cat.catalog.id=:idCatalog',
-                    [languages: _languages, idCatalog: config.idCatalog]).groupBy {
+                    [languages: _languages, idCatalog: config.idCatalog], [flushMode: FlushMode.MANUAL]).groupBy {
                 it.target.toString()
             }.each { k, v -> TranslationsRiverCache.instance.put(k, v) }
         }
 
-        return Observable.from(Category.findAllByCatalogAndDeleted(Catalog.get(config.idCatalog), false))
+        return Observable.from(Category.findAllByCatalogAndDeleted(Catalog.get(config.idCatalog), false, [flushMode: FlushMode.MANUAL]))
     }
 
     @Override
@@ -56,13 +58,23 @@ class CategoryRiver extends AbstractESRiver<Category>{
 
     @Override
     Item asItem(Category category, RiverConfig config) {
-        new Item(id:category.id, type: getType(), map:RiverTools.asCategoryMap(category, config))
+        new Item(id:category.id, type: getType(), map:
+                Category.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
+                    RiverTools.asCategoryMap(category, config)
+                }
+        )
     }
 
     @Override
     List<String> previousProperties(){
         ['id', 'increments']
     }
+
+    @Override
+    String getUuid(Category c){
+        c.uuid
+    }
+
 }
 
 

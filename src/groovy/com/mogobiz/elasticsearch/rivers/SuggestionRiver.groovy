@@ -8,6 +8,8 @@ import com.mogobiz.store.domain.Suggestion
 import com.mogobiz.elasticsearch.client.ESClient
 import com.mogobiz.elasticsearch.client.ESMapping
 import com.mogobiz.elasticsearch.client.ESProperty
+import org.hibernate.FlushMode
+import org.springframework.transaction.TransactionDefinition
 import rx.Observable
 
 /**
@@ -17,12 +19,14 @@ class SuggestionRiver extends AbstractESRiver<Suggestion>{
 
     @Override
     Item asItem(Suggestion suggestion, RiverConfig config){
-        new Item(
-                id:suggestion.id,
-                type: getType(),
-                map:RiverTools.asSuggestionMap(suggestion, config),
-                parent: suggestion && suggestion.pack ? new Item(id:suggestion.pack.id, type:'product') : null
-        )
+        Suggestion.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
+            new Item(
+                    id: suggestion.id,
+                    type: getType(),
+                    map: RiverTools.asSuggestionMap(suggestion, config),
+                    parent: suggestion && suggestion.pack ? new Item(id: suggestion.pack.id, type: 'product') : null
+            )
+        }
     }
 
     @Override
@@ -40,12 +44,17 @@ class SuggestionRiver extends AbstractESRiver<Suggestion>{
     @Override
     Observable<Suggestion> retrieveCatalogItems(RiverConfig config) {
         return Observable.from(Suggestion.executeQuery('FROM Suggestion s join fetch s.product WHERE s.pack.category.catalog.id=:idCatalog and s.product.state = :productState',
-                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE]))
+                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL]))
     }
 
     @Override
     String getType() {
         return 'suggestion'
+    }
+
+    @Override
+    String getUuid(Suggestion s){
+        s.uuid
     }
 
 }

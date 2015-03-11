@@ -7,6 +7,8 @@ import com.mogobiz.elasticsearch.client.ESMapping
 import com.mogobiz.elasticsearch.client.ESProperty
 import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
 import com.mogobiz.store.domain.ShippingRule
+import org.hibernate.FlushMode
+import org.springframework.transaction.TransactionDefinition
 
 /**
  *
@@ -15,16 +17,17 @@ import com.mogobiz.store.domain.ShippingRule
 class ShippingRuleRiver extends AbstractESRiver<ShippingRule> {
     @Override
     rx.Observable<ShippingRule> retrieveCatalogItems(RiverConfig riverConfig) {
-        return rx.Observable.from(
-                ShippingRule.executeQuery(
-                        "FROM ShippingRule sr WHERE sr.company.code =:code", [code:riverConfig.clientConfig.store]
-                )
-        )
+        return rx.Observable.from(ShippingRule.executeQuery("FROM ShippingRule sr WHERE sr.company.code =:code",
+                [code:riverConfig.clientConfig.store], [flushMode: FlushMode.MANUAL]))
     }
 
     @Override
     Item asItem(ShippingRule shippingRule, RiverConfig riverConfig) {
-        new Item(id:shippingRule.uuid, type: getType(), map:RiverTools.asShippingRuleMap(shippingRule, riverConfig))
+        new Item(id:shippingRule.uuid, type: getType(), map:
+                ShippingRule.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
+                    RiverTools.asShippingRuleMap(shippingRule, riverConfig)
+                }
+        )
     }
 
     @Override
@@ -48,4 +51,10 @@ class ShippingRuleRiver extends AbstractESRiver<ShippingRule> {
     String getType() {
         return "shipping_rule"
     }
+
+    @Override
+    String getUuid(ShippingRule r){
+        r.uuid
+    }
+
 }

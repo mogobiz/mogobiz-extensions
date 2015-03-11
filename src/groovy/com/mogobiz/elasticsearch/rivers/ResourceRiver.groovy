@@ -10,6 +10,8 @@ import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
 import com.mogobiz.store.domain.ProductState
 import com.mogobiz.store.domain.Resource
 import com.mogobiz.store.domain.Translation
+import org.hibernate.FlushMode
+import org.springframework.transaction.TransactionDefinition
 import rx.Observable
 
 /**
@@ -26,17 +28,21 @@ class ResourceRiver  extends AbstractESRiver<Resource> {
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
         if(!_languages.flatten().isEmpty()) {
             Translation.executeQuery('select t from Product2Resource pr left join pr.product as p left join pr.resource as r, Translation t where t.target=r.id and t.lang in :languages and (p.category.catalog.id=:idCatalog and p.state=:productState)',
-                    [languages: _languages, idCatalog: config.idCatalog, productState: ProductState.ACTIVE]).groupBy {
+                    [languages: _languages, idCatalog: config.idCatalog, productState: ProductState.ACTIVE], [flushMode: FlushMode.MANUAL]).groupBy {
                 it.target.toString()
             }.each { k, v -> TranslationsRiverCache.instance.put(k, v) }
         }
         Observable.from(Resource.executeQuery('SELECT r FROM Product2Resource pr left join pr.product as p left join pr.resource as r WHERE p.category.catalog.id=:idCatalog and p.state=:productState and p.deleted=false and r.active=true and r.deleted=false',
-                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE]).toSet())
+                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL]).toSet())
     }
 
     @Override
     Item asItem(Resource resource, RiverConfig config) {
-        new Item(id:resource.id, type: getType(), map:RiverTools.asResourceMap(resource, config))
+        new Item(id:resource.id, type: getType(), map:
+                Resource.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
+                    RiverTools.asResourceMap(resource, config)
+                }
+        )
     }
 
     @Override
@@ -63,6 +69,12 @@ class ResourceRiver  extends AbstractESRiver<Resource> {
     String getType() {
         return 'resource'
     }
+
+    @Override
+    String getUuid(Resource r){
+        r.uuid
+    }
+
 }
 
 

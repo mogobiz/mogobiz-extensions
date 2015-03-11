@@ -44,7 +44,7 @@ grails.project.dependency.resolution = {
             excludes 'org.elasticsearch:elasticsearch'
         }
 
-        compile 'com.mogobiz.rivers:mogobiz-elasticsearch:0.1-SNAPSHOT'
+        compile 'com.mogobiz.rivers:mogobiz-elasticsearch-flow:0.1-SNAPSHOT'
         compile 'com.mogobiz.rivers:mogobiz-google-shopping:0.1-SNAPSHOT'
         compile 'com.mogobiz.rivers:mogobiz-cfp:0.1-SNAPSHOT'
 

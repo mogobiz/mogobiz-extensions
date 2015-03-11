@@ -9,6 +9,8 @@ import com.mogobiz.elasticsearch.client.ESClient
 import com.mogobiz.elasticsearch.client.ESMapping
 import com.mogobiz.elasticsearch.client.ESProperty
 import com.mogobiz.store.domain.Translation
+import org.hibernate.FlushMode
+import org.springframework.transaction.TransactionDefinition
 import rx.Observable
 
 /**
@@ -24,11 +26,12 @@ class TagRiver extends AbstractESRiver<Tag>{
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
         if(!_languages.flatten().isEmpty()) {
             Translation.executeQuery('select t from Tag tag, Translation t where t.target=tag.id and t.lang in :languages and tag.company in (select c.company from Catalog c where c.id=:idCatalog)',
-                    [languages: _languages, idCatalog: config.idCatalog]).groupBy {
+                    [languages: _languages, idCatalog: config.idCatalog], [flushMode: FlushMode.MANUAL]).groupBy {
                 it.target.toString()
             }.each { k, v -> TranslationsRiverCache.instance.put(k, v) }
         }
-        return Observable.from(Tag.executeQuery('SELECT DISTINCT p.tags FROM Product p WHERE p.category.catalog.id=:idCatalog', [idCatalog:config.idCatalog]))
+        return Observable.from(Tag.executeQuery('SELECT DISTINCT p.tags FROM Product p WHERE p.category.catalog.id=:idCatalog',
+                [idCatalog:config.idCatalog], [flushMode: FlushMode.MANUAL]))
     }
 
     @Override
@@ -48,12 +51,21 @@ class TagRiver extends AbstractESRiver<Tag>{
 
     @Override
     Item asItem(Tag tag, RiverConfig config) {
-        new Item(id:tag.id, type: getType(), map:RiverTools.asTagMap(tag, config))
+        new Item(id:tag.id, type: getType(), map:
+                Tag.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
+                    RiverTools.asTagMap(tag, config)
+                }
+        )
     }
 
     @Override
     List<String> previousProperties(){
         ['id', 'increments']
+    }
+
+    @Override
+    String getUuid(Tag t){
+        t.uuid
     }
 
 }

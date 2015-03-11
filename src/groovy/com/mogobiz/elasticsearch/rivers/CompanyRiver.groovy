@@ -6,9 +6,9 @@ import com.mogobiz.elasticsearch.client.ESClient
 import com.mogobiz.elasticsearch.client.ESMapping
 import com.mogobiz.elasticsearch.client.ESProperty
 import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
-import com.mogobiz.store.domain.Brand
 import com.mogobiz.store.domain.Catalog
 import com.mogobiz.store.domain.Company
+import org.springframework.transaction.TransactionDefinition
 import rx.Observable
 
 /**
@@ -30,7 +30,7 @@ class CompanyRiver extends AbstractESRiver<Company> {
 
     @Override
     Observable<Company> retrieveCatalogItems(final RiverConfig config){
-        return Observable.from([Catalog.get(config.idCatalog)?.company])
+        return Observable.from([Catalog.read(config.idCatalog)?.company])
     }
 
     @Override
@@ -40,7 +40,16 @@ class CompanyRiver extends AbstractESRiver<Company> {
 
     @Override
     Item asItem(Company b, RiverConfig config) {
-        new Item(id:b.code, type: getType(), map: RiverTools.asCompanyMap(b, config))
+        new Item(id:b.code, type: getType(), map:
+                Company.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
+                    RiverTools.asCompanyMap(b, config)
+                }
+        )
+    }
+
+    @Override
+    String getUuid(Company c){
+        c.uuid
     }
 
 }

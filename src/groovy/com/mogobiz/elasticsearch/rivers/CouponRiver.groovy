@@ -8,6 +8,8 @@ import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
 import com.mogobiz.common.client.Item
 import com.mogobiz.store.domain.Coupon
 import com.mogobiz.store.domain.ProductState
+import org.hibernate.FlushMode
+import org.springframework.transaction.TransactionDefinition
 
 /**
  * Created by stephane.manciot@ebiznext.com on 14/04/2014.
@@ -18,16 +20,21 @@ class CouponRiver extends AbstractESRiver<Coupon> {
     rx.Observable<Coupon> retrieveCatalogItems(final RiverConfig config) {
         Set<Coupon> results = []
         results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.products as product where (product.category.catalog.id=:idCatalog and product.state=:productState)',
-                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE])
-        results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.categories as category where (category.catalog.id=:idCatalog)', [idCatalog:config.idCatalog])
+                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL])
+        results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.categories as category where (category.catalog.id=:idCatalog)',
+                [idCatalog:config.idCatalog], [flushMode: FlushMode.MANUAL])
         results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.ticketTypes as ticketType where (ticketType.product.category.catalog.id=:idCatalog and ticketType.product.state=:productState)',
-                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE])
+                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL])
         return rx.Observable.from(results.flatten())
     }
 
     @Override
     Item asItem(Coupon coupon, RiverConfig riverConfig) {
-        new Item(id:coupon.id, type: getType(), map:RiverTools.asCouponMap(coupon, riverConfig))
+        new Item(id:coupon.id, type: getType(), map:
+                Coupon.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
+                    RiverTools.asCouponMap(coupon, riverConfig)
+                }
+        )
     }
 
     @Override
@@ -67,4 +74,10 @@ class CouponRiver extends AbstractESRiver<Coupon> {
     String getType() {
         return 'coupon'
     }
+
+    @Override
+    String getUuid(Coupon c){
+        c.uuid
+    }
+
 }

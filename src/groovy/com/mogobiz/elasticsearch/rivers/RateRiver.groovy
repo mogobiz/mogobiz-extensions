@@ -42,4 +42,10 @@ class RateRiver extends AbstractESRiver<MogopayRate>{
     Item asItem(MogopayRate rate, RiverConfig config) {
         new Item(id:UUID.randomUUID().toString(), type: getType(), map:RiverTools.asRateMap(rate, config))
     }
+
+    @Override
+    String getUuid(MogopayRate c){
+        c.code
+    }
+
 }
