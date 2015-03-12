@@ -767,6 +767,7 @@ final class RiverTools {
                 if(!stock.stockUnlimited){
                     def stockCalendars = tuple.stockCalendars
                     if(stockCalendars){
+                        // Il y a eu des ventes, on prend le stock restant
                         if (product?.calendarType == ProductCalendar.NO_DATE) {
                             StockCalendar stockCalendar = stockCalendars.size() > 0 ? stockCalendars.first() : null
                             if (stockCalendar) {
@@ -787,6 +788,10 @@ final class RiverTools {
                                 m << [stockByDateTime: stockByDateTime]
                             }
                         }
+                    }
+                    else {
+                        // Il n'y a pas eu de vente, on prend le stock initial
+                        m << [stock: stock.stock]
                     }
                 }
             }
