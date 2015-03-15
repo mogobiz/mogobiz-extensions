@@ -491,7 +491,7 @@ curl -XPUT ${url}/$index/_alias/$store
 
                     @Override
                     void onNext(BulkResponse bulkResponse) {
-                        log.info("export ${bulkResponse?.items?.size()} items -> ${bulkResponse?.items?.collect {"${it.id}"}?.join(",")}")
+                        log.info("export ${bulkResponse?.items?.size()} items -> ${bulkResponse?.items?.collect {"${it.type}::${it.id}"}?.join(",")}")
                     }
                 }
 
