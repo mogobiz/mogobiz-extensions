@@ -425,9 +425,11 @@ class ElasticsearchService {
             ESIndexResponse response = ESRivers.instance.createCompanyIndex(config)
 
             if(response.acknowledged){
+                final long before = System.currentTimeMillis()
                 def subscriber = new Subscriber<BulkResponse>() {
                     @Override
                     void onCompleted() {
+                        log.info("export within ${System.currentTimeMillis() - before} ms")
                         def extra = ""
                         def success = true
                         def conf = [debug: debug]
