@@ -4,3 +4,4 @@ plugins
 data
 *.iml
 out
+tmp
