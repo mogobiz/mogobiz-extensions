@@ -23,12 +23,12 @@ class StockRiver  extends AbstractESRiver<StockCalendarSku> {
         return rx.Observable.from(
                 StockCalendar.executeQuery(
                     'SELECT sc FROM StockCalendar sc left join sc.ticketType as tt left join tt.product as product left join tt.stock as stock WHERE stock.stockUnlimited = false and product.category.catalog.id=:idCatalog and product.state = :productState',
-                        [idCatalog:riverConfig.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL])
+                        [idCatalog:riverConfig.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL])
                         .groupBy {it.ticketType}.collect {k, v -> new StockCalendarSku(k, v)}/*TODO rx way*/
                 .plus(
                     TicketType.executeQuery(
                         'SELECT s FROM TicketType s left join fetch s.product as product left join fetch s.stock as stock WHERE (s.stock.stockUnlimited = true or s not in (select tt from StockCalendar sc left join sc.ticketType as tt)) and s.product.category.catalog.id=:idCatalog and s.product.state = :productState',
-                            [idCatalog:riverConfig.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL])
+                            [idCatalog:riverConfig.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL])
                             .collect {new StockCalendarSku(it, null)}/*TODO rx way*/
                 )
         )

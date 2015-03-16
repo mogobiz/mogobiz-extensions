@@ -40,12 +40,12 @@ class BrandRiver extends AbstractESRiver<Brand> {
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
         if(!_languages.flatten().isEmpty()) {
             Translation.executeQuery('select t from Brand brand, Translation t where t.target=brand.id and t.lang in :languages and brand.company in (select c.company from Catalog c where c.id=:idCatalog)',
-                    [languages: _languages, idCatalog: config.idCatalog], [flushMode: FlushMode.MANUAL]).groupBy {
+                    [languages: _languages, idCatalog: config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]).groupBy {
                 it.target.toString()
             }.each { k, v -> TranslationsRiverCache.instance.put(k, v) }
         }
         return Observable.from(Brand.executeQuery('select brand from Brand brand left join fetch brand.brandProperties where brand.company in (select c.company from Catalog c where c.id=:idCatalog)',
-                [idCatalog:config.idCatalog], [flushMode: FlushMode.MANUAL]))
+                [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]))
     }
 
     @Override

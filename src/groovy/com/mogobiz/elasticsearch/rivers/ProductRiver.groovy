@@ -241,38 +241,38 @@ class ProductRiver extends AbstractESRiver<Product>{
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
         if(!_languages.flatten().isEmpty()){
             Translation.executeQuery('select t from Product p, Translation t where t.target=p.id and t.lang in :languages and (p.category.catalog.id=:idCatalog and p.state=:productState)',
-                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
             Translation.executeQuery('select t from Product p left join p.features as f, Translation t where t.target=f.id and t.lang in :languages and (p.category.catalog.id=:idCatalog and p.state=:productState)',
-                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
             Translation.executeQuery('select t from Product p left join p.featureValues as fv, Translation t where t.target=fv.id and t.lang in :languages and (p.category.catalog.id=:idCatalog and p.state=:productState)',
-                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
             Translation.executeQuery('select t from TicketType sku, Translation t where t.target=sku.id and t.lang in :languages and (sku.product.category.catalog.id=:idCatalog and sku.product.state=:productState)',
-                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
             Translation.executeQuery('select t from TicketType sku, Translation t where (t.target=sku.variation1.id or t.target=sku.variation1.variation.id or t.target=sku.variation2.id or t.target=sku.variation2.variation.id or t.target=sku.variation3.id or t.target=sku.variation3.variation.id) and t.lang in :languages and (sku.product.category.catalog.id=:idCatalog and sku.product.state=:productState)',
-                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
             Translation.executeQuery('select t from Category cat, Translation t where t.target=cat.id and t.lang in :languages and cat.catalog.id=:idCatalog',
-                    [languages:_languages, idCatalog:config.idCatalog], [flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+                    [languages:_languages, idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
             Translation.executeQuery('select t from Category cat left join cat.features as f, Translation t where t.target=f.id and t.lang in :languages and cat.catalog.id=:idCatalog',
-                    [languages:_languages, idCatalog:config.idCatalog], [flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+                    [languages:_languages, idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
             Translation.executeQuery('select t from Brand brand, Translation t where t.target=brand.id and t.lang in :languages and brand.company in (select c.company from Catalog c where c.id=:idCatalog)',
-                    [languages:_languages, idCatalog:config.idCatalog], [flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+                    [languages:_languages, idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
             Translation.executeQuery('select t from Tag tag, Translation t where t.target=tag.id and t.lang in :languages and tag.company in (select c.company from Catalog c where c.id=:idCatalog)',
-                    [languages:_languages, idCatalog:config.idCatalog], [flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+                    [languages:_languages, idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
             Translation.executeQuery('select t from Product2Resource pr left join pr.product as p left join pr.resource as r, Translation t where t.target=r.id and t.lang in :languages and (p.category.catalog.id=:idCatalog and p.state=:productState)',
-                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
             Translation.executeQuery('select t from Product p left join p.shipping as s, Translation t where t.target=s.id and t.lang in :languages and (p.category.catalog.id=:idCatalog and p.state=:productState)',
-                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
             Translation.executeQuery('select t from Product p left join p.poi as poi, Translation t where t.target=poi.id and t.lang in :languages and (p.category.catalog.id=:idCatalog and p.state=:productState)',
-                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
+                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).groupBy {it.target.toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
         }
 
         Category.executeQuery('select cat FROM Category cat left join fetch cat.features where cat.catalog.id=:idCatalog',
-                [idCatalog:config.idCatalog], [flushMode: FlushMode.MANUAL]).each {CategoryFeaturesRiverCache.instance.put(it.uuid, it.features)}
+                [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]).each {CategoryFeaturesRiverCache.instance.put(it.uuid, it.features)}
 
         def couponsMap = [:]
 
         Coupon.executeQuery('select product, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.products as product where (product.category.catalog.id=:idCatalog and product.state=:productState)',
-                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL]).each {a ->
+                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
             def key = (a[0] as Product).uuid
             Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
             coupons.add(a[1] as Coupon)
@@ -280,7 +280,7 @@ class ProductRiver extends AbstractESRiver<Product>{
         }
 
         Coupon.executeQuery('select ticketType, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.ticketTypes as ticketType left join ticketType.product as product where (product.category.catalog.id=:idCatalog and product.state=:productState)',
-                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL]).each {a ->
+                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
             def key = (a[0] as TicketType).uuid
             Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
             coupons.add(a[1] as Coupon)
@@ -288,7 +288,7 @@ class ProductRiver extends AbstractESRiver<Product>{
         }
 
         Coupon.executeQuery('select category, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.categories as category where category.catalog.id=:idCatalog',
-                [idCatalog:config.idCatalog], [flushMode: FlushMode.MANUAL]).each {a ->
+                [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
             def key = (a[0] as Category).uuid
             Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
             coupons.add(a[1] as Coupon)
@@ -301,7 +301,7 @@ class ProductRiver extends AbstractESRiver<Product>{
 
         return Observable.from(Product.executeQuery(
                 'SELECT p FROM Product p ' +
-            'left join fetch p.ticketTypes ' +
+                        'left join fetch p.ticketTypes ' +
                         'left join fetch p.features ' +
                         'left join fetch p.featureValues ' +
                         'left join fetch p.productProperties ' +
@@ -328,7 +328,7 @@ class ProductRiver extends AbstractESRiver<Product>{
                         'left join fetch p.ibeacon ' +
                         'left join fetch p.company ' +
                         'WHERE p.category.catalog.id=:idCatalog and p.state = :productState and p.deleted = false',
-                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL]
+                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]
         ))
     }
 

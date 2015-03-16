@@ -18,7 +18,7 @@ class ShippingRuleRiver extends AbstractESRiver<ShippingRule> {
     @Override
     rx.Observable<ShippingRule> retrieveCatalogItems(RiverConfig riverConfig) {
         return rx.Observable.from(ShippingRule.executeQuery("FROM ShippingRule sr WHERE sr.company.code =:code",
-                [code:riverConfig.clientConfig.store], [flushMode: FlushMode.MANUAL]))
+                [code:riverConfig.clientConfig.store], [readOnly: true, flushMode: FlushMode.MANUAL]))
     }
 
     @Override

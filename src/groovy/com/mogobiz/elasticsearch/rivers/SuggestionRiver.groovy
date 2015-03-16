@@ -72,7 +72,7 @@ class SuggestionRiver extends AbstractESRiver<Suggestion>{
                 'left join fetch p.ibeacon ' +
                 'left join fetch p.company ' +
                 'WHERE s.pack.category.catalog.id=:idCatalog and s.product.state = :productState',
-                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [flushMode: FlushMode.MANUAL]))
+                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]))
     }
 
     @Override
