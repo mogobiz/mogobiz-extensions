@@ -392,10 +392,16 @@ class ElasticsearchService {
     }
 
     def void publish(Company company, EsEnv env, Catalog catalog, boolean manual = false) {
-        if (company && env && env.company == company && catalog && catalog.company == company && (manual || catalog.activationDate < new Date()) && !env.running) {
-            log.info("Export to Elastic Search has started ...")
-            env.running = true
-            env.save(flush: true)
+        boolean running = EsEnv.withTransaction {
+            EsEnv.findByRunning(true) != null
+        }
+        if (!running && company && env && env.company == company && catalog && catalog.company == company && (manual || catalog.activationDate < new Date())) {
+            log.info("${manual ? "Manual ":""}Export to Elastic Search has started ...")
+            EsEnv.withTransaction {
+                env.refresh()
+                env.running = true
+                env.save(flush: true)
+            }
             int replicas = grailsApplication.config.elasticsearch.replicas as int ?: 1
             def languages = Translation.executeQuery('SELECT DISTINCT t.lang FROM Translation t WHERE t.companyId=:idCompany', [idCompany: company.id]) as List<String>
             if (languages.size() == 0) {
@@ -430,6 +436,7 @@ class ElasticsearchService {
                     @Override
                     void onCompleted() {
                         log.info("export within ${System.currentTimeMillis() - before} ms")
+                        AbstractRiverCache.purgeAll()
                         def extra = ""
                         def success = true
                         def conf = [debug: debug]
@@ -464,7 +471,7 @@ curl -XPUT ${url}/$index/_alias/$store
                                 file.delete()
                                 catalog.refresh()
                                 extra = "${catalog.name} - ${DateUtilitaire.format(new Date(), "dd/MM/yyyy HH:mm")}"
-                                log.info("End ElasticSearch export for ${store} -> ${index}")
+                                log.info("End ${manual ? "Manual ":""}ElasticSearch export for ${store} -> ${index}")
                             }
                         }
                         EsEnv.withTransaction {
@@ -481,6 +488,7 @@ curl -XPUT ${url}/$index/_alias/$store
 
                     @Override
                     void onError(Throwable th) {
+                        AbstractRiverCache.purgeAll()
                         log.error(th.message, th)
                         EsEnv.withTransaction {
                             env.refresh()
