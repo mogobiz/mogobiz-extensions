@@ -22,6 +22,7 @@ import com.mogobiz.utils.DateUtilitaire
 import com.mogobiz.utils.IperUtil
 import com.mogobiz.utils.Page
 import groovy.json.JsonBuilder
+import groovy.transform.Synchronized
 import org.quartz.CronExpression
 
 import java.text.NumberFormat
@@ -391,6 +392,7 @@ class ElasticsearchService {
         dir
     }
 
+    @Synchronized
     def void publish(Company company, EsEnv env, Catalog catalog, boolean manual = false) {
         if (catalog?.name ==" impex") {
             return
