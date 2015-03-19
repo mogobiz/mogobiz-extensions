@@ -392,6 +392,9 @@ class ElasticsearchService {
     }
 
     def void publish(Company company, EsEnv env, Catalog catalog, boolean manual = false) {
+        if (catalog?.name ==" impex") {
+            return
+        }
         boolean running = EsEnv.withTransaction {
             EsEnv.findByRunning(true) != null
         }
