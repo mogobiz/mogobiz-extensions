@@ -428,9 +428,21 @@ class ElasticsearchService {
 
             AbstractRiverCache.purgeAll()
 
-            ESIndexResponse response = ESRivers.instance.createCompanyIndex(config)
+            ESIndexResponse response = null
 
-            if(response.acknowledged){
+            try{
+                response = ESRivers.instance.createCompanyIndex(config)
+            }
+            catch(Throwable th){
+                log.error(th.message, th)
+                EsEnv.withTransaction {
+                    env.refresh()
+                    env.running = false
+                    env.save(flush: true)
+                }
+            }
+
+            if(response?.acknowledged){
                 final long before = System.currentTimeMillis()
                 def subscriber = new Subscriber<BulkResponse>() {
                     @Override
