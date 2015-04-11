@@ -25,7 +25,7 @@ class DownloadableRiver extends AbstractESRiver<File>{
     @Override
     Observable<File> retrieveCatalogItems(RiverConfig config) {
         Set<String> ticketTypes = TicketType.executeQuery('FROM TicketType as ticketType left join ticketType.product as product where (product.category.catalog.id=:idCatalog and product.state=:productState)',
-                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).collect {it. as String}.toSet()
+                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).collect {it.id as String}.toSet()
         def f = {file -> ticketTypes.contains(file.name)}as Func1<File, Boolean>
         StringBuilder sb = new StringBuilder(Holders.config.resources.path as String)
                 .append(File.separator)
