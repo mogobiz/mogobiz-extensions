@@ -52,10 +52,6 @@ import groovy.util.logging.Log4j
 import org.apache.commons.lang.StringUtils
 import org.codehaus.groovy.grails.web.json.JSONObject
 
-import java.nio.file.DirectoryStream
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.Paths
 import java.text.NumberFormat
 import java.util.regex.Matcher
 import java.util.regex.Pattern
@@ -1024,30 +1020,6 @@ final class RiverTools {
                 'uuid',
                 'aesPassword'
         ], company) : [:]
-    }
-
-    static List<File> extractFiles(String folder, String glob) throws Exception{
-        List<File> files = new ArrayList<>()
-        Path dir = Paths.get(folder)
-        if (!Files.exists(dir) || !Files.isDirectory(dir)) {
-            log.warn(String.format("No such directory %s", folder))
-        }
-        else{
-            DirectoryStream<Path> ds = null
-            try {
-                ds = Files.newDirectoryStream(dir, glob)
-                //iterate over the content of the directory
-                for (Path path : ds) {
-                    files.add(path.toFile())
-                }
-            } catch (IOException io) {
-                log.error(io.getMessage(), io)
-            }
-            finally {
-                ds?.close()
-            }
-        }
-        return files
     }
 
     static Map asDownloadableMap(File file, RiverConfig config){
