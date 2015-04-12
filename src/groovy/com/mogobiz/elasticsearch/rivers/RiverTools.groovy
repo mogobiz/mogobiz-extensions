@@ -43,6 +43,7 @@ import com.mogobiz.json.RenderUtil
 import com.mogobiz.store.vo.Country
 import com.mogobiz.tools.FileTools
 import com.mogobiz.tools.ImageTools
+import com.mogobiz.tools.MimeTypeTools
 import com.mogobiz.utils.IperUtil
 import com.mogobiz.utils.MogopayRate
 import grails.converters.JSON
@@ -1024,7 +1025,13 @@ final class RiverTools {
 
     static Map asDownloadableMap(File file, RiverConfig config){
         if(file?.exists()) {
-            [file: FileTools.encodeBase64(file)]
+            [
+                    id: file.name,
+                    file: [
+                            _content: FileTools.encodeBase64(file),
+                            _content_type: MimeTypeTools.detectMimeType(file)
+                    ]
+            ]
         }
         else
             [:]
