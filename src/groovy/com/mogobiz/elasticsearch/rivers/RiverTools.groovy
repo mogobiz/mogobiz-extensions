@@ -1028,8 +1028,8 @@ final class RiverTools {
             [
                     id: file.name,
                     file: [
-                            _content: FileTools.encodeBase64(file),
-                            _content_type: MimeTypeTools.detectMimeType(file)
+                            content: FileTools.encodeBase64(file),
+                            content_type: MimeTypeTools.detectMimeType(file)
                     ]
             ]
         }

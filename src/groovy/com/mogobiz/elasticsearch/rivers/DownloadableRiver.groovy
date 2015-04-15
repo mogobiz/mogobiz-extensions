@@ -48,9 +48,14 @@ class DownloadableRiver extends AbstractESRiver<File>{
 
     @Override
     ESMapping defineESMapping() {
+        def fileProperties = []
+        fileProperties << new ESProperty(name:'content', type:ESClient.TYPE.BINARY, index:ESClient.INDEX.NO, multilang:false)
+        fileProperties << new ESProperty(name:'content_type', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+
         new ESMapping(type:getType(),
                 timestamp:true,
-                properties: [] << new ESProperty(name:'file', type:ESClient.TYPE.ATTACHMENT, index:ESClient.INDEX.NO, multilang:false))
+                properties: [] << new ESProperty(name:'file', type:ESClient.TYPE.OBJECT, properties: fileProperties)
+        )
     }
 
     @Override
