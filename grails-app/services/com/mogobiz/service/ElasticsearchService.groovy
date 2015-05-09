@@ -414,7 +414,7 @@ class ElasticsearchService {
             }
             def url = env.url
             def store = company.code
-            def index = "${store.toLowerCase()}_${System.currentTimeMillis()}"
+            def index = "${store.toLowerCase()}_${DateUtilitaire.format(Calendar.instance, "yyyy.MM.dd.HH.mm.ss")}"
             def debug = true
             RiverConfig config = new RiverConfig(
                     clientConfig: new ClientConfig(
