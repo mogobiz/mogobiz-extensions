@@ -489,6 +489,20 @@ curl -XPUT ${url}/$index/_alias/$store
                                 catalog.refresh()
                                 extra = "${catalog.name} - ${DateUtilitaire.format(new Date(), "dd/MM/yyyy HH:mm")}"
                                 log.info("End ${manual ? "Manual ":""}ElasticSearch export for ${store} -> ${index}")
+                                try {
+                                    log.info("Start clearing Jahia Cache")
+                                    def jahiaClearCache = grailsApplication.config.external?.jahiaClearCache
+                                    if(jahiaClearCache){
+                                        new URL(jahiaClearCache).content
+                                    }
+                                    else{
+                                        log.warn("grailsApplication.config.external.jahiaClearCache is undefined")
+                                    }
+                                    log.info("End clearing Jahia Cache")
+                                }
+                                catch (Exception ex) {
+                                    log.warn("Unable to clear Jahia cache", ex)
+                                }
                             }
                         }
                         EsEnv.withTransaction {
