@@ -11,6 +11,7 @@ import com.mogobiz.elasticsearch.client.ESIndexSettings
 import com.mogobiz.elasticsearch.client.ESRequest
 import com.mogobiz.elasticsearch.client.ESSearchResponse
 import com.mogobiz.elasticsearch.rivers.ESRivers
+import com.mogobiz.http.client.HTTPClient
 import com.mogobiz.json.RenderUtil
 import com.mogobiz.store.ProductSearchCriteria
 import com.mogobiz.store.domain.Catalog
@@ -43,6 +44,8 @@ class ElasticsearchService {
     public static final int DEFAULT_MAX_ITEMS = Integer.MAX_VALUE / 2
 
     ESClient client = ESClient.getInstance()
+
+    HTTPClient httpClient = HTTPClient.getInstance()
 
     def grailsApplication
 
@@ -493,7 +496,19 @@ curl -XPUT ${url}/$index/_alias/$store
                                     log.info("Start clearing Jahia Cache")
                                     def jahiaClearCache = grailsApplication.config.external?.jahiaClearCache
                                     if(jahiaClearCache){
-                                        new URL(jahiaClearCache).content
+                                        def conn = null
+                                        try{
+                                            conn = httpClient.doGet([debug: true], jahiaClearCache)
+                                            log.info("call to $jahiaClearCache -> ${conn.responseCode}")
+                                        }
+                                        finally {
+                                            try{
+                                                conn?.disconnect()
+                                            }
+                                            catch(IOException ioe){
+                                                log.error(ioe.message)
+                                            }
+                                        }
                                     }
                                     else{
                                         log.warn("grailsApplication.config.external.jahiaClearCache is undefined")
