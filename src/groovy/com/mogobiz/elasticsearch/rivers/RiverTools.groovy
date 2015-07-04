@@ -347,8 +347,22 @@ final class RiverTools {
                 m << [resources:resources]
             }
 
-            asPromotionsAndCouponsMap(extractSkuCoupons(sku), sku.price).each {k, v ->
+            final price = sku.price
+            asPromotionsAndCouponsMap(extractSkuCoupons(sku), price).each {k, v ->
                 m[k] = v
+            }
+
+            final taxRate = product.taxRate
+            if(taxRate){
+                final salePrice = m.salePrice
+                taxRate.localTaxRates?.each {localTaxRate ->
+                    final rate = localTaxRate.rate
+                    def l = [endPrice: computeEndPrice(price, rate)]
+                    if(salePrice){
+                        l << [saleEndPrice: computeEndPrice(salePrice as Long, rate)]
+                    }
+                    m << ["${localTaxRate.countryCode}": l]
+                }
             }
 
             return m
@@ -402,7 +416,7 @@ final class RiverTools {
             m << ['coupons':mCoupons]
             if(reduction > 0){
                 m << [promotion:[name:name, description:description, reduction:reduction, pastille:pastille]]
-                m << [salePrice:price - reduction]
+                m << [salePrice: price - reduction]
             }
         }
         m
@@ -673,11 +687,18 @@ final class RiverTools {
                 m << [skus:skus]
             }
 
-            m << [maxPrice: skus?.collect { it.price as Long }?.max() ?: 0L]
-            m << [maxSalePrice: skus?.collect { it.salePrice as Long ?: 0L }?.max() ?: 0L]
 
-            m << [minPrice: skus?.collect { it.price as Long }?.min() ?: 0L]
-            m << [minSalePrice: skus?.collect { it.salePrice as Long ?: 0L }?.min() ?: 0L]
+            final maxPrice = skus?.collect { it.price as Long }?.max() ?: 0L
+            m << [maxPrice: maxPrice]
+
+            final maxSalePrice = skus?.collect { it.salePrice as Long ?: 0L }?.max() ?: 0L
+            m << [maxSalePrice: maxSalePrice]
+
+            final minPrice = skus?.collect { it.price as Long }?.min() ?: 0L
+            m << [minPrice: minPrice]
+
+            final minSalePrice = skus?.collect { it.salePrice as Long ?: 0L }?.min() ?: 0L
+            m << [minSalePrice: minSalePrice]
 
             Set<Long> skuResources = []
             skus?.each {sku ->
@@ -733,8 +754,28 @@ final class RiverTools {
                 m << ["${property.name}":property.value]
             }
 
-            asPromotionsAndCouponsMap(extractProductCoupons(p), p.price).each {k, v ->
+            final price = p.price
+            asPromotionsAndCouponsMap(extractProductCoupons(p), price).each {k, v ->
                 m[k] = v
+            }
+
+            final taxRate = p.taxRate
+            if(taxRate){
+                final salePrice = m.salePrice
+                taxRate.localTaxRates?.each {localTaxRate ->
+                    final rate = localTaxRate.rate
+                    def l = [
+                            endPrice: computeEndPrice(price, rate),
+                            maxEndPrice: computeEndPrice(maxPrice as Long, rate),
+                            maxSaleEndPrice: computeEndPrice(maxSalePrice as Long, rate),
+                            minEndPrice: computeEndPrice(minPrice as Long, rate),
+                            minSaleEndPrice: computeEndPrice(minSalePrice as Long, rate)
+                    ]
+                    if(salePrice){
+                        l << [saleEndPrice: computeEndPrice(salePrice as Long, rate)]
+                    }
+                    m << ["${localTaxRate.countryCode}": l]
+                }
             }
 
             return m
@@ -1035,6 +1076,13 @@ final class RiverTools {
         }
         else
             [:]
+    }
+
+    static Long computeEndPrice(Long price, Float rate){
+        if(price && rate){
+            price + (price * rate / 100f).toLong()
+        }
+        null
     }
 }
 
