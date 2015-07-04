@@ -1080,7 +1080,7 @@ final class RiverTools {
 
     static Long computeEndPrice(Long price, Float rate){
         if(price && rate){
-            price + (price * rate / 100f).toLong()
+            return price + (price * rate / 100f).toLong()
         }
         null
     }
