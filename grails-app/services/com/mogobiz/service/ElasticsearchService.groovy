@@ -397,7 +397,7 @@ class ElasticsearchService {
 
     @Synchronized
     def void publish(Company company, EsEnv env, Catalog catalog, boolean manual = false) {
-        if (catalog?.name ==" impex") {
+        if (catalog?.name?.trim()?.toLowerCase() == "impex") {
             return
         }
         boolean running = EsEnv.withTransaction {
@@ -551,7 +551,7 @@ curl -XPUT ${url}/$index/_alias/$store
                     }
                 }
 
-                ESRiversFlow.exportRiversItemsWithSubscription(config, 1, 10, new RxSubscriberToRsSubscriberAdapter(subscriber))
+                ESRiversFlow.exportRiversItemsWithSubscription(ESRivers.getInstance(), config, 1, 10, new RxSubscriberToRsSubscriberAdapter(subscriber))
             }
             else{
                 log.error("an error occured while creating index ${response.error}")

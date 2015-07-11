@@ -44,6 +44,7 @@ class SuggestionRiver extends AbstractESRiver<Suggestion>{
     @Override
     Observable<Suggestion> retrieveCatalogItems(RiverConfig config) {
         return Observable.from(Suggestion.executeQuery('FROM Suggestion s ' +
+                'join fetch s.pack as pack ' +
                 'join fetch s.product as p ' +
                 'left join fetch p.ticketTypes ' +
                 'left join fetch p.features ' +
