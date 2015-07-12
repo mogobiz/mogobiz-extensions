@@ -6,6 +6,7 @@ import com.mogobiz.elasticsearch.rivers.spi.AbstractESBORiver
 import com.mogobiz.json.RenderUtil
 import com.mogobiz.pay.domain.BOTransaction
 import groovy.json.JsonSlurper
+import org.hibernate.FlushMode
 import rx.Observable
 
 /**
@@ -16,15 +17,21 @@ class BOTransactionRiver extends AbstractESBORiver<BOTransaction>{
 
     @Override
     Observable<BOTransaction> retrieveCatalogItems(RiverConfig config) {
-        return Observable.from(BOTransaction.findAll())
+        return Observable.from(BOTransaction.executeQuery(
+                "select t from BOTransaction t",
+                [:],
+                [readOnly: true, flushMode: FlushMode.MANUAL]
+        ))
     }
 
     @Override
     Item asItem(BOTransaction boTransaction, RiverConfig config) {
-        def map = new JsonSlurper().parse(new StringReader(boTransaction.extra)) as Map
-        map << [dateCreated: RenderUtil.formatToIso8601(boTransaction.dateCreated)]
-        map << [lastUpdated: RenderUtil.formatToIso8601(boTransaction.lastUpdated)]
-        new Item(id: boTransaction.uuid, map: map)
+        BOTransaction.withTransaction {
+            def map = new JsonSlurper().parse(new StringReader(boTransaction.extra)) as Map
+            map << [dateCreated: RenderUtil.formatToIso8601(boTransaction.dateCreated)]
+            map << [lastUpdated: RenderUtil.formatToIso8601(boTransaction.lastUpdated)]
+            new Item(id: boTransaction.uuid, map: map)
+        }
     }
 
     @Override
