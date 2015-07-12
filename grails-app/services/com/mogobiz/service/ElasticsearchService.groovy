@@ -517,7 +517,7 @@ curl -XPUT ${url}/$index/_alias/$store
                                     log.info("End clearing Jahia Cache")
                                 }
                                 catch (Exception ex) {
-                                    log.warn("Unable to clear Jahia cache", ex)
+                                    log.warn("Unable to clear Jahia cache -> ${ex.message}")
                                 }
                             }
                         }

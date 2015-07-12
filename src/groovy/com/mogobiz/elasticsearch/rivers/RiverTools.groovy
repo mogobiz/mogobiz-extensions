@@ -10,6 +10,7 @@ import com.mogobiz.elasticsearch.rivers.cache.ResourceRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.ShippingRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.TagRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.TranslationsRiverCache
+import com.mogobiz.geolocation.domain.Location
 import com.mogobiz.http.client.HTTPClient
 import com.mogobiz.store.domain.Brand
 import com.mogobiz.store.domain.BrandProperty
@@ -574,22 +575,23 @@ final class RiverTools {
         mpoi << [picture: poi.picture]
         mpoi << [xtype: poi.poiType?.xtype]
         translate(mpoi, poi.id, ['name', 'description'], config.languages, config.defaultLang, false)
-        def location = [:]
-        location << [latitude: poi.latitude]
-        location << [longitude: poi.longitude]
-        location << [road1: poi.road1]
-        location << [road2: poi.road2]
-        location << [road3: poi.road3]
-        location << [roadNum: poi.roadNum]
-        location << [postalCode: poi.postalCode]
-        location << [state: poi.state]
-        location << [city: poi.city]
-        def country = [:]
-        country << [code: poi.countryCode]
-        // TODO retrieve country name + translations
-        location << [country: country]
-        mpoi << [location: location]
+        mpoi << [location: asLocationMap(poi, config)]
         mpoi
+    }
+
+    static Map asLocationMap(Location location, RiverConfig config){
+        location ? RenderUtil.asIsoMapForJSON(
+                [
+                        'latitude',
+                        'longitude',
+                        'road1',
+                        'road2',
+                        'road3',
+                        'roadNum',
+                        'postalCode',
+                        'state',
+                        'city'
+                ], location) << [country: [code: location.countryCode]] : [:]
     }
 
     static Map asProductMap(Product p, RiverConfig config) {
@@ -1061,7 +1063,7 @@ final class RiverTools {
                 'code',
                 'uuid',
                 'aesPassword'
-        ], company) : [:]
+        ], company) << [shipFrom: asLocationMap(company.shipFrom, config)] : [:]
     }
 
     static Map asDownloadableMap(File file, RiverConfig config){
