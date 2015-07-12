@@ -10,6 +10,7 @@ import com.mogobiz.elasticsearch.client.ESIndexResponse
 import com.mogobiz.elasticsearch.client.ESIndexSettings
 import com.mogobiz.elasticsearch.client.ESRequest
 import com.mogobiz.elasticsearch.client.ESSearchResponse
+import com.mogobiz.elasticsearch.rivers.ESBORivers
 import com.mogobiz.elasticsearch.rivers.ESRivers
 import com.mogobiz.http.client.HTTPClient
 import com.mogobiz.json.RenderUtil
@@ -557,6 +558,127 @@ curl -XPUT ${url}/$index/_alias/$store
                 log.error("an error occured while creating index ${response.error}")
             }
 
+        }
+    }
+
+    @Synchronized
+    def void mogopay(EsEnv env) {
+        boolean running = EsEnv.withTransaction {
+            EsEnv.findByRunning(true) != null
+        }
+        if (!running && env ) {
+            log.info("Export to Mogopay has started ...")
+            EsEnv.withTransaction {
+                env.refresh()
+                env.running = true
+                env.save(flush: true)
+            }
+            int replicas = grailsApplication.config.mogopay?.elasticsearch?.replicas ?: 1
+            def url = env.url
+            def store = "mogopay"
+            def index = "${store}_${DateUtilitaire.format(Calendar.instance, "yyyy.MM.dd.HH.mm.ss")}"
+            def debug = true
+            RiverConfig config = new RiverConfig(
+                    clientConfig: new ClientConfig(
+                            store: store,
+                            url: url,
+                            debug: debug,
+                            config: [
+                                    index   : index,
+                                    replicas: replicas
+                            ]
+                    ),
+                    idCatalog: -1,
+                    languages: ["fr"],
+                    defaultLang: "fr"
+            )
+
+            ESIndexResponse response = null
+
+            try{
+                response = ESBORivers.instance.createCompanyIndex(config)
+            }
+            catch(Throwable th){
+                log.error(th.message, th)
+                EsEnv.withTransaction {
+                    env.refresh()
+                    env.running = false
+                    env.save(flush: true)
+                }
+            }
+
+            if(response?.acknowledged){
+                final long before = System.currentTimeMillis()
+                def subscriber = new Subscriber<BulkResponse>() {
+                    @Override
+                    void onCompleted() {
+                        log.info("export within ${System.currentTimeMillis() - before} ms")
+                        def extra = ""
+                        def success = true
+                        def conf = [debug: debug]
+                        def previousIndices = client.retrieveAliasIndexes(url, store, conf)
+                        if (previousIndices.empty || (!previousIndices.any { String previous -> !client.removeAlias(conf, url, store, previous).acknowledged })) {
+                            if (!client.createAlias(conf, url, store, index)) {
+                                def revert = env?.idx
+                                if (previousIndices.any { previous -> revert = previous; client.createAlias(conf, url, store, previous) }) {
+                                    success = false
+                                    extra = """
+Failed to create alias ${store} for ${index} -> revert to previous index ${revert}
+The alias can be created by executing the following command :
+curl -XPUT ${url}/$index/_alias/$store
+"""
+                                    log.warn(extra)
+                                } else {
+                                    success = false
+                                    extra = """
+Failed to create alias ${store} for ${index}.
+The alias can be created by executing the following command :
+curl -XPUT ${url}/$index/_alias/$store
+"""
+                                    log.warn(extra)
+                                }
+                            } else {
+                                previousIndices.each { previous -> client.removeIndex(url, previous, conf) }
+                                client.updateIndex(url, index, new ESIndexSettings(number_of_replicas: replicas), conf)
+                                extra = "$store - ${DateUtilitaire.format(new Date(), "dd/MM/yyyy HH:mm")}"
+                                log.info("End ElasticSearch export for ${store} -> ${index}")
+                            }
+                        }
+                        EsEnv.withTransaction {
+                            env.refresh()
+                            env.running = false
+                            env.success = success
+                            if (success) {
+                                env.idx = index
+                            }
+                            env.extra = extra
+                            env.save(flush: true)
+                        }
+                    }
+
+                    @Override
+                    void onError(Throwable th) {
+                        log.error(th.message, th)
+                        EsEnv.withTransaction {
+                            env.refresh()
+                            env.running = false
+                            env.success = false
+                            env.extra = th.message
+                            env.save(flush: true)
+                        }
+                    }
+
+                    @Override
+                    void onNext(BulkResponse bulkResponse) {
+                        log.info("export ${bulkResponse?.items?.size()} items -> ${bulkResponse?.items?.collect {"${it.type}::${it.id}"}?.join(",")}")
+                    }
+                }
+
+                ESRiversFlow.exportRiversItemsWithSubscription(ESBORivers.getInstance(), config, 1, 10, new RxSubscriberToRsSubscriberAdapter(subscriber))
+            }
+            else{
+                log.error("an error occured while creating index ${response.error}")
+            }
         }
     }
 

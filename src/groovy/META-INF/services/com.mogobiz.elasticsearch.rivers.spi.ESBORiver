@@ -1,0 +1,3 @@
+com.mogobiz.elasticsearch.rivers.BOAccountRiver
+com.mogobiz.elasticsearch.rivers.BOTransactionRiver
+com.mogobiz.elasticsearch.rivers.BOTransactionLogRiver
