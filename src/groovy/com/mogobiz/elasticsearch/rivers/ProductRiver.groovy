@@ -74,6 +74,8 @@ class ProductRiver extends AbstractESRiver<Product>{
         shippingProperties << new ESProperty(name:'depth', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NO, multilang:false)
         shippingProperties << new ESProperty(name:'amount', type:ESClient.TYPE.FLOAT, index:ESClient.INDEX.NO, multilang:false)
         shippingProperties << new ESProperty(name:'free', type:ESClient.TYPE.BOOLEAN, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+        shippingProperties << new ESProperty(name:'weightUnit', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:true)
+        shippingProperties << new ESProperty(name:'linearUnit', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:true)
 
         def featureProperties = []
         featureProperties << new ESProperty(name:'name', type:ESClient.TYPE.STRING, index:ESClient.INDEX.ANALYZED, multilang:true)

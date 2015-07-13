@@ -559,8 +559,14 @@ final class RiverTools {
                     'depth',
                     'amount',
                     'free'
-            ], shipping)
-            translate(m, shipping.id, ['name'], config.languages, config.defaultLang, false)
+                ], shipping)
+                if(shipping.weightUnit){
+                    m << [weightUnit: shipping.weightUnit.name()]
+                }
+                if(shipping.linearUnit){
+                    m << [linearUnit: shipping.linearUnit.name()]
+                }
+                translate(m, shipping.id, ['name'], config.languages, config.defaultLang, false)
                 ShippingRiverCache.instance.put(shipping.uuid, m)
             }
             return m
