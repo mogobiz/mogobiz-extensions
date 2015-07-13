@@ -303,7 +303,6 @@ class ProductRiver extends AbstractESRiver<Product>{
 
         return Observable.from(Product.executeQuery(
                 'SELECT p FROM Product p ' +
-                        'left join fetch p.ticketTypes ' +
                         'left join fetch p.features ' +
                         'left join fetch p.featureValues ' +
                         'left join fetch p.productProperties ' +
