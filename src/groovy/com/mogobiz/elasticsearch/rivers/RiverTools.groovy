@@ -278,7 +278,7 @@ final class RiverTools {
         [:]
     }
 
-    static Map asSkuMap(TicketType sku, Product product = sku.product, RiverConfig config){
+    static Map asSkuMap(TicketType sku, Product p = sku.product, RiverConfig config, boolean deep = false){
         if(sku){
             def m = RenderUtil.asIsoMapForJSON([
                     'id',
@@ -321,7 +321,7 @@ final class RiverTools {
             // liste des images associées à ce sku
             List<Map> resources = []
             final nbVariations = variations.size()
-            Set<Product2Resource> bindedResources = product.product2Resources.findAll {it.resource.xtype = ResourceType.PICTURE}.toSet()
+            Set<Product2Resource> bindedResources = p.product2Resources.findAll {it.resource.xtype = ResourceType.PICTURE}.toSet()
             bindedResources?.each {Product2Resource product2Resource ->
                 Resource resource = product2Resource.resource
                 def resourceName = resource.name
@@ -353,7 +353,7 @@ final class RiverTools {
                 m[k] = v
             }
 
-            final taxRate = product.taxRate
+            final taxRate = p.taxRate
             if(taxRate){
                 final salePrice = m.salePrice
                 taxRate.localTaxRates?.each {localTaxRate ->
@@ -364,6 +364,44 @@ final class RiverTools {
                     }
                     m << ["${localTaxRate.countryCode}": l]
                 }
+            }
+
+            if(deep){
+                Map _p = RenderUtil.asIsoMapForJSON([
+                        "id",
+                        "code",
+                        "name",
+                        "startFeatureDate",
+                        "stopFeatureDate",
+                        "dateCreated"
+                ], p)
+
+                _p << [xtype:p.xtype?.name()]
+
+                translate(_p, p.id, ['name'], config.languages, config.defaultLang, false)
+
+                if(p.category){
+                    _p << [category:asCategoryMap(p.category, config)]
+                }
+
+                if(p.brand){
+                    _p << [brand:asBrandMap(p.brand, config)]
+                }
+
+                def features = extractProductFeatures(p, config)
+                if(!features.isEmpty()){
+                    _p << [features:features]
+                }
+
+                def tags = []
+                p.tags.each{ tag ->
+                    tags << asTagMap(tag, config)
+                }
+                if(!tags.isEmpty()){
+                    _p << [tags:tags]
+                }
+
+                m << [product: _p]
             }
 
             return m
@@ -663,18 +701,7 @@ final class RiverTools {
                 m << [ibeacon:asIBeaconMap(p.ibeacon, config)]
             }
 
-            def features = []
-            Set<Feature> productFeatures = p.features
-            categoryWithParents(p.category).each {cat ->
-                productFeatures.addAll(CategoryFeaturesRiverCache.instance.get(cat.uuid) ?: [])
-            }
-            productFeatures.flatten()
-
-            final featureValues = p.featureValues
-            productFeatures.each { feature ->
-                final featureValue = featureValues.find {it.feature.id == feature.id}
-                features << asFeatureMap(feature, featureValue, config)
-            }
+            def features = extractProductFeatures(p, config)
             if(!features.isEmpty()){
                 m << [features:features]
             }
@@ -789,6 +816,22 @@ final class RiverTools {
             return m
         }
         [:]
+    }
+
+    def static List<Map> extractProductFeatures(Product p, RiverConfig config) {
+        def features = []
+        Set<Feature> productFeatures = p.features
+        categoryWithParents(p.category).each { cat ->
+            productFeatures.addAll(CategoryFeaturesRiverCache.instance.get(cat.uuid) ?: [])
+        }
+        productFeatures.flatten()
+
+        final featureValues = p.featureValues
+        productFeatures.each { feature ->
+            final featureValue = featureValues.find { it.feature.id == feature.id }
+            features << asFeatureMap(feature, featureValue, config)
+        }
+        features
     }
 
     static Map asStockCalendarSkuMap(StockCalendarSku tuple, RiverConfig config){
