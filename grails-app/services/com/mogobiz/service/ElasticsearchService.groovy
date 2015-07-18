@@ -396,6 +396,44 @@ class ElasticsearchService {
         dir
     }
 
+    def Set<String> retrievePreviousIndices(EsEnv env){
+        def url = env.url
+        def store = env.company.code
+        def conf = [debug: true]
+        client.retrieveAliasIndexes(url, "previous_$store", conf)
+    }
+
+    @Synchronized
+    def boolean activateIndex(String index, EsEnv env){
+        boolean ret = false
+        def url = env.url
+        def store = env.company.code
+        def conf = [debug: true]
+        def activeIndex = env.activeIndex
+        boolean running = EsEnv.withTransaction {
+            EsEnv.findByRunning(true) != null
+        }
+        if(!running && activeIndex != index){
+            EsEnv.withTransaction {
+                env.refresh()
+                env.running = true
+                env.save(flush: true)
+            }
+            ret = client.removeAlias(conf, url, store, activeIndex)?.acknowledged &&
+                    client.createAlias(conf, url, store, index)?.acknowledged &&
+                    client.createAlias(conf, url, "previous_$store", activeIndex)?.acknowledged
+            EsEnv.withTransaction {
+                env.refresh()
+                if(ret){
+                    env.activeIndex = index
+                }
+                env.running = false
+                env.save(flush: true)
+            }
+        }
+        ret
+    }
+
     @Synchronized
     def void publish(Company company, EsEnv env, Catalog catalog, boolean manual = false) {
         if (catalog?.name?.trim()?.toLowerCase() == "impex") {
@@ -483,7 +521,26 @@ curl -XPUT ${url}/$index/_alias/$store
                                     log.warn(extra)
                                 }
                             } else {
-                                previousIndices.each { previous -> client.removeIndex(url, previous, conf) }
+                                // on ajoute les indices précédants à l'alias previous_$store
+                                previousIndices.each {previousIndex -> client.createAlias(conf, url, "previous_$store", previousIndex)}
+                                // on récupère la liste des indices ayant l'alias previous_$store
+                                def previousStoreIndices = client.retrieveAliasIndexes(url, "previous_$store", conf)
+                                int nbPreviousStoreIndices = previousStoreIndices.size()
+                                int maxNbPreviousIndices = grailsApplication.config.elasticsearch.previous ?: 3
+                                // si plus d'indices que le maximum autorisé, alors on supprime les indices les plus anciens
+                                if(nbPreviousStoreIndices > maxNbPreviousIndices){
+                                    def indexToDate = {String s ->
+                                        def dateAsString = s.substring("${store.toLowerCase()}_".length())
+                                        DateUtilitaire.parseToDate(dateAsString, "yyyy.MM.dd.HH.mm.ss")
+                                    }
+                                    previousStoreIndices.sort{a,b->
+                                        indexToDate(a)<=>indexToDate(b) // indices triés du plus ancien au plus récent
+                                    }.take(nbPreviousStoreIndices-maxNbPreviousIndices).each {
+                                        client.removeAlias(conf, url, "previous_$store", it)
+                                        client.removeIndex(url, it, conf)
+                                    }
+                                }
+                                // on met à jour le nombre de replicas dans l'index courrant
                                 client.updateIndex(url, index, new ESIndexSettings(number_of_replicas: replicas), conf)
                                 File dir = new File("${grailsApplication.config.resources.path}/stores/${store}")
                                 dir.delete()
@@ -527,6 +584,7 @@ curl -XPUT ${url}/$index/_alias/$store
                             env.success = success
                             if (success) {
                                 env.idx = index
+                                env.activeIndex = index
                             }
                             env.extra = extra
                             env.save(flush: true)
