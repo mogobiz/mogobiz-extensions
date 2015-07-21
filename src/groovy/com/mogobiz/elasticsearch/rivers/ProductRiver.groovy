@@ -232,6 +232,7 @@ class ProductRiver extends AbstractESRiver<Product>{
                         << new ESProperty(name:'similar', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'popularity', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'coupons', type:ESClient.TYPE.OBJECT, properties: couponsProperties)
+                        << new ESProperty(name:'stockAvailable', type:ESClient.TYPE.BOOLEAN, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
         )
     }
 
@@ -340,7 +341,7 @@ class ProductRiver extends AbstractESRiver<Product>{
 
     @Override
     List<String> previousProperties(){
-        ['id', 'increments', 'notations']
+        ['id', 'increments', 'notations', 'stockAvailable']
     }
 
     @Override

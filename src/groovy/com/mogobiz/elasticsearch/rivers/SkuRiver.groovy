@@ -188,6 +188,10 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
         resourceProperties << new ESProperty(name:'content', type:ESClient.TYPE.BINARY, index:ESClient.INDEX.NO, multilang:false)
         resourceProperties << new ESProperty(name:'uuid', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
 
+        def byDateTimeProperties = []
+        byDateTimeProperties << new ESProperty(name:'startDate', type:ESClient.TYPE.STRING, index:ESClient.INDEX.ANALYZED, multilang:true)
+        byDateTimeProperties << new ESProperty(name:'available', type:ESClient.TYPE.BOOLEAN, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+
         def skuProperties = []
         skuProperties << new ESProperty(name:'id', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
         skuProperties << new ESProperty(name:'uuid', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
@@ -211,6 +215,8 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
         skuProperties << new ESProperty(name:'salePrice', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
         skuProperties << new ESProperty(name:'promotion', type:ESClient.TYPE.OBJECT, properties: promotionProperties)
         skuProperties << new ESProperty(name:'product', type:ESClient.TYPE.OBJECT, properties: productProperties)
+        skuProperties << new ESProperty(name:'available', type:ESClient.TYPE.BOOLEAN, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+        skuProperties << new ESProperty(name:'byDateTimes', type:ESClient.TYPE.OBJECT, properties: byDateTimeProperties)
 
         new ESMapping(type:getType(),
                 timestamp:true,
@@ -221,6 +227,11 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
     @Override
     String getType() {
         return "sku"
+    }
+
+    @Override
+    List<String> previousProperties(){
+        ['id', 'available', 'byDateTimes']
     }
 
     @Override
