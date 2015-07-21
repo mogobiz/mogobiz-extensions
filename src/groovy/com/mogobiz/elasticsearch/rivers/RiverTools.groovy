@@ -1111,8 +1111,11 @@ final class RiverTools {
                 'name',
                 'code',
                 'uuid',
-                'aesPassword'
-        ], company) << [shipFrom: asLocationMap(company.shipFrom, config)] : [:]
+                'aesPassword',
+                'phone'
+        ], company) <<
+                [shipFrom: asLocationMap(company.shipFrom, config)] <<
+                [location: asLocationMap(company.location, config)] : [:]
     }
 
     static Map asDownloadableMap(File file, RiverConfig config){

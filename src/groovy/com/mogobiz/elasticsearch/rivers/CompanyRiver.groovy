@@ -43,8 +43,10 @@ class CompanyRiver extends AbstractESRiver<Company> {
                         << new ESProperty(name:'code', type:ESClient.TYPE.STRING, index:ESClient.INDEX.ANALYZED, multilang:false)
                         << new ESProperty(name:'uuid', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'aesPassword', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+                        << new ESProperty(name:'phone', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'imported', type:ESClient.TYPE.DATE, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'shipFrom', type:ESClient.TYPE.OBJECT, properties: locationProperties)
+                        << new ESProperty(name:'location', type:ESClient.TYPE.OBJECT, properties: locationProperties)
         )
     }
 
