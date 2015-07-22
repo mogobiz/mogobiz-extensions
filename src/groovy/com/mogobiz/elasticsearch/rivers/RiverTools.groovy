@@ -98,8 +98,13 @@ final class RiverTools {
                             translations[k] = v
                         }
                     }
-                    m[lang] = translations
                 }
+                included.each {k ->
+                    if(!translations[k]){
+                        translations[k] = m[k]
+                    }
+                }
+                m[lang] = translations
             }
         }
         m
