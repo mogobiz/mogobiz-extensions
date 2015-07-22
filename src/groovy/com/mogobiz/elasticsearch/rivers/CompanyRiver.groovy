@@ -55,7 +55,7 @@ class CompanyRiver extends AbstractESRiver<Company> {
         final idCompany = Catalog.load(config.idCatalog)?.company?.id
         Observable.from(
                 Company.executeQuery(
-                        "SELECT c FROM Company c left join fetch c.shipFrom WHERE c.id =:idCompany",
+                        "SELECT c FROM Company c left join fetch c.shipFrom left join fetch c.location WHERE c.id =:idCompany",
                         [idCompany: idCompany],
                         [
                                 readOnly: true,
