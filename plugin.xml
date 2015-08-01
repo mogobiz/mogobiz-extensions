@@ -1,4 +1,4 @@
-<plugin name='mogobiz-extensions' version='0.3-SNAPSHOT' grailsVersion='2.3 &gt; *'>
+<plugin name='mogobiz-extensions' version='0.4-SNAPSHOT' grailsVersion='2.3 &gt; *'>
   <author>Stéphane Manciot</author>
   <authorEmail>stephane.manciot@ebiznext.com</authorEmail>
   <title>Mogobiz Extensions Plugin</title>
