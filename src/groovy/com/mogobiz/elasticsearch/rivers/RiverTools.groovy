@@ -933,13 +933,14 @@ final class RiverTools {
                         }
                     }
                     else{
-                        def stockByDateTime = []
+                        def byDateTime = []
                         stockCalendars.each {stockCalendar ->
-                            stockByDateTime << (RenderUtil.asIsoMapForJSON(['id', 'uuid', 'startDate', 'dateCreated', 'lastUpdated'], stockCalendar)
-                                    << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)])
+                            final _stock = Math.max(0, stockCalendar.stock - stockCalendar.sold)
+                            byDateTime << (RenderUtil.asIsoMapForJSON(['id', 'uuid', 'startDate', 'dateCreated', 'lastUpdated'], stockCalendar)
+                                    << [stock: _stock] << [available: _stock > 0])
                         }
-                        if(!stockByDateTime.isEmpty()){
-                            m << [stockByDateTime: stockByDateTime]
+                        if(!byDateTime.isEmpty()){
+                            m << [byDateTime: byDateTime]
                         }
                     }
                 }
@@ -955,13 +956,12 @@ final class RiverTools {
     static boolean isAvailable(TicketType sku){
         boolean ret = false
         def stock = sku?.stock
-        def product = sku?.product
-        if(stock && product){
+        if(stock){
             ret = stock.stockUnlimited || stock.stockOutSelling
             if(!ret){
                 def stockCalendars = sku.stockCalendars
                 if(stockCalendars){
-                    if (product?.calendarType == ProductCalendar.NO_DATE) {
+                    if (sku?.product?.calendarType == ProductCalendar.NO_DATE) {
                         StockCalendar stockCalendar = stockCalendars.size() > 0 ? stockCalendars.first() : null
                         if (stockCalendar) {
                             ret = Math.max(0, stockCalendar.stock - stockCalendar.sold) > 0

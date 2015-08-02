@@ -191,7 +191,12 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
         resourceProperties << new ESProperty(name:'uuid', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
 
         def byDateTimeProperties = []
-        byDateTimeProperties << new ESProperty(name:'startDate', type:ESClient.TYPE.STRING, index:ESClient.INDEX.ANALYZED, multilang:true)
+        byDateTimeProperties << new ESProperty(name:'id', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+        byDateTimeProperties << new ESProperty(name:'uuid', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+        byDateTimeProperties << new ESProperty(name:'stock', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+        byDateTimeProperties << new ESProperty(name:'startDate', type:ESClient.TYPE.DATE, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+        byDateTimeProperties << new ESProperty(name:'dateCreated', type:ESClient.TYPE.DATE, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+        byDateTimeProperties << new ESProperty(name:'lastUpdated', type:ESClient.TYPE.DATE, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
         byDateTimeProperties << new ESProperty(name:'available', type:ESClient.TYPE.BOOLEAN, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
 
         def skuProperties = []
@@ -218,7 +223,13 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
         skuProperties << new ESProperty(name:'promotion', type:ESClient.TYPE.OBJECT, properties: promotionProperties)
         skuProperties << new ESProperty(name:'product', type:ESClient.TYPE.OBJECT, properties: productProperties)
         skuProperties << new ESProperty(name:'available', type:ESClient.TYPE.BOOLEAN, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
-        skuProperties << new ESProperty(name:'byDateTimes', type:ESClient.TYPE.OBJECT, properties: byDateTimeProperties)
+        skuProperties << new ESProperty(name:'stockDisplay', type:ESClient.TYPE.BOOLEAN, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+        skuProperties << new ESProperty(name:'calendarType', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+        skuProperties << new ESProperty(name:'initialStock', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+        skuProperties << new ESProperty(name:'stockUnlimited', type:ESClient.TYPE.BOOLEAN, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+        skuProperties << new ESProperty(name:'stockOutSelling', type:ESClient.TYPE.BOOLEAN, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+        skuProperties << new ESProperty(name:'stock', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+        skuProperties << new ESProperty(name:'byDateTimes', type:ESClient.TYPE.NESTED, properties: byDateTimeProperties)
 
         new ESMapping(type:getType(),
                 timestamp:true,
