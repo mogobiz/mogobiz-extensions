@@ -66,11 +66,6 @@ class CategoryRiver extends AbstractESRiver<Category>{
     }
 
     @Override
-    List<String> previousProperties(){
-        ['id', 'increments']
-    }
-
-    @Override
     String getUuid(Category c){
         c.uuid
     }

@@ -59,11 +59,6 @@ class TagRiver extends AbstractESRiver<Tag>{
     }
 
     @Override
-    List<String> previousProperties(){
-        ['id', 'increments']
-    }
-
-    @Override
     String getUuid(Tag t){
         t.uuid
     }

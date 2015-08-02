@@ -360,7 +360,7 @@ class ProductRiver extends AbstractESRiver<Product>{
 
     @Override
     List<String> previousProperties(){
-        ['id', 'increments', 'notations']
+        ['notations'] // TODO
     }
 
     @Override

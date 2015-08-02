@@ -63,11 +63,6 @@ class BrandRiver extends AbstractESRiver<Brand> {
     }
 
     @Override
-    List<String> previousProperties(){
-        ['id', 'increments']
-    }
-
-    @Override
     String getUuid(Brand b){
         b.uuid
     }
