@@ -85,5 +85,5 @@ class StockRiver  extends AbstractESRiver<StockCalendarSku> {
 @TupleConstructor
 class StockCalendarSku{
     TicketType sku
-    List<StockCalendar> stockCalendars
+    Set<StockCalendar> stockCalendars
 }

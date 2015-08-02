@@ -243,11 +243,6 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
     }
 
     @Override
-    List<String> previousProperties(){
-        ['id', 'available', 'byDateTimes']
-    }
-
-    @Override
     String getUuid(TicketType ticketType) {
         return ticketType.uuid
     }
