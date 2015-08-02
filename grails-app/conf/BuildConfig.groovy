@@ -44,9 +44,9 @@ grails.project.dependency.resolution = {
             excludes 'org.elasticsearch:elasticsearch'
         }
 
-        compile 'com.mogobiz.rivers:mogobiz-elasticsearch-flow:0.3-SNAPSHOT'
-        compile 'com.mogobiz.rivers:mogobiz-google-shopping:0.3-SNAPSHOT'
-        compile 'com.mogobiz.rivers:mogobiz-cfp:0.3-SNAPSHOT'
+        compile 'com.mogobiz.rivers:mogobiz-elasticsearch-flow:0.4-SNAPSHOT'
+        compile 'com.mogobiz.rivers:mogobiz-google-shopping:0.4-SNAPSHOT'
+        compile 'com.mogobiz.rivers:mogobiz-cfp:0.4-SNAPSHOT'
 
     }
 
@@ -55,7 +55,7 @@ grails.project.dependency.resolution = {
               ":rest-client-builder:1.0.3") {
             export = false
         }
-        compile group:"com.mogobiz", name:"mogobiz-core", version:"0.3-SNAPSHOT"
+        compile group:"com.mogobiz", name:"mogobiz-core", version:"0.4-SNAPSHOT"
 
     }
 }
