@@ -40,6 +40,7 @@ class CfpToolsSpec extends Specification{
     def cleanupSpec(){}
 
     def setup(){
+        grailsApplication.config.resources.path = "/data/cfp"
         Company.metaClass.getCompanyValidation = {new CompanyValidation()}
         Catalog.metaClass.getCatalogValidation = {new CatalogValidation()}
         Brand.metaClass.getBrandValidation = {new BrandValidation()}
@@ -59,20 +60,21 @@ class CfpToolsSpec extends Specification{
         given:
 
         def cfpName = "devoxx"
-        def cfpUrl = "http://cfp.devoxx.fr"
+        def cfpUrl = "http://cfp.devoxx.be"
         def company
 
         when:
 
         company = CfpTools.extractCompany(cfpName, cfpUrl)
-        Thread.sleep(16000)
+        Thread.sleep(25000)
 
         then:
 
         company != null
         Collection<Catalog> catalogs = Catalog.findAllByCompany(company)
+        assertTrue(catalogs.iterator().hasNext())
         Catalog catalog = catalogs.iterator().next()
-        catalog.name == "devoxxFR2015"
+        catalog.name == "DV14"
         Calendar c = DateUtilitaire.parseToCalendar("16/04/2014T09:30:00", "dd/MM/yyyy'T'HH:mm:ss", Locale.FRANCE)
         DateUtilitaire.compareDate(c.time, catalog.activationDate) == 0L
         Collection<Brand> brands = Brand.findAllByCompany(company)
