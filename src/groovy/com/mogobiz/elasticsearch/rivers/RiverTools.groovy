@@ -409,6 +409,10 @@ final class RiverTools {
                 m << [product: _p]
             }
 
+            m << [available: isAvailable(sku)]
+
+            m << asStockMap(sku)
+
             return m
         }
         [:]
@@ -818,6 +822,10 @@ final class RiverTools {
                 }
             }
 
+            m << [stockAvailable: p.ticketTypes.any { sku ->
+                isAvailable(sku)
+            }]
+
             return m
         }
         [:]
@@ -898,6 +906,82 @@ final class RiverTools {
             return m
         }
         [:]
+    }
+
+    static Map asStockMap(TicketType sku){
+        def stock = sku?.stock
+        def product = sku?.product
+        def m = [:]
+        if(product && stock){
+            m << [stockDisplay: product.stockDisplay]
+            m << [calendarType: product.calendarType]
+            m << [initialStock: stock.stock]
+            m << [stockUnlimited: stock.stockUnlimited]
+            m << [stockOutSelling: stock.stockOutSelling]
+            if(!stock.stockUnlimited){
+                def stockCalendars = sku.stockCalendars
+                if(stockCalendars){
+                    // Il y a eu des ventes, on prend le stock restant
+                    if (product?.calendarType == ProductCalendar.NO_DATE) {
+                        StockCalendar stockCalendar = stockCalendars.size() > 0 ? stockCalendars.first() : null
+                        if (stockCalendar) {
+                            m << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)]
+                        }
+                        else
+                        {
+                            m << [stock: stock.stock]
+                        }
+                    }
+                    else{
+                        def stockByDateTime = []
+                        stockCalendars.each {stockCalendar ->
+                            stockByDateTime << (RenderUtil.asIsoMapForJSON(['id', 'uuid', 'startDate', 'dateCreated', 'lastUpdated'], stockCalendar)
+                                    << [stock: Math.max(0, stockCalendar.stock - stockCalendar.sold)])
+                        }
+                        if(!stockByDateTime.isEmpty()){
+                            m << [stockByDateTime: stockByDateTime]
+                        }
+                    }
+                }
+                else {
+                    // Il n'y a pas eu de vente, on prend le stock initial
+                    m << [stock: stock.stock]
+                }
+            }
+        }
+        m
+    }
+
+    static boolean isAvailable(TicketType sku){
+        boolean ret = false
+        def stock = sku?.stock
+        def product = sku?.product
+        if(stock && product){
+            ret = stock.stockUnlimited || stock.stockOutSelling
+            if(!ret){
+                def stockCalendars = sku.stockCalendars
+                if(stockCalendars){
+                    if (product?.calendarType == ProductCalendar.NO_DATE) {
+                        StockCalendar stockCalendar = stockCalendars.size() > 0 ? stockCalendars.first() : null
+                        if (stockCalendar) {
+                            ret = Math.max(0, stockCalendar.stock - stockCalendar.sold) > 0
+                        }
+                        else
+                        {
+                            ret = stock.stock > 0
+                        }
+                    }
+                    else{
+                        // TODO
+                        ret = true
+                    }
+                }
+                else{
+                    ret = stock.stock > 0
+                }
+            }
+        }
+        ret
     }
 
     static Map asSuggestionMap(Suggestion suggestion, RiverConfig config){

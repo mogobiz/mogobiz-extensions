@@ -103,6 +103,8 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
                         'left join fetch v2.variation ' +
                         'left join fetch sku.variation3 v3 ' +
                         'left join fetch v3.variation ' +
+                        'left join fetch sku.stock ' +
+                        'left join fetch sku.stockCalendars ' +
                         'left join fetch p.taxRate as taxRate ' +
                         'left join fetch taxRate.localTaxRates ' +
                         'WHERE p.category.catalog.id=:idCatalog and p.state = :productState and p.deleted = false',

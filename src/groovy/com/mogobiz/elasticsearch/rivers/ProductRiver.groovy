@@ -319,6 +319,8 @@ class ProductRiver extends AbstractESRiver<Product>{
                         'left join fetch v2.variation ' +
                         'left join fetch sku.variation3 v3 ' +
                         'left join fetch v3.variation ' +
+                        'left join fetch sku.stock ' +
+                        'left join fetch sku.stockCalendars ' +
                         'left join fetch p.poi ' +
                         'left join fetch p.category as category ' +
                         'left join fetch category.parent ' +
