@@ -24,8 +24,9 @@ class DownloadableRiver extends AbstractESRiver<File>{
 
     @Override
     Observable<File> retrieveCatalogItems(RiverConfig config) {
-        List<TicketType> list = TicketType.executeQuery('FROM TicketType as ticketType left join ticketType.product as product where (product.category.catalog.id=:idCatalog and product.state=:productState)',
-                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).flatten()
+        Calendar now = Calendar.getInstance()
+        List<TicketType> list = TicketType.executeQuery('FROM TicketType as ticketType left join ticketType.product as product where (product.category.catalog.id=:idCatalog and product.state=:productState and (ticketType.stopDate is null or ticketType.stopDate >= :today))',
+                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE, today: now], [readOnly: true, flushMode: FlushMode.MANUAL]).flatten()
         List<String> ticketTypes = new ArrayList<>(list.size())
         list.each {ticketType ->
             ticketTypes << (ticketType.id as String)

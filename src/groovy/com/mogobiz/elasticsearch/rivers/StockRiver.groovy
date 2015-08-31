@@ -20,10 +20,11 @@ import org.springframework.transaction.TransactionDefinition
 class StockRiver  extends AbstractESRiver<StockCalendarSku> {
     @Override
     rx.Observable<StockCalendarSku> retrieveCatalogItems(RiverConfig riverConfig) {
+        Calendar now = Calendar.getInstance()
         return rx.Observable.from(
                 TicketType.executeQuery(
-                        'SELECT s FROM TicketType s left join fetch s.product as product left join fetch s.stock as stock left join fetch s.stockCalendars WHERE s.product.category.catalog.id=:idCatalog and s.product.state = :productState',
-                        [idCatalog:riverConfig.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL])
+                        'SELECT s FROM TicketType s left join fetch s.product as product left join fetch s.stock as stock left join fetch s.stockCalendars WHERE product.category.catalog.id=:idCatalog and product.state = :productState and (s.stopDate is null or s.stopDate >= :today)',
+                        [idCatalog:riverConfig.idCatalog, productState:ProductState.ACTIVE, today: now], [readOnly: true, flushMode: FlushMode.MANUAL])
                         .collect {new StockCalendarSku(it, it.stockCalendars)}/*TODO rx way*/
         )
     }

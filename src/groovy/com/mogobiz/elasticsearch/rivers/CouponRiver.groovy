@@ -19,12 +19,13 @@ class CouponRiver extends AbstractESRiver<Coupon> {
     @Override
     rx.Observable<Coupon> retrieveCatalogItems(final RiverConfig config) {
         Set<Coupon> results = []
+        Calendar now = Calendar.getInstance()
         results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.products as product where (product.category.catalog.id=:idCatalog and product.state=:productState)',
                 [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL])
         results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.categories as category where (category.catalog.id=:idCatalog)',
                 [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL])
-        results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.ticketTypes as ticketType where (ticketType.product.category.catalog.id=:idCatalog and ticketType.product.state=:productState)',
-                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL])
+        results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.ticketTypes as ticketType where (ticketType.product.category.catalog.id=:idCatalog and ticketType.product.state=:productState and (ticketType.stopDate is null or ticketType.stopDate >= :today))',
+                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE, today: now], [readOnly: true, flushMode: FlushMode.MANUAL])
         return rx.Observable.from(results.flatten())
     }
 
