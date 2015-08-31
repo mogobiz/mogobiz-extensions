@@ -427,6 +427,7 @@ final class RiverTools {
     private static Set<Coupon> extractProductCoupons(Product product) {
         Set<Coupon> coupons = CouponsRiverCache.instance.get(product.uuid) ?: []
         coupons.addAll(extractCategoryCoupons(product.category))
+        coupons.addAll(extractCatalogCoupons(product.category.catalog))
         coupons.flatten()
     }
 
@@ -435,6 +436,12 @@ final class RiverTools {
         categoryWithParents(category).each { Category c ->
             coupons.addAll(CouponsRiverCache.instance.get(c.uuid) ?: [])
         }
+        coupons.flatten()
+    }
+
+    private static Set<Coupon> extractCatalogCoupons(Catalog catalog) {
+        Set<Coupon> coupons = []
+        coupons.addAll(CouponsRiverCache.instance.get(catalog.uuid) ?: [])
         coupons.flatten()
     }
 

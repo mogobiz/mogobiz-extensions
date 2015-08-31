@@ -316,6 +316,14 @@ class ProductRiver extends AbstractESRiver<Product>{
             couponsMap.put(key, coupons)
         }
 
+        Coupon.executeQuery('select catalog, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.catalogs as catalog where catalog.id=:idCatalog',
+                [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
+            def key = (a[0] as Catalog).uuid
+            Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
+            coupons.add(a[1] as Coupon)
+            couponsMap.put(key, coupons)
+        }
+
         couponsMap.each {k, v ->
             CouponsRiverCache.instance.put(k as String, v as Set<Coupon>)
         }

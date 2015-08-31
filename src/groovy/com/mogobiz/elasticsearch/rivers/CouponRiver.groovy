@@ -26,6 +26,8 @@ class CouponRiver extends AbstractESRiver<Coupon> {
                 [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL])
         results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.ticketTypes as ticketType where (ticketType.product.category.catalog.id=:idCatalog and ticketType.product.state=:productState and (ticketType.stopDate is null or ticketType.stopDate >= :today))',
                 [idCatalog:config.idCatalog, productState:ProductState.ACTIVE, today: now], [readOnly: true, flushMode: FlushMode.MANUAL])
+        results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.catalogs as catalog where (catalog.id=:idCatalog)',
+                [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL])
         return rx.Observable.from(results.flatten())
     }
 

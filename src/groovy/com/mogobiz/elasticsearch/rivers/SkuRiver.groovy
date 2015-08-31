@@ -8,6 +8,7 @@ import com.mogobiz.elasticsearch.client.ESProperty
 import com.mogobiz.elasticsearch.rivers.cache.CouponsRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.TranslationsRiverCache
 import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
+import com.mogobiz.store.domain.Catalog
 import com.mogobiz.store.domain.Category
 import com.mogobiz.store.domain.Coupon
 import com.mogobiz.store.domain.Product
@@ -77,6 +78,14 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
         Coupon.executeQuery('select category, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.categories as category where category.catalog.id=:idCatalog',
                 [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
             def key = (a[0] as Category).uuid
+            Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
+            coupons.add(a[1] as Coupon)
+            couponsMap.put(key, coupons)
+        }
+
+        Coupon.executeQuery('select catalog, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.catalogs as catalog where catalog.id=:idCatalog',
+                [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
+            def key = (a[0] as Catalog).uuid
             Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
             coupons.add(a[1] as Coupon)
             couponsMap.put(key, coupons)
