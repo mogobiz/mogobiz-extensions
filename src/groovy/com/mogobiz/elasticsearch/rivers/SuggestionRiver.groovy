@@ -72,7 +72,7 @@ class SuggestionRiver extends AbstractESRiver<Suggestion>{
                 'left join fetch taxRate.localTaxRates ' +
                 'left join fetch p.ibeacon ' +
                 'left join fetch p.company ' +
-                'WHERE s.pack.category.catalog.id=:idCatalog and s.product.state = :productState',
+                'WHERE s.pack.category.catalog.id=:idCatalog and p.state = :productState',
                 [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]))
     }
 
