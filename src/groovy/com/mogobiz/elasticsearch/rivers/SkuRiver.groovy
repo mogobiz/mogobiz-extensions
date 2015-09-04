@@ -59,7 +59,7 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
         // preload coupons
         def couponsMap = [:]
 
-        Coupon.executeQuery('select product, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.products as product where (product.category.catalog.id=:idCatalog and product.state=:productState)',
+        Coupon.executeQuery('select product, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.products as product where (product.category.catalog.id=:idCatalog and product.state=:productState and coupon.active=true)',
                 [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
             def key = (a[0] as Product).uuid
             Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
@@ -67,7 +67,7 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
             couponsMap.put(key, coupons)
         }
 
-        Coupon.executeQuery('select ticketType, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.ticketTypes as ticketType left join ticketType.product as product where (product.category.catalog.id=:idCatalog and product.state=:productState and (ticketType.stopDate is null or ticketType.stopDate >= :today))',
+        Coupon.executeQuery('select ticketType, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.ticketTypes as ticketType left join ticketType.product as product where (product.category.catalog.id=:idCatalog and product.state=:productState and (ticketType.stopDate is null or ticketType.stopDate >= :today) and coupon.active=true)',
                 [idCatalog:config.idCatalog, productState:ProductState.ACTIVE, today: now], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
             def key = (a[0] as TicketType).uuid
             Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
@@ -75,7 +75,7 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
             couponsMap.put(key, coupons)
         }
 
-        Coupon.executeQuery('select category, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.categories as category where category.catalog.id=:idCatalog',
+        Coupon.executeQuery('select category, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.categories as category where category.catalog.id=:idCatalog and coupon.active=true',
                 [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
             def key = (a[0] as Category).uuid
             Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
@@ -83,7 +83,7 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
             couponsMap.put(key, coupons)
         }
 
-        Coupon.executeQuery('select catalog, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.catalogs as catalog where catalog.id=:idCatalog',
+        Coupon.executeQuery('select catalog, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.catalogs as catalog where catalog.id=:idCatalog and coupon.active=true',
                 [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
             def key = (a[0] as Catalog).uuid
             Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
