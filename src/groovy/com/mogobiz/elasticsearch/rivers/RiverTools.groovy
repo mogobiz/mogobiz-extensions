@@ -165,9 +165,9 @@ final class RiverTools {
                         final file = logos.iterator().next()
                         logo = ImageTools.encodeBase64(file)
                     }
-                if(logo){
-                    m << [content: logo]
-                }
+                    if(logo){
+                        m << [content: logo]
+                    }
                 }
 
                 b.brandProperties.each {BrandProperty property ->
@@ -760,7 +760,7 @@ final class RiverTools {
             }
 
             List<Map> skus = []
-            p.ticketTypes.each {sku ->
+            p.ticketTypes/*.findAll {!it.stopDate || it.stopDate.after(new Date())}*/.each {sku ->
                 skus << asSkuMap(sku, p, config)
             }
             if(!skus.isEmpty()){
