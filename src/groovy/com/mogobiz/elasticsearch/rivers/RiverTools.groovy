@@ -151,12 +151,22 @@ final class RiverTools {
                         false
                 ) << [increments:0]
 
+                def logo = null
+                def logos = retrieveBrandLogos(b.id, config)
+                if(logos && logos.size() > 0){
+                    final file = logos.iterator().next()
+                    logo = ImageTools.encodeBase64(file)
+                }
+
                 StringBuffer buffer = new StringBuffer('/api/store/')
                         .append(config.clientConfig.store)
-                        .append('/resources/')
+                        .append('/logos/')
                         .append(b.id)
                 String url = retrieveResourceUrl(buffer.toString())
                 m << [picture: url, smallPicture: "$url/SMALL"]
+                if(logo){
+                    m << [content: logo]
+                }
 
                 b.brandProperties.each {BrandProperty property ->
                     m << ["${property.name}":property.value]
@@ -166,6 +176,23 @@ final class RiverTools {
             return m
         }
         [:]
+    }
+
+    static File[] retrieveBrandLogos(Long brandId, RiverConfig config){
+        String logoName = brandId.toString()
+        StringBuffer buffer = new StringBuffer(Holders.config.resources.path as String)
+                .append('/brands/logos/')
+                .append(config.clientConfig.store)
+        File dir = new File(buffer.toString())
+        File[] files = dir.listFiles(
+                new FilenameFilter() {
+                    @Override
+                    boolean accept(File d, String name) {
+                        return name.startsWith(logoName + '.')
+                    }
+                }
+        )
+        files
     }
 
     static Map asCatalogMap(final Catalog catalog, final RiverConfig config){
