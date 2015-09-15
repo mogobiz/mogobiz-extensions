@@ -58,7 +58,7 @@ class BrandRiver extends AbstractESRiver<Brand> {
     Item asItem(Brand b, RiverConfig config) {
         new Item(id:b.id, type: getType(), map:
                 Brand.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]){
-                    RiverTools.asBrandMap(b, config)
+                    RiverTools.asBrandMap(b, config, true)
                 }
         )
     }

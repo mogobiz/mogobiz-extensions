@@ -125,7 +125,7 @@ final class RiverTools {
         value
     }
 
-    static Map asBrandMap(final Brand b, final RiverConfig config) {
+    static Map asBrandMap(final Brand b, final RiverConfig config, boolean deep = false) {
         if(b){
             def m = BrandRiverCache.instance.get(b.uuid)
             if(!m){
@@ -151,21 +151,23 @@ final class RiverTools {
                         false
                 ) << [increments:0]
 
-                def logo = null
-                def logos = retrieveBrandLogos(b.id, config)
-                if(logos && logos.size() > 0){
-                    final file = logos.iterator().next()
-                    logo = ImageTools.encodeBase64(file)
-                }
-
                 StringBuffer buffer = new StringBuffer('/api/store/')
                         .append(config.clientConfig.store)
                         .append('/logos/')
                         .append(b.id)
                 String url = retrieveResourceUrl(buffer.toString())
                 m << [picture: url, smallPicture: "$url/SMALL"]
+
+                if(deep){
+                    def logo = null
+                    def logos = retrieveBrandLogos(b.id, config)
+                    if(logos && logos.size() > 0){
+                        final file = logos.iterator().next()
+                        logo = ImageTools.encodeBase64(file)
+                    }
                 if(logo){
                     m << [content: logo]
+                }
                 }
 
                 b.brandProperties.each {BrandProperty property ->
