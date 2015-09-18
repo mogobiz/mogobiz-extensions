@@ -390,11 +390,27 @@ final class RiverTools {
             final taxRate = p.taxRate
             if(taxRate){
                 final salePrice = m.salePrice
-                taxRate.localTaxRates?.each {localTaxRate ->
-                    final rate = localTaxRate.rate
-                    def l = [endPrice: computeEndPrice(price, rate)]
-                    if(salePrice){
-                        l << [saleEndPrice: computeEndPrice(salePrice as Long, rate)]
+                Map<String, List<LocalTaxRate>> countryTaxRates = taxRate.localTaxRates?.groupBy {it.countryCode}
+                countryTaxRates?.each {country, localTaxRates ->
+                    def l = [:]
+                    localTaxRates?.each {localTaxRate ->
+                        final rate = localTaxRate.rate
+                        if(localTaxRate.stateCode){
+                            l << [endPrice: price]
+                            def s = [:]
+                            s << [endPrice: computeEndPrice(price, rate)]
+                            if(salePrice){
+                                l << [saleEndPrice: salePrice]
+                                s << [saleEndPrice: computeEndPrice(salePrice as Long, rate)]
+                            }
+                            l << ["${localTaxRate.stateCode}": s]
+                        }
+                        else{
+                            l << [endPrice: computeEndPrice(price, rate)]
+                            if(salePrice){
+                                l << [saleEndPrice: computeEndPrice(salePrice as Long, rate)]
+                            }
+                        }
                     }
                     m << ["${localTaxRate.countryCode}": l]
                 }
@@ -842,17 +858,39 @@ final class RiverTools {
             final taxRate = p.taxRate
             if(taxRate){
                 final salePrice = m.salePrice
-                taxRate.localTaxRates?.each {localTaxRate ->
-                    final rate = localTaxRate.rate
-                    def l = [
-                            endPrice: computeEndPrice(price, rate),
-                            maxEndPrice: computeEndPrice(maxPrice as Long, rate),
-                            maxSaleEndPrice: computeEndPrice(maxSalePrice as Long, rate),
-                            minEndPrice: computeEndPrice(minPrice as Long, rate),
-                            minSaleEndPrice: computeEndPrice(minSalePrice as Long, rate)
-                    ]
-                    if(salePrice){
-                        l << [saleEndPrice: computeEndPrice(salePrice as Long, rate)]
+                Map<String, List<LocalTaxRate>> countryTaxRates = taxRate.localTaxRates?.groupBy {it.countryCode}
+                countryTaxRates?.each {country, localTaxRates ->
+                    def l = [:]
+                    localTaxRates?.each {localTaxRate ->
+                        final rate = localTaxRate.rate
+                        if(localTaxRate.stateCode){
+                            l << [endPrice: price]
+                            l << [maxEndPrice: maxPrice]
+                            l << [maxSaleEndPrice: maxSalePrice]
+                            l << [minEndPrice: minPrice]
+                            l << [minSaleEndPrice: minSalePrice]
+                            def s = [:]
+                            s << [endPrice: computeEndPrice(price, rate)]
+                            s << [maxEndPrice: computeEndPrice(maxPrice as Long, rate)]
+                            s << [maxSaleEndPrice: computeEndPrice(maxSalePrice as Long, rate)]
+                            s << [minEndPrice: computeEndPrice(minPrice as Long, rate)]
+                            s << [minSaleEndPrice: computeEndPrice(minSalePrice as Long, rate)]
+                            if(salePrice){
+                                l << [saleEndPrice: salePrice]
+                                s << [saleEndPrice: computeEndPrice(salePrice as Long, rate)]
+                            }
+                            l << ["${localTaxRate.stateCode}": s]
+                        }
+                        else{
+                            l << [endPrice: computeEndPrice(price, rate)]
+                            l << [maxEndPrice: computeEndPrice(maxPrice as Long, rate)]
+                            l << [maxSaleEndPrice: computeEndPrice(maxSalePrice as Long, rate)]
+                            l << [minEndPrice: computeEndPrice(minPrice as Long, rate)]
+                            l << [minSaleEndPrice: computeEndPrice(minSalePrice as Long, rate)]
+                            if(salePrice){
+                                l << [saleEndPrice: computeEndPrice(salePrice as Long, rate)]
+                            }
+                        }
                     }
                     m << ["${localTaxRate.countryCode}": l]
                 }
