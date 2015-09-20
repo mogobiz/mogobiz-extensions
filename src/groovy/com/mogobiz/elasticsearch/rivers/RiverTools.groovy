@@ -407,9 +407,9 @@ final class RiverTools {
                         }
                         else{
                             l << [endPrice: computeEndPrice(price, rate)]
-                    if(salePrice){
-                        l << [saleEndPrice: computeEndPrice(salePrice as Long, rate)]
-                    }
+                            if(salePrice){
+                                l << [saleEndPrice: computeEndPrice(salePrice as Long, rate)]
+                            }
                         }
                     }
                     m << ["${country}": l]
