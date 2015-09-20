@@ -412,7 +412,7 @@ final class RiverTools {
                     }
                         }
                     }
-                    m << ["${localTaxRate.countryCode}": l]
+                    m << ["${country}": l]
                 }
             }
 
@@ -894,7 +894,7 @@ final class RiverTools {
                             }
                         }
                     }
-                    m << ["${localTaxRate.countryCode}": l]
+                    m << ["${country}": l]
                 }
             }
 
