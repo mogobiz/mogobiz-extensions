@@ -394,7 +394,7 @@ final class RiverTools {
                 countryTaxRates?.each {country, localTaxRates ->
                     def l = [:]
                     localTaxRates?.each {localTaxRate ->
-                        final rate = localTaxRate.rate
+                    final rate = localTaxRate.rate
                         if(localTaxRate.stateCode){
                             l << [endPrice: price]
                             def s = [:]
@@ -407,9 +407,9 @@ final class RiverTools {
                         }
                         else{
                             l << [endPrice: computeEndPrice(price, rate)]
-                            if(salePrice){
-                                l << [saleEndPrice: computeEndPrice(salePrice as Long, rate)]
-                            }
+                    if(salePrice){
+                        l << [saleEndPrice: computeEndPrice(salePrice as Long, rate)]
+                    }
                         }
                     }
                     m << ["${localTaxRate.countryCode}": l]
@@ -450,6 +450,8 @@ final class RiverTools {
                 if(!tags.isEmpty()){
                     _p << [tags:tags]
                 }
+
+                _p << [taxRate:asTaxRateMap(taxRate, config)]
 
                 m << [product: _p]
             }
