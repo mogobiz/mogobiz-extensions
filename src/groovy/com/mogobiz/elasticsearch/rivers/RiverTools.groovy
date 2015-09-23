@@ -367,9 +367,9 @@ final class RiverTools {
                         (0..(nbVariations-1)).every {index ->
                             final resourceVariationValue = resourceVariationValues[index]
                             final variationValue = variations.get(index)
-                            resourceVariationValue.equalsIgnoreCase('x') ||
+                            !variationValue.variation.hide && (resourceVariationValue.equalsIgnoreCase('x') ||
                                     resourceVariationValue.equalsIgnoreCase(variationValue.value) ||
-                                    resourceVariationValue.equals("${variationValue.position}")
+                                    resourceVariationValue.equals("${variationValue.position}"))
                         })
                     {
                         def map = asResourceMap(resource, config)
@@ -551,7 +551,7 @@ final class RiverTools {
     }
 
     static Map asVariationMap(VariationValue variationValue, RiverConfig config){
-        if(variationValue){
+        if(variationValue && !variationValue.variation?.hide){
             def m = RenderUtil.asIsoMapForJSON(['value'], variationValue) << RenderUtil.asIsoMapForJSON([
                     'name', 'position', 'uuid', 'hide'], variationValue.variation)
             translate(m, variationValue.id, ['value'], config.languages, config.defaultLang, false)
