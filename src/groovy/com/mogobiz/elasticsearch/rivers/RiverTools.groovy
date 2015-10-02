@@ -235,6 +235,7 @@ final class RiverTools {
                                         "description",
                                         "uuid",
                                         "keywords",
+                                        "position",
                                         "hide"
                                 ],
                                 category
