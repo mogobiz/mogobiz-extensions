@@ -92,10 +92,14 @@ final class RiverTools {
             _languages.each {lang ->
                 // translated properties
                 def translations = m[lang] as Map ?: [:]
-                translationsPerLang.get(lang)?.each {translation ->
+                def items = translationsPerLang.get(lang)
+                items?.each {translation ->
                     new JsonSlurper().parseText(translation.value).each {k, v ->
                         if(included.contains(k)){
                             translations[k] = v
+                        }
+                        else{
+                            log.warn("$k not in ${included.join(",")}")
                         }
                     }
                 }
