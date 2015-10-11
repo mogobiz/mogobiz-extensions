@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2015 Mogobiz SARL. All rights reserved.
+ */
+
 package com.mogobiz.store
 
 import com.mogobiz.constant.IperConstant
