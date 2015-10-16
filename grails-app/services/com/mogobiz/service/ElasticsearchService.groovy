@@ -27,8 +27,12 @@ import com.mogobiz.store.domain.Translation
 import com.mogobiz.utils.DateUtilitaire
 import com.mogobiz.utils.IperUtil
 import com.mogobiz.utils.Page
+import grails.converters.JSON
+import grails.util.Holders
 import groovy.json.JsonBuilder
 import groovy.transform.Synchronized
+import org.apache.commons.lang.StringUtils
+import org.codehaus.groovy.grails.web.json.JSONObject
 import org.quartz.CronExpression
 
 import java.text.NumberFormat
@@ -462,6 +466,7 @@ class ElasticsearchService {
             def store = company.code
             def index = "${store.toLowerCase()}_${DateUtilitaire.format(Calendar.instance, "yyyy.MM.dd.HH.mm.ss")}"
             def debug = true
+
             RiverConfig config = new RiverConfig(
                     clientConfig: new ClientConfig(
                             store: store,
@@ -476,6 +481,26 @@ class ElasticsearchService {
                     languages: languages,
                     defaultLang: company.defaultLanguage
             )
+            def conn = null
+            try
+            {
+                def countries = []
+                def http = HTTPClient.instance
+                conn = http.doGet([debug:debug], new StringBuffer(grailsApplication.config.mogopay.url as String).append('country/countries-for-shipping').toString())
+                if(conn.responseCode >=200 && conn.responseCode < 400){
+                    def data = http.getText([debug:debug], conn)
+                    if(data && !StringUtils.isEmpty(data.toString())){
+                        List<JSONObject> res = JSON.parse(data.toString()) as List<JSONObject>
+                        res.each {JSONObject o ->
+                            countries << o.get('code') as String
+                        }
+                    }
+                    config.countries = countries
+                }
+            }
+            finally {
+                conn?.disconnect()
+            }
 
             AbstractRiverCache.purgeAll()
 

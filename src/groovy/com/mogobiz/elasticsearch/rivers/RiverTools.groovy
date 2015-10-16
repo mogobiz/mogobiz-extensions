@@ -396,9 +396,10 @@ final class RiverTools {
                 m[k] = v
             }
 
+            final countries = config.countries
             final taxRate = p.taxRate
+            final salePrice = m.salePrice
             if(taxRate){
-                final salePrice = m.salePrice
                 Map<String, List<LocalTaxRate>> countryTaxRates = taxRate.localTaxRates?.groupBy {it.countryCode}
                 countryTaxRates?.each {country, localTaxRates ->
                     def l = [:]
@@ -421,8 +422,19 @@ final class RiverTools {
                             }
                         }
                     }
+                    l << [enabled: true]
                     m << ["${country}": l]
+                    countries -= country
                 }
+            }
+            countries.each{country ->
+                def l = [:]
+                l << [endPrice: price]
+                if(salePrice){
+                    l << [saleEndPrice: salePrice]
+                }
+                l << [enabled: false]
+                m << ["${country}": l]
             }
 
             if(deep){
@@ -866,9 +878,10 @@ final class RiverTools {
                 m[k] = v
             }
 
+            final countries = config.countries
             final taxRate = p.taxRate
+            final salePrice = m.salePrice
             if(taxRate){
-                final salePrice = m.salePrice
                 Map<String, List<LocalTaxRate>> countryTaxRates = taxRate.localTaxRates?.groupBy {it.countryCode}
                 countryTaxRates?.each {country, localTaxRates ->
                     def l = [:]
@@ -903,8 +916,22 @@ final class RiverTools {
                             }
                         }
                     }
+                    l << [enabled: true]
                     m << ["${country}": l]
+                    countries -= country
                 }
+            }
+            countries.each{country ->
+                def l = [:]
+                l << [endPrice: price]
+                l << [maxEndPrice: maxPrice]
+                l << [maxSaleEndPrice: maxSalePrice]
+                l << [minEndPrice: minPrice]
+                if(salePrice){
+                    l << [saleEndPrice: salePrice]
+                }
+                l << [enabled: false]
+                m << ["${country}": l]
             }
 
             m << [stockAvailable: p.ticketTypes.any { sku ->
