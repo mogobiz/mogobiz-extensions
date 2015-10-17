@@ -498,6 +498,9 @@ class ElasticsearchService {
                     config.countries = countries
                 }
             }
+            catch(IOException e){
+                log.error(e.message)
+            }
             finally {
                 conn?.disconnect()
             }
