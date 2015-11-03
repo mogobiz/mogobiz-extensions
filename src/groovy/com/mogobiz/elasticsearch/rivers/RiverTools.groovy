@@ -71,7 +71,7 @@ final class RiverTools {
 
     private RiverTools(){}
 
-    def static final Pattern RESOURCE_VARIATION_VALUES = ~/(.*)__(\S*)__(.*)/
+    def static final Pattern RESOURCE_VARIATION_VALUES = ~/(.*)__(.*)__(.*)/
 
     static Map translate(
             Map m,
