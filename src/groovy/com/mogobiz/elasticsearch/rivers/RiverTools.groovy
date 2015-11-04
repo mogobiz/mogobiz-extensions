@@ -539,7 +539,7 @@ final class RiverTools {
             m << ['coupons':mCoupons]
             if(reduction > 0){
                 m << [promotion:[name:name, description:description, reduction:reduction, pastille:pastille]]
-                m << [salePrice: price - reduction]
+                m << [salePrice: Math.max(0, price - reduction)]
             }
         }
         m
