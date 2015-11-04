@@ -807,16 +807,16 @@ final class RiverTools {
             }
 
 
-            final maxPrice = skus?.collect { it.price as Long }?.max() ?: 0L
+            final maxPrice = skus?.collect { it.price as Long  ?: 0L}?.max() ?: 0L
             m << [maxPrice: maxPrice]
 
             final maxSalePrice = skus?.collect { it.salePrice as Long ?: 0L }?.max() ?: 0L
             m << [maxSalePrice: maxSalePrice]
 
-            final minPrice = skus?.collect { it.price as Long }?.min() ?: 0L
+            final minPrice = skus?.collect { it.price as Long ?: [] }?.flatten()?.min() ?: 0L
             m << [minPrice: minPrice]
 
-            final minSalePrice = skus?.collect { it.salePrice as Long ?: 0L }?.min() ?: 0L
+            final minSalePrice = skus?.collect { it.salePrice as Long ?: [] }?.flatten()?.min() ?: 0L
             m << [minSalePrice: minSalePrice]
 
             Set<Long> skuResources = []
