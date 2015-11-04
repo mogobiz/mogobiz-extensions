@@ -392,7 +392,7 @@ final class RiverTools {
             }
 
             final price = sku.price
-            asPromotionsAndCouponsMap(extractSkuCoupons(sku), price).each {k, v ->
+            asPromotionsAndCouponsMap(extractSkuCoupons(sku), price, config).each {k, v ->
                 m[k] = v
             }
 
@@ -513,33 +513,25 @@ final class RiverTools {
         coupons.flatten()
     }
 
-    private static Map asPromotionsAndCouponsMap(Set<Coupon> coupons, Long price){
+    private static Map asPromotionsAndCouponsMap(Set<Coupon> coupons, Long price, RiverConfig config){
         def m = [:]
         def mCoupons = []
-        Long reduction = 0L
-        String name = null
-        String description = null
-        String pastille = null
+        Long reductions = 0L
+        def mPromotions = []
         coupons.flatten().each {Coupon coupon ->
             mCoupons << [id: coupon.id]
             if(coupon.active && coupon.anonymous && (coupon.startDate == null || coupon.startDate?.compareTo(Calendar.getInstance()) <= 0) && (coupon.endDate == null || coupon.endDate?.compareTo(Calendar.getInstance()) >= 0)){
-                if(!name){
-                    name = coupon.name
-                }
-                if(!description){
-                    description = coupon.description
-                }
-                if(!pastille){
-                    pastille = coupon.pastille
-                }
-                reduction += calculerReduction(coupon, price)
+                def map = [description: coupon.description, reduction: calculerReduction(coupon, price)]
+                translate(map, coupon.id, ['name', 'pastille'], config.languages, config.defaultLang, false)
+                mPromotions << map
+                reductions += map.reduction
             }
         }
         if(!mCoupons.isEmpty()){
-            m << ['coupons':mCoupons]
-            if(reduction > 0){
-                m << [promotion:[name:name, description:description, reduction:reduction, pastille:pastille]]
-                m << [salePrice: Math.max(0, price - reduction)]
+            m << [coupons: mCoupons]
+            if(reductions > 0){
+                m << [promotions: mPromotions]
+                m << [salePrice: Math.max(0, price - reductions)]
             }
         }
         m
@@ -874,7 +866,7 @@ final class RiverTools {
             }
 
             final price = p.price
-            asPromotionsAndCouponsMap(extractProductCoupons(p), price).each {k, v ->
+            asPromotionsAndCouponsMap(extractProductCoupons(p), price, config).each {k, v ->
                 m[k] = v
             }
 
