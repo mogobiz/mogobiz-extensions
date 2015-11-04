@@ -533,6 +533,12 @@ final class RiverTools {
                 m << [promotions: mPromotions]
                 m << [salePrice: Math.max(0, price - reductions)]
             }
+            else{
+                m << [salePrice: price]
+            }
+        }
+        else{
+            m << [salePrice: price]
         }
         m
     }
