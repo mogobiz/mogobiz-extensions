@@ -1338,7 +1338,7 @@ final class RiverTools {
         if(price && rate){
             return price + (price * rate / 100f).toLong()
         }
-        null
+        price
     }
 }
 
