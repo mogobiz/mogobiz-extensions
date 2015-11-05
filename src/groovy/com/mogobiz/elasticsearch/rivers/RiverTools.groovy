@@ -521,7 +521,7 @@ final class RiverTools {
         coupons.flatten().each {Coupon coupon ->
             mCoupons << [id: coupon.id]
             if(coupon.active && coupon.anonymous && (coupon.startDate == null || coupon.startDate?.compareTo(Calendar.getInstance()) <= 0) && (coupon.endDate == null || coupon.endDate?.compareTo(Calendar.getInstance()) >= 0)){
-                def map = [description: coupon.description, reduction: calculerReduction(coupon, price)]
+                def map = [description: coupon.description, name: coupon.name, pastille: coupon.pastille, reduction: calculerReduction(coupon, price)]
                 translate(map, coupon.id, ['name', 'pastille'], config.languages, config.defaultLang, false)
                 mPromotions << map
                 reductions += map.reduction
