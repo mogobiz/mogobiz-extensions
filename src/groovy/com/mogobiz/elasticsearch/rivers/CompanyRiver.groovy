@@ -51,6 +51,7 @@ class CompanyRiver extends AbstractESRiver<Company> {
                         << new ESProperty(name:'imported', type:ESClient.TYPE.DATE, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'shipFrom', type:ESClient.TYPE.OBJECT, properties: locationProperties)
                         << new ESProperty(name:'location', type:ESClient.TYPE.OBJECT, properties: locationProperties)
+                        << new ESProperty(name:'shippingInternational', type:ESClient.TYPE.BOOLEAN, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
         )
     }
 

@@ -1312,7 +1312,8 @@ final class RiverTools {
                 'code',
                 'uuid',
                 'aesPassword',
-                'phone'
+                'phone',
+                'shippingInternational'
         ], company) <<
                 [shipFrom: asLocationMap(company.shipFrom, config)] <<
                 [location: asLocationMap(company.location, config)] : [:]
