@@ -18,7 +18,6 @@ import org.hibernate.FlushMode
 import org.springframework.transaction.TransactionDefinition
 
 /**
- * Created by stephane.manciot@ebiznext.com on 14/04/2014.
  */
 class CouponRiver extends AbstractESRiver<Coupon> {
 

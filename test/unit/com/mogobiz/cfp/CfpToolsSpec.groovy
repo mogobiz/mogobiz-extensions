@@ -29,7 +29,6 @@ import grails.test.mixin.support.GrailsUnitTestMixin
 import spock.lang.Specification
 
 /**
- * Created by smanciot on 28/07/14.
  */
 @TestMixin(GrailsUnitTestMixin)
 @Mock([Company, Catalog, Brand, BrandProperty, Tag, Category, Product, ProductProperty, DatePeriod, Stock, TicketType])

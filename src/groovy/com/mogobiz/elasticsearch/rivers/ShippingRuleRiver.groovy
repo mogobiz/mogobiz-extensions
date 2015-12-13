@@ -16,7 +16,6 @@ import org.springframework.transaction.TransactionDefinition
 
 /**
  *
- * Created by smanciot on 25/09/14.
  */
 class ShippingRuleRiver extends AbstractESRiver<ShippingRule> {
     @Override

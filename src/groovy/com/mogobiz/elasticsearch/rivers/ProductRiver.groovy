@@ -19,7 +19,6 @@ import org.springframework.transaction.TransactionDefinition
 import rx.Observable
 
 /**
- * Created by stephane.manciot@ebiznext.com on 18/02/2014.
  */
 class ProductRiver extends AbstractESRiver<Product>{
 

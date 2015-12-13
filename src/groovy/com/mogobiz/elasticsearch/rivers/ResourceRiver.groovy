@@ -20,7 +20,6 @@ import rx.Observable
 
 /**
  *
- * Created by smanciot on 26/01/15.
  */
 class ResourceRiver  extends AbstractESRiver<Resource> {
 

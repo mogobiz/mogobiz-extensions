@@ -44,7 +44,6 @@ import com.mogobiz.elasticsearch.rivers.ESRiversFlow
 
 /**
  *
- * Created by smanciot on 01/09/14.
  */
 class ElasticsearchService {
 

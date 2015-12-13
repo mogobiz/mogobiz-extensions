@@ -9,7 +9,6 @@ import com.mogobiz.store.domain.Translation
 
 /**
  *
- * Created by smanciot on 09/03/15.
  */
 class TranslationsRiverCache extends AbstractRiverCache<List<Translation>> {
     private static TranslationsRiverCache transalationsRiverCache

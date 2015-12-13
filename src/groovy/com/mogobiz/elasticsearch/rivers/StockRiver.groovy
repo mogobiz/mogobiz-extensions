@@ -19,7 +19,6 @@ import org.springframework.transaction.TransactionDefinition
 
 /**
  *
- * Created by smanciot on 23/09/14.
  */
 class StockRiver  extends AbstractESRiver<StockCalendarSku> {
     @Override

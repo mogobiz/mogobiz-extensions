@@ -59,7 +59,6 @@ import java.util.concurrent.Callable
 import static scala.collection.JavaConversions.*
 
 /**
- * Created by smanciot on 26/07/14.
  */
 final class CfpTools {
 

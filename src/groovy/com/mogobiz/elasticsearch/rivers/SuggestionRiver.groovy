@@ -17,7 +17,6 @@ import org.springframework.transaction.TransactionDefinition
 import rx.Observable
 
 /**
- * Created by stephane.manciot@ebiznext.com on 19/02/2014.
  */
 class SuggestionRiver extends AbstractESRiver<Suggestion>{
 

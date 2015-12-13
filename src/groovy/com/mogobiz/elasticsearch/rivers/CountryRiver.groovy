@@ -19,7 +19,6 @@ import org.codehaus.groovy.grails.web.json.JSONObject
 import rx.Observable
 
 /**
- * Created by stephane.manciot@ebiznext.com on 24/02/2014.
  */
 class CountryRiver extends AbstractESRiver<Country> {
 

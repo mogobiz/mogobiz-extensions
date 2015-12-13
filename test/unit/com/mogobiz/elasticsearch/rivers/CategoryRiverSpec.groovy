@@ -28,7 +28,6 @@ import static java.util.concurrent.TimeUnit.SECONDS
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder
 
 /**
- * Created by stephane.manciot@ebiznext.com on 15/02/2014.
  */
 @TestMixin(GrailsUnitTestMixin)
 @Mock([Company, Catalog, Category, Translation])

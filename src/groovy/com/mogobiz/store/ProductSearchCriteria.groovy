@@ -7,7 +7,6 @@ package com.mogobiz.store
 import grails.validation.Validateable
 
 /**
- * Created by stephane.manciot@ebiznext.com on 13/03/2014.
  */
 @Validateable
 class ProductSearchCriteria extends Pagination implements Serializable{

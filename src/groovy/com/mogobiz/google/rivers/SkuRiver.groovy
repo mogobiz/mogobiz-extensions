@@ -20,7 +20,6 @@ import com.mogobiz.store.domain.TicketType
 import com.mogobiz.store.domain.VariationValue
 
 /**
- * Created by smanciot on 30/05/2014.
  */
 class SkuRiver extends AbstractGoogleRiver<TicketType>{
     @Override

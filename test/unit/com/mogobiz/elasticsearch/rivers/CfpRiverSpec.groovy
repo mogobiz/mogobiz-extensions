@@ -61,7 +61,6 @@ import static org.elasticsearch.node.NodeBuilder.*
 import org.elasticsearch.node.Node as ESNode
 
 /**
- * Created by stephane.manciot@ebiznext.com on 29/07/2014.
  */
 @TestMixin(GrailsUnitTestMixin)
 @Mock([Company, Catalog, Brand, BrandProperty, Tag, Category, Product, ProductProperty, DatePeriod, Stock, TicketType,

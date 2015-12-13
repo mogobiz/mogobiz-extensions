@@ -15,7 +15,6 @@ import rx.Observable
 
 /**
  *
- * Created by smanciot on 11/07/15.
  */
 class BOAccountRiver extends AbstractESBORiver<BOAccount>{
 

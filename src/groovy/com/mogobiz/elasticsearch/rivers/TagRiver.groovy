@@ -18,7 +18,6 @@ import org.springframework.transaction.TransactionDefinition
 import rx.Observable
 
 /**
- * Created by stephane.manciot@ebiznext.com on 02/02/2014.
  */
 class TagRiver extends AbstractESRiver<Tag>{
 

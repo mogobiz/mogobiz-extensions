@@ -9,7 +9,6 @@ import com.mogobiz.store.domain.Coupon
 
 /**
  *
- * Created by smanciot on 09/03/15.
  */
 class CouponsRiverCache extends AbstractRiverCache<Set<Coupon>> {
     private static CouponsRiverCache couponsRiverCache

@@ -18,7 +18,6 @@ import rx.Observable
 
 /**
  *
- * Created by stephane.manciot@ebiznext.com on 26/11/2014.
  */
 class CompanyRiver extends AbstractESRiver<Company> {
 

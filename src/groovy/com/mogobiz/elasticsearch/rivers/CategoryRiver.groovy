@@ -19,7 +19,6 @@ import org.springframework.transaction.TransactionDefinition
 import rx.Observable
 
 /**
- * Created by stephane.manciot@ebiznext.com on 15/02/2014.
  */
 class CategoryRiver extends AbstractESRiver<Category>{
 

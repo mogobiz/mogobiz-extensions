@@ -8,7 +8,6 @@ import com.mogobiz.constant.IperConstant
 import grails.validation.Validateable
 
 /**
- * Created by stephane.manciot@ebiznext.com on 13/03/2014.
  */
 @Validateable
 class Pagination implements Serializable{

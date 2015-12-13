@@ -25,7 +25,6 @@ import rx.Observable
 
 /**
  *
- * Created by smanciot on 12/07/15.
  */
 class SkuRiver  extends AbstractESRiver<TicketType>{
 

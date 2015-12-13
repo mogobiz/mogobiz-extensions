@@ -64,7 +64,6 @@ import java.util.regex.Pattern
 
 /**
  *
- * Created by stephane.manciot@ebiznext.com on 20/02/2014.
  */
 @Log4j
 final class RiverTools {

@@ -15,7 +15,6 @@ import com.mogobiz.elasticsearch.client.ESProperty
 import rx.Observable
 
 /**
- * Created by stephane.manciot@ebiznext.com on 24/02/2014.
  */
 class RateRiver extends AbstractESRiver<MogopayRate>{
 

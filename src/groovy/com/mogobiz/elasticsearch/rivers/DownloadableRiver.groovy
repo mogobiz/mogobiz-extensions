@@ -21,7 +21,6 @@ import rx.functions.Func1
 
 /**
  *
- * Created by smanciot on 10/04/15.
  */
 @Log4j
 class DownloadableRiver extends AbstractESRiver<File>{

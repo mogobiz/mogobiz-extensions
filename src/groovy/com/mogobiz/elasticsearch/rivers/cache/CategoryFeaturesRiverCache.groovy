@@ -9,7 +9,6 @@ import com.mogobiz.store.domain.Feature
 
 /**
  *
- * Created by smanciot on 09/03/15.
  */
 class CategoryFeaturesRiverCache extends AbstractRiverCache<Set<Feature>> {
     private static CategoryFeaturesRiverCache categoryFeaturesRiverCache
