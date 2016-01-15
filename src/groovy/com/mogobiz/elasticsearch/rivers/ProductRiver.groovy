@@ -372,7 +372,7 @@ class ProductRiver extends AbstractESRiver<Product>{
                         'left join fetch taxRate.localTaxRates ' +
                         'left join fetch p.ibeacon ' +
                         'left join fetch p.company ' +
-                        'WHERE p.category.catalog.id=:idCatalog and p.state = :productState and p.deleted = false',
+                        'WHERE p.category.catalog.id=:idCatalog and p.state = :productState and p.deleted = false and p.ticketTypes.size > 0',
                 [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]
         ))
     }
