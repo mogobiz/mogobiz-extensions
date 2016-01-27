@@ -523,7 +523,7 @@ final class RiverTools {
                 def map = [description: coupon.description, name: coupon.name, pastille: coupon.pastille, reduction: calculerReduction(coupon, price)]
                 translate(map, coupon.id, ['name', 'pastille'], config.languages, config.defaultLang, false)
                 mPromotions << map
-                reductions += map.reduction
+                reductions = Math.max(reductions, map.reduction as Long)
             }
         }
         if(!mCoupons.isEmpty()){
