@@ -876,7 +876,7 @@ final class RiverTools {
                 m << ["${property.name}":property.value]
             }
 
-            final price = p.price
+            final price = minPrice as Long //p.price deprecated
             asPromotionsAndCouponsMap(extractProductCoupons(p), price, config).each {k, v ->
                 m[k] = v
             }
