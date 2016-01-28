@@ -515,22 +515,24 @@ final class RiverTools {
     private static Map asPromotionsAndCouponsMap(Set<Coupon> coupons, Long price, RiverConfig config){
         def m = [:]
         def mCoupons = []
-        Long reductions = 0L
-        def mPromotions = []
+        Long maxReduction = 0L
+        def mPromotion = [:]
         coupons.flatten().each {Coupon coupon ->
             mCoupons << [id: coupon.id]
             if(coupon.active && coupon.anonymous && (coupon.startDate == null || coupon.startDate?.compareTo(Calendar.getInstance()) <= 0) && (coupon.endDate == null || coupon.endDate?.compareTo(Calendar.getInstance()) >= 0)){
-                def map = [description: coupon.description, name: coupon.name, pastille: coupon.pastille, reduction: calculerReduction(coupon, price)]
-                translate(map, coupon.id, ['name', 'pastille'], config.languages, config.defaultLang, false)
-                mPromotions << map
-                reductions = Math.max(reductions, map.reduction as Long)
+                def reduction = calculerReduction(coupon, price)
+                if(reduction > maxReduction){
+                    maxReduction = reduction
+                    mPromotion = [description: coupon.description, name: coupon.name, pastille: coupon.pastille, reduction: reduction]
+                    translate(mPromotion, coupon.id, ['name', 'pastille'], config.languages, config.defaultLang, false)
+                }
             }
         }
         if(!mCoupons.isEmpty()){
             m << [coupons: mCoupons]
-            if(reductions > 0){
-                m << [promotions: mPromotions]
-                m << [salePrice: Math.max(0, price - reductions)]
+            if(maxReduction > 0){
+                m << [promotions: [mPromotion]]
+                m << [salePrice: Math.max(0, price - maxReduction)]
             }
             else{
                 m << [salePrice: price]
