@@ -256,6 +256,7 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
         skuProperties << new ESProperty(name:'coupons', type:ESClient.TYPE.OBJECT, properties: couponsProperties)
         skuProperties << new ESProperty(name:'salePrice', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
         skuProperties << new ESProperty(name:'promotion', type:ESClient.TYPE.OBJECT, properties: promotionProperties)
+        skuProperties << new ESProperty(name:'promotions', type:ESClient.TYPE.OBJECT, properties: promotionProperties)
         skuProperties << new ESProperty(name:'product', type:ESClient.TYPE.OBJECT, properties: productProperties)
         skuProperties << new ESProperty(name:'available', type:ESClient.TYPE.BOOLEAN, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
         skuProperties << new ESProperty(name:'stockDisplay', type:ESClient.TYPE.BOOLEAN, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
