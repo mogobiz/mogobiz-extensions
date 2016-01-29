@@ -522,7 +522,7 @@ final class RiverTools {
             mCoupons << [id: coupon.id]
             if(coupon.active && coupon.anonymous && (coupon.startDate == null || coupon.startDate?.compareTo(Calendar.getInstance()) <= 0) && (coupon.endDate == null || coupon.endDate?.compareTo(Calendar.getInstance()) >= 0)){
                 def reduction = calculerReduction(coupon, price)
-                def map = [description: coupon.description, name: coupon.name, pastille: coupon.pastille, reduction: reduction]
+                def map = [description: coupon.description?:"", name: coupon.name, pastille: coupon.pastille, reduction: reduction]
                 translate(map, coupon.id, ['name', 'pastille'], config.languages, config.defaultLang, false)
                 mPromotions << map
                 if(reduction > reductions){
