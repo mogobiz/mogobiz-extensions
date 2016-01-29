@@ -801,7 +801,7 @@ final class RiverTools {
             }
 
             List<Map> skus = []
-            p.ticketTypes/*.findAll {!it.stopDate || it.stopDate.after(new Date())}*/.each {sku ->
+            p.ticketTypes.findAll {!it.stopDate || it.stopDate.after(new Date())}.each {sku ->
                 skus << asSkuMap(sku, p, config)
             }
             if(!skus.isEmpty()){
