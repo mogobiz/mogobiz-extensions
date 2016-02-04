@@ -533,14 +533,9 @@ final class RiverTools {
         }
         if(!mCoupons.isEmpty()){
             m << [coupons: mCoupons]
-            if(reductions > 0){
-                m << [promotions: mPromotions]
-                m << [promotion: mPromotion]
-                m << [salePrice: Math.max(0, price - reductions)]
-            }
-            else{
-                m << [salePrice: price]
-            }
+            m << [promotions: mPromotions]
+            m << [promotion: mPromotion]
+            m << [salePrice: Math.max(0, price - reductions)]
         }
         else{
             m << [salePrice: price]
