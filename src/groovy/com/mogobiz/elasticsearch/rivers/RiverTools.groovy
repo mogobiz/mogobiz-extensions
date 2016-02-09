@@ -517,7 +517,7 @@ final class RiverTools {
         def mCoupons = []
         Long reductions = 0L
         def mPromotions = []
-        def mPromotion = [:]
+        def mPromotion
         coupons.flatten().each {Coupon coupon ->
             mCoupons << [id: coupon.id]
             if(coupon.active && coupon.anonymous && (coupon.startDate == null || coupon.startDate?.compareTo(Calendar.getInstance()) <= 0) && (coupon.endDate == null || coupon.endDate?.compareTo(Calendar.getInstance()) >= 0)){
@@ -527,6 +527,9 @@ final class RiverTools {
                 mPromotions << map
                 if(reduction > reductions){
                     reductions = reduction
+                    mPromotion = map
+                }
+                else if(!mPromotion){
                     mPromotion = map
                 }
             }
