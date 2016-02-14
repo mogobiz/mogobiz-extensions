@@ -55,6 +55,7 @@ class DownloadableRiver extends AbstractESRiver<File>{
         def fileProperties = []
         fileProperties << new ESProperty(name:'content', type:ESClient.TYPE.BINARY, index:ESClient.INDEX.NO, multilang:false)
         fileProperties << new ESProperty(name:'content_type', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+        fileProperties << new ESProperty(name:'md5', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
 
         new ESMapping(type:getType(),
                 timestamp:true,
