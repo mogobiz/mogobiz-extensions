@@ -46,9 +46,10 @@ import com.mogobiz.store.domain.VariationValue
 import com.mogobiz.geolocation.domain.Poi
 import com.mogobiz.json.RenderUtil
 import com.mogobiz.store.vo.Country
-import com.mogobiz.tools.FileTools
-import com.mogobiz.tools.ImageTools
-import com.mogobiz.tools.MimeTypeTools
+import static com.mogobiz.tools.FileTools.encodeFileBase64
+import static com.mogobiz.tools.HashTools.generateMD5
+import static com.mogobiz.tools.ImageTools.encodeImageBase64
+import static com.mogobiz.tools.MimeTypeTools.detectMimeType
 import com.mogobiz.utils.IperUtil
 import com.mogobiz.utils.MogopayRate
 import grails.converters.JSON
@@ -170,7 +171,7 @@ final class RiverTools {
                     def logos = retrieveBrandLogos(b.id, config)
                     if(logos && logos.size() > 0){
                         final file = logos.iterator().next()
-                        logo = ImageTools.encodeBase64(file)
+                        logo = encodeImageBase64(file)
                     }
                     if(logo){
                         m << [content: logo]
@@ -604,7 +605,7 @@ final class RiverTools {
                     def path = extractResourcePath(resource)
                     def file = new File(path)
                     if(file.exists()){
-                        content = ImageTools.encodeBase64(file)
+                        content = encodeImageBase64(file)
                     }
                     else{
                         log.warn("${path} not found")
@@ -612,6 +613,7 @@ final class RiverTools {
                 }
                 if(content){
                     m << [content: content]
+                    m << [md5: generateMD5(content)]
                 }
                 if(ResourceType.PICTURE.equals(resource.xtype)){
                     m << [smallPicture:extractSmallPictureUrl(resource, config)]
@@ -1328,8 +1330,8 @@ final class RiverTools {
             [
                     id: file.name,
                     file: [
-                            content: FileTools.encodeBase64(file),
-                            content_type: MimeTypeTools.detectMimeType(file)
+                            content: encodeFileBase64(file),
+                            content_type: detectMimeType(file)
                     ]
             ]
         }
