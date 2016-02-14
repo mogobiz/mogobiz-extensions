@@ -175,6 +175,7 @@ final class RiverTools {
                     }
                     if(logo){
                         m << [content: logo]
+                        m << [md5: generateMD5(logo)]
                     }
                 }
 
@@ -1327,11 +1328,13 @@ final class RiverTools {
 
     static Map asDownloadableMap(File file, RiverConfig config){
         if(file?.exists()) {
+            final encoded = encodeFileBase64(file)
             [
                     id: file.name,
                     file: [
-                            content: encodeFileBase64(file),
-                            content_type: detectMimeType(file)
+                            content: encoded,
+                            content_type: detectMimeType(file),
+                            md5: generateMD5(encoded)
                     ]
             ]
         }
