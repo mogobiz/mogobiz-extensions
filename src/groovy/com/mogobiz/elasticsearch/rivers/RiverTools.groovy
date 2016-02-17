@@ -159,13 +159,6 @@ final class RiverTools {
                         false
                 ) << [increments:0]
 
-                StringBuffer buffer = new StringBuffer('/api/store/')
-                        .append(config.clientConfig.store)
-                        .append('/logos/')
-                        .append(b.id)
-                String url = retrieveResourceUrl(buffer.toString())
-                m << [picture: url, smallPicture: "$url/SMALL"]
-
                 if(deep){
                     def logo = null
                     def logos = retrieveBrandLogos(b.id, config)
@@ -174,6 +167,12 @@ final class RiverTools {
                         logo = encodeImageBase64(file)
                     }
                     if(logo){
+                        StringBuffer buffer = new StringBuffer('/api/store/')
+                                .append(config.clientConfig.store)
+                                .append('/logos/')
+                                .append(b.id)
+                        String url = retrieveResourceUrl(buffer.toString())
+                        m << [picture: url, smallPicture: "$url/SMALL"]
                         m << [content: logo]
                         m << [md5: generateMD5(logo)]
                     }
