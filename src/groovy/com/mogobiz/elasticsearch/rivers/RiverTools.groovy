@@ -871,9 +871,11 @@ final class RiverTools {
 
             m  << [increments:0]
 
+            def properties = [:]
             p.productProperties.each {ProductProperty property ->
-                m << ["${property.name}":property.value]
+                properties << ["${property.name}":property.value]
             }
+            m << [properties: properties]
 
             final price = minPrice as Long
             m << [price: price]
