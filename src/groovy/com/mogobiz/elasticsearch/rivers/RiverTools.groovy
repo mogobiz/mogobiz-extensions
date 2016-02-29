@@ -871,9 +871,9 @@ final class RiverTools {
 
             m  << [increments:0]
 
-            def properties = [:]
+            def properties = []
             p.productProperties.each {ProductProperty property ->
-                properties << ["${property.name}":property.value]
+                properties << [name: property.name, value: property.value]
             }
             m << [properties: properties]
 
