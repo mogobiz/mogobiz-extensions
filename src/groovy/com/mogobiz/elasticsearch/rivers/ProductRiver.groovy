@@ -300,6 +300,8 @@ class ProductRiver extends AbstractESRiver<Product>{
                     [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE, today: now], [readOnly: true, flushMode: FlushMode.MANUAL])
             translations << Translation.executeQuery('select t from Coupon coupon join coupon.catalogs as catalog, Translation t where t.target=coupon.id and t.lang in :languages and (catalog.id=:idCatalog and coupon.active=true)',
                     [languages:_languages, idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL])
+            translations << Translation.executeQuery('select t from Product p left join p.productProperties as pp, Translation t where t.target=pp.id and t.lang in :languages and (p.category.catalog.id=:idCatalog and p.state=:productState)',
+                    [languages:_languages, idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL])
             translations.flatten().groupBy {"${it.target}"}.each {k, v ->
                 TranslationsRiverCache.instance.put(k, v)
             }
