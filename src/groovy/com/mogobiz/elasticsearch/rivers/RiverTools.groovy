@@ -263,8 +263,7 @@ final class RiverTools {
                     coupons << coupon.id
                 }
                 if(!coupons.isEmpty()){
-                    m << [coupons:coupons]
-//                    m << [categoryCoupons:coupons]
+                    m << [categoryCoupons: coupons]
                 }
                 CategoryRiverCache.instance.put(category.uuid, m)
             }
