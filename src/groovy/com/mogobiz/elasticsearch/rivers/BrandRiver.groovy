@@ -55,13 +55,16 @@ class BrandRiver extends AbstractESRiver<Brand> {
             }.each { k, v -> TranslationsRiverCache.instance.put(k, v) }
         }
 
-        Product.executeQuery('select brand.uuid, category from Product p left join fetch p.category as category left join fetch p.brand as brand left join fetch category.parent WHERE category.catalog.id=:idCatalog and p.state = :productState and p.deleted = false',
+        def brandCategoriesRiverCache = BrandCategoriesRiverCache.instance
+
+        Product.executeQuery('select p, brand.uuid, category from Product p left join fetch p.category as category left join fetch p.brand as brand left join fetch category.parent WHERE category.catalog.id=:idCatalog and p.state = :productState and p.deleted = false',
                 [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
-            String key = a[0] as String
-            Category category = a[1] as Category
-            Set<String> categories = BrandCategoriesRiverCache.instance.get(key) ?: []
-            categories << category.fullpath ?: RiverTools.retrieveCategoryPath(category)
-            BrandCategoriesRiverCache.instance.put(key, categories)
+            String key = a[1] as String
+            Category category = a[2] as Category
+            String fullpath = category.fullpath ?: RiverTools.retrieveCategoryPath(category)
+            Set<String> categories = brandCategoriesRiverCache.get(key) ?: []
+            categories << fullpath
+            brandCategoriesRiverCache.put(key, categories)
         }
 
         return Observable.from(Brand.executeQuery('select brand from Brand brand left join fetch brand.brandProperties where brand.company in (select c.company from Catalog c where c.id=:idCatalog)',

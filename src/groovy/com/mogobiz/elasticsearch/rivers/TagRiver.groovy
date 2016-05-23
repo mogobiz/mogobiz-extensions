@@ -38,13 +38,16 @@ class TagRiver extends AbstractESRiver<Tag>{
             }.each { k, v -> TranslationsRiverCache.instance.put(k, v) }
         }
 
-        Product.executeQuery('select tag.uuid, category from Product p left join fetch p.category as category left join fetch p.tags as tag left join fetch category.parent WHERE category.catalog.id=:idCatalog and p.state = :productState and p.deleted = false',
+        def tagCategoriesRiverCache = TagCategoriesRiverCache.instance
+
+        Product.executeQuery('select p, tag.uuid, category from Product p left join fetch p.category as category left join fetch p.tags as tag left join fetch category.parent WHERE category.catalog.id=:idCatalog and p.state = :productState and p.deleted = false',
                 [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).each { a ->
-            String key = a[0] as String
-            Category category = a[1] as Category
-            Set<String> categories = TagCategoriesRiverCache.instance.get(key) ?: []
-            categories << category.fullpath ?: RiverTools.retrieveCategoryPath(category)
-            TagCategoriesRiverCache.instance.put(key, categories)
+            String key = a[1] as String
+            Category category = a[2] as Category
+            String fullpath = category.fullpath ?: RiverTools.retrieveCategoryPath(category)
+            Set<String> categories = tagCategoriesRiverCache.get(key) ?: []
+            categories << fullpath
+            tagCategoriesRiverCache.put(key, categories)
         }
 
         return Observable.from(Tag.executeQuery('SELECT DISTINCT p.tags FROM Product p WHERE p.category.catalog.id=:idCatalog',
