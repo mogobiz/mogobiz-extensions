@@ -489,7 +489,7 @@ class ElasticsearchService {
                     def data = http.getText([debug:debug], conn)
                     if(data && !StringUtils.isEmpty(data.toString())){
                         List<JSONObject> res = JSON.parse(data.toString()) as List<JSONObject>
-                        res.each {JSONObject o ->
+                        res?.each {JSONObject o ->
                             countries << o.get('code') as String
                         }
                     }
