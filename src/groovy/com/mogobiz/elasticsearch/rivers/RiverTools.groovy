@@ -5,6 +5,7 @@
 package com.mogobiz.elasticsearch.rivers
 
 import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.elasticsearch.rivers.cache.BrandCategoriesRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.BrandRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.CategoryFeaturesRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.CategoryRiverCache
@@ -12,6 +13,7 @@ import com.mogobiz.elasticsearch.rivers.cache.CouponsRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.FeatureRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.ResourceRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.ShippingRiverCache
+import com.mogobiz.elasticsearch.rivers.cache.TagCategoriesRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.TagRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.TranslationsRiverCache
 import com.mogobiz.geolocation.domain.Location
@@ -183,6 +185,10 @@ final class RiverTools {
                 }
                 BrandRiverCache.instance.put(b.uuid, m)
             }
+            if(deep){
+                def categories = BrandCategoriesRiverCache.instance.get(b.uuid)?.join(",") ?: ""
+                m << [categories: categories]
+            }
             return m
         }
         [:]
@@ -257,7 +263,7 @@ final class RiverTools {
                         config.languages,
                         config.defaultLang,
                         false
-                ) << [path: retrieveCategoryPath(category, category.sanitizedName)] << [parentId:category.parent?.id] << [increments:0]
+                ) << [path: category.fullpath ?: retrieveCategoryPath(category, category.sanitizedName)] << [parentId:category.parent?.id] << [increments:0]
                 def coupons = []
                 extractCategoryCoupons(category).each {coupon ->
                     coupons << coupon.id
@@ -294,7 +300,7 @@ final class RiverTools {
         ], rate) : [:]
     }
 
-    static Map asTagMap(Tag tag, RiverConfig config) {
+    static Map asTagMap(Tag tag, RiverConfig config, boolean deep = false) {
         if(tag){
             def m = TagRiverCache.instance.get(tag.uuid)
             if(!m){
@@ -315,6 +321,10 @@ final class RiverTools {
                     false
                 ) << [increments:0]
                 TagRiverCache.instance.put(tag.uuid, m)
+            }
+            if(deep){
+                def categories = TagCategoriesRiverCache.instance.get(tag.uuid)?.join(",") ?: ""
+                m << [categories: categories]
             }
             return m
         }
@@ -1195,7 +1205,7 @@ final class RiverTools {
                 .append('/api/store/')
                 .append(config.clientConfig.store)
                 .append('/products/')
-                .append(retrieveCategoryPath(sku.product?.category, sku.product?.category?.sanitizedName))
+                .append(sku.product?.category?.fullpath ?: retrieveCategoryPath(sku.product?.category, sku.product?.category?.sanitizedName))
                 .append('/')
                 .append(sku.sku).toString()
     }

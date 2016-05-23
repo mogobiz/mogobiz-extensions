@@ -6,8 +6,12 @@ package com.mogobiz.elasticsearch.rivers
 
 import com.mogobiz.common.client.Item
 import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.elasticsearch.rivers.cache.TagCategoriesRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.TranslationsRiverCache
 import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
+import com.mogobiz.store.domain.Category
+import com.mogobiz.store.domain.Product
+import com.mogobiz.store.domain.ProductState
 import com.mogobiz.store.domain.Tag
 import com.mogobiz.elasticsearch.client.ESClient
 import com.mogobiz.elasticsearch.client.ESMapping
@@ -33,6 +37,16 @@ class TagRiver extends AbstractESRiver<Tag>{
                 it.target.toString()
             }.each { k, v -> TranslationsRiverCache.instance.put(k, v) }
         }
+
+        Product.executeQuery('select tag.uuid, category from Product p left join fetch p.category as category left join fetch p.tags as tag left join fetch category.parent WHERE category.catalog.id=:idCatalog and p.state = :productState and p.deleted = false',
+                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).each { a ->
+            String key = a[0] as String
+            Category category = a[1] as Category
+            Set<String> categories = TagCategoriesRiverCache.instance.get(key) ?: []
+            categories << category.fullpath ?: RiverTools.retrieveCategoryPath(category)
+            TagCategoriesRiverCache.instance.put(key, categories)
+        }
+
         return Observable.from(Tag.executeQuery('SELECT DISTINCT p.tags FROM Product p WHERE p.category.catalog.id=:idCatalog',
                 [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]))
     }
@@ -44,6 +58,7 @@ class TagRiver extends AbstractESRiver<Tag>{
                 properties: [] << new ESProperty(name:'name', type:ESClient.TYPE.STRING, index:ESClient.INDEX.ANALYZED, multilang:true)
                         << new ESProperty(name:'imported', type:ESClient.TYPE.DATE, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'increments', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+                        << new ESProperty(name:'categories', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
         )
     }
 
@@ -56,7 +71,7 @@ class TagRiver extends AbstractESRiver<Tag>{
     Item asItem(Tag tag, RiverConfig config) {
         new Item(id:tag.id, type: getType(), map:
                 Tag.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
-                    RiverTools.asTagMap(tag, config)
+                    RiverTools.asTagMap(tag, config, true)
                 }
         )
     }

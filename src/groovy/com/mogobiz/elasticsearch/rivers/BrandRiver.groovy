@@ -6,12 +6,16 @@ package com.mogobiz.elasticsearch.rivers
 
 import com.mogobiz.common.client.Item
 import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.elasticsearch.rivers.cache.BrandCategoriesRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.TranslationsRiverCache
 import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
 import com.mogobiz.store.domain.Brand
 import com.mogobiz.elasticsearch.client.ESClient
 import com.mogobiz.elasticsearch.client.ESMapping
 import com.mogobiz.elasticsearch.client.ESProperty
+import com.mogobiz.store.domain.Category
+import com.mogobiz.store.domain.Product
+import com.mogobiz.store.domain.ProductState
 import com.mogobiz.store.domain.Translation
 import org.hibernate.FlushMode
 import org.springframework.transaction.TransactionDefinition
@@ -34,6 +38,7 @@ class BrandRiver extends AbstractESRiver<Brand> {
                         << new ESProperty(name:'increments', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'content', type:ESClient.TYPE.BINARY, index:ESClient.INDEX.NO, multilang:false)
                         << new ESProperty(name:'md5', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+                        << new ESProperty(name:'categories', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
         )
     }
 
@@ -49,6 +54,16 @@ class BrandRiver extends AbstractESRiver<Brand> {
                 it.target.toString()
             }.each { k, v -> TranslationsRiverCache.instance.put(k, v) }
         }
+
+        Product.executeQuery('select brand.uuid, category from Product p left join fetch p.category as category left join fetch p.brand as brand left join fetch category.parent WHERE category.catalog.id=:idCatalog and p.state = :productState and p.deleted = false',
+                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
+            String key = a[0] as String
+            Category category = a[1] as Category
+            Set<String> categories = BrandCategoriesRiverCache.instance.get(key) ?: []
+            categories << category.fullpath ?: RiverTools.retrieveCategoryPath(category)
+            BrandCategoriesRiverCache.instance.put(key, categories)
+        }
+
         return Observable.from(Brand.executeQuery('select brand from Brand brand left join fetch brand.brandProperties where brand.company in (select c.company from Catalog c where c.id=:idCatalog)',
                 [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]))
     }
