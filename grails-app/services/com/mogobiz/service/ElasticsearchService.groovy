@@ -584,8 +584,10 @@ curl -XPUT ${url}/$index/_alias/$store
                                     log.info("Start clearing Jahia Cache")
                                     def jahiaClearCache = grailsApplication.config.external?.jahiaClearCache
                                     if(jahiaClearCache){
+                                        def jahiaSecret = grailsApplication.config.external.jahiaSecret ?: '12345'
+                                        conn = null
                                         try{
-                                            conn = httpClient.doGet([debug: true], jahiaClearCache)
+                                            conn = httpClient.doGet([debug: true], jahiaClearCache, ['secret': jahiaSecret, 'storeCode': company.code])
                                             log.info("call to $jahiaClearCache -> ${conn.responseCode}")
                                         }
                                         finally {
