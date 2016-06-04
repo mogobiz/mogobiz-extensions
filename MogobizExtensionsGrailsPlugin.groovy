@@ -1,7 +1,7 @@
 class MogobizExtensionsGrailsPlugin {
     def packaging = "binary"
     // the plugin version
-    def version = "0.4.1-SNAPSHOT"
+    def version = "1.0.0"
     // the version or versions of Grails the plugin is designed for
     def grailsVersion = "2.3 > *"
     // resources that are excluded from plugin packaging
