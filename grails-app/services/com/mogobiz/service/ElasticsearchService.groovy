@@ -28,7 +28,6 @@ import com.mogobiz.utils.DateUtilitaire
 import com.mogobiz.utils.IperUtil
 import com.mogobiz.utils.Page
 import grails.converters.JSON
-import grails.util.Holders
 import groovy.json.JsonBuilder
 import groovy.transform.Synchronized
 import org.apache.commons.lang.StringUtils
@@ -490,14 +489,14 @@ class ElasticsearchService {
                     def data = http.getText([debug:debug], conn)
                     if(data && !StringUtils.isEmpty(data.toString())){
                         List<JSONObject> res = JSON.parse(data.toString()) as List<JSONObject>
-                        res.each {JSONObject o ->
+                        res?.each {JSONObject o ->
                             countries << o.get('code') as String
                         }
                     }
                     config.countries = countries
                 }
             }
-            catch(IOException e){
+            catch(Throwable e){
                 log.error(e.message)
             }
             finally {
@@ -585,9 +584,10 @@ curl -XPUT ${url}/$index/_alias/$store
                                     log.info("Start clearing Jahia Cache")
                                     def jahiaClearCache = grailsApplication.config.external?.jahiaClearCache
                                     if(jahiaClearCache){
+                                        def jahiaSecret = grailsApplication.config.external.jahiaSecret ?: '12345'
                                         conn = null
                                         try{
-                                            conn = httpClient.doGet([debug: true], jahiaClearCache)
+                                            conn = httpClient.doGet([debug: true], jahiaClearCache, ['secret': jahiaSecret, 'storeCode': company.code])
                                             log.info("call to $jahiaClearCache -> ${conn.responseCode}")
                                         }
                                         finally {

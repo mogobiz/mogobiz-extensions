@@ -39,7 +39,7 @@ class SkuRiver extends AbstractGoogleRiver<TicketType>{
             def description = sku.description
             map << [content:description && description.trim().length() > 0 ? description : sku.product.description]
             map << [google_product_category: sku.product?.category?.googleCategory]
-            def path = RiverTools.retrieveCategoryPath(sku.product?.category, sku.product?.category?.sanitizedName)
+            def path = sku.product?.category?.fullpath ?: RiverTools.retrieveCategoryPath(sku.product?.category, sku.product?.category?.sanitizedName)
             map << [product_type: path?.split('/')?.join(' &gt; ')]
             map << [link:RiverTools.retrieveSkuUrl(sku, riverConfig)]
             def picture = sku.picture
