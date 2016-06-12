@@ -230,6 +230,13 @@
         </dependency>
 
         <dependency>
+            <groupId>com.mogobiz.rivers</groupId>
+            <artifactId>mogobiz-mirakl</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
             <groupId>com.mogobiz</groupId>
             <artifactId>mogobiz-core</artifactId>
             <version>${project.version}</version>
