@@ -6,6 +6,7 @@ import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.mirakl.client.domain.Attribute
 import com.mogobiz.mirakl.client.domain.AttributeType
 import com.mogobiz.mirakl.client.domain.MiraklAttribute
+import scala.Some
 
 import static com.mogobiz.mirakl.client.MiraklClient.*
 import com.mogobiz.mirakl.client.domain.MiraklCategory
@@ -24,6 +25,8 @@ import org.hibernate.FlushMode
 class MiraklService {
 
     static transactional = false
+
+    def sanitizeUrlService
 
     def publish(Company company, MiraklEnv env, Catalog catalog, boolean manual = false) {
         if (catalog?.name?.trim()?.toLowerCase() == "impex") {
@@ -59,30 +62,28 @@ class MiraklService {
             final publishable = false // TODO publishable = true
 
             // 0. Load catalog categories
-            def categories = Category.executeQuery(
-                    'select cat FROM Category cat left join fetch cat.features as feature left join fetch feature.values left join fetch cat.variations as variation left join fetch variation.variationValues where cat.catalog.id=:idCatalog and cat.publishable=:publishable and cat.deleted=false',
+            Set<Category> categories = Category.executeQuery(
+                    'select cat FROM Category cat left join fetch cat.parent left join fetch cat.features as feature left join fetch feature.values left join fetch cat.variations as variation left join fetch variation.variationValues where cat.catalog.id=:idCatalog and cat.publishable=:publishable and cat.deleted=false',
                     [idCatalog:config.idCatalog, publishable: publishable],
                     [readOnly: true, flushMode: FlushMode.MANUAL]
-            )
+            ).toSet()
 
             def hierarchies = []
             def values = []
             def attributes = []
 
-            categories.collect {category ->
-                final parent = category.parent
-                final hierarchyCode = "$store.${category.sanitizedName}"
+            categories.each {category ->
+                def parent = category.parent
+                def hierarchyCode = "${store}_${category.sanitizedName}"
                 hierarchies << new MiraklHierarchy(
                         hierarchyCode,
                         category.name,
-                        toScalaOption(
-                                parent ? new MiraklCategory("${store}_${parent.sanitizedName}", "") : null
-                        )
+                        parent ? Some.apply(new MiraklCategory("${store}_${parent.sanitizedName}", "")) : toScalaOption(null)
                 )
                 category.features?.each {feature ->
-                    final featureCode = "${hierarchyCode}_${feature.name}"
-                    final featureLabel = "${feature.name}"
-                    final featureListValues = new MiraklValue(
+                    def featureCode = "${hierarchyCode}_${sanitizeUrlService.sanitizeWithDashes(feature.name)}"
+                    def featureLabel = "${feature.name}"
+                    def featureListValues = new MiraklValue(
                             "$featureCode-list",
                             featureLabel
                     )
@@ -90,20 +91,20 @@ class MiraklService {
                             code: featureCode,
                             label: featureLabel,
                             hierarchyCode: hierarchyCode,
-                            type: AttributeType.TEXT,
-                            valuesList: featureListValues.code,
+                            type: AttributeType.LIST,
+                            typeParameter: featureListValues.code,
                             variant: false,
                             required: false
                     ))
                     feature.values.collect { featureValue ->
-                        final val = "${featureValue.value}"
-                        values << new MiraklValue(val, val, toScalaOption(featureListValues))
+                        def val = "${featureValue.value}"
+                        values << new MiraklValue(sanitizeUrlService.sanitizeWithDashes(val), val, Some.apply(featureListValues))
                     }
                 }
                 category.variations?.each { variation ->
-                    final variationCode = "${hierarchyCode}_${variation.name}"
-                    final variationlabel = "${variation.name}"
-                    final variationListValues = new MiraklValue(
+                    def variationCode = "${hierarchyCode}_${sanitizeUrlService.sanitizeWithDashes(variation.name)}"
+                    def variationlabel = "${variation.name}"
+                    def variationListValues = new MiraklValue(
                             "$variationCode-list",
                             variationlabel
                     )
@@ -111,14 +112,14 @@ class MiraklService {
                             code: variationCode,
                             label: variationlabel,
                             hierarchyCode: hierarchyCode,
-                            type: AttributeType.TEXT,
-                            valuesList: variationListValues.code,
+                            type: AttributeType.LIST,
+                            typeParameter: variationListValues.code,
                             variant: true,
                             required: false
                     ))
                     variation.variationValues.each { variationValue ->
-                        final val = "${variationValue.value}"
-                        values << new MiraklValue(val, val, toScalaOption(variationListValues))
+                        def val = "${variationValue.value}"
+                        values << new MiraklValue(sanitizeUrlService.sanitizeWithDashes(val), val, Some.apply(variationListValues))
                     }
                 }
             }
