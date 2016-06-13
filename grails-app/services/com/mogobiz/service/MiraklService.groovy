@@ -85,7 +85,7 @@ class MiraklService {
                 category.features?.each {feature ->
                     final featureCode = "${hierarchyCode}_${feature.name}"
                     final featureLabel = "${feature.name}"
-                    final featureParent = new MiraklValue(
+                    final featureListValues = new MiraklValue(
                             "$featureCode-list",
                             featureLabel
                     )
@@ -94,18 +94,18 @@ class MiraklService {
                             label: featureLabel,
                             hierarchyCode: hierarchyCode,
                             type: AttributeType.TEXT,
-                            valuesList: featureParent.code,
+                            valuesList: featureListValues.code,
                             variant: false
                     ))
-                    feature.values.collect {value ->
-                        final val = "${value.value}"
-                        values << new MiraklValue(val, val, toScalaOption(featureParent))
+                    feature.values.collect { featureValue ->
+                        final val = "${featureValue.value}"
+                        values << new MiraklValue(val, val, toScalaOption(featureListValues))
                     }
                 }
                 category.variations?.each { variation ->
                     final variationCode = "${hierarchyCode}_${variation.name}"
                     final variationlabel = "${variation.name}"
-                    final variationParent = new MiraklValue(
+                    final variationListValues = new MiraklValue(
                             "$variationCode-list",
                             variationlabel
                     )
@@ -114,12 +114,12 @@ class MiraklService {
                             label: variationlabel,
                             hierarchyCode: hierarchyCode,
                             type: AttributeType.TEXT,
-                            valuesList: variationParent.code,
+                            valuesList: variationListValues.code,
                             variant: true
                     ))
-                    variation.variationValues.each {value ->
-                        final val = "${value.value}"
-                        values << new MiraklValue(val, val, toScalaOption(variationParent))
+                    variation.variationValues.each { variationValue ->
+                        final val = "${variationValue.value}"
+                        values << new MiraklValue(val, val, toScalaOption(variationListValues))
                     }
                 }
             }
