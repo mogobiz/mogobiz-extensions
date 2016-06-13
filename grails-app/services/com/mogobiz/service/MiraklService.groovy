@@ -29,10 +29,7 @@ class MiraklService {
         if (catalog?.name?.trim()?.toLowerCase() == "impex") {
             return
         }
-        boolean running = MiraklEnv.withTransaction {
-            MiraklEnv.findByRunning(true) != null
-        }
-        if (!running && company && env && env.company == company && catalog && catalog.company == company && (manual || catalog.activationDate < new Date())) {
+        if (company && env && env.company == company && !env.running && catalog && catalog.company == company && (manual || catalog.activationDate < new Date())) {
             log.info("${manual ? "Manual " : ""}Export to Mirakl has started ...")
             MiraklEnv.withTransaction {
                 env.refresh()
@@ -95,7 +92,8 @@ class MiraklService {
                             hierarchyCode: hierarchyCode,
                             type: AttributeType.TEXT,
                             valuesList: featureListValues.code,
-                            variant: false
+                            variant: false,
+                            required: false
                     ))
                     feature.values.collect { featureValue ->
                         final val = "${featureValue.value}"
@@ -115,7 +113,8 @@ class MiraklService {
                             hierarchyCode: hierarchyCode,
                             type: AttributeType.TEXT,
                             valuesList: variationListValues.code,
-                            variant: true
+                            variant: true,
+                            required: false
                     ))
                     variation.variationValues.each { variationValue ->
                         final val = "${variationValue.value}"
@@ -144,7 +143,7 @@ class MiraklService {
                 def sync = new MiraklSync()
                 sync.company = company
                 sync.catalog = catalog
-                sync.type = MiraklSyncType.HIERARCHIES
+                sync.type = MiraklSyncType.VALUES
                 sync.status = MiraklSyncStatus.QUEUED
                 sync.timestamp = new Date()
                 sync.trackingId = "${importValues(config, values).importId}"
@@ -159,7 +158,7 @@ class MiraklService {
                 def sync = new MiraklSync()
                 sync.company = company
                 sync.catalog = catalog
-                sync.type = MiraklSyncType.HIERARCHIES
+                sync.type = MiraklSyncType.ATTRIBUTES
                 sync.status = MiraklSyncStatus.QUEUED
                 sync.timestamp = new Date()
                 sync.trackingId = "${importAttributes(config, attributes).importId}"
@@ -169,7 +168,13 @@ class MiraklService {
                 }
             }
 
-            // TODO import offers
+            // 4. Import Offers TODO
+
+            MiraklEnv.withTransaction {
+                env.refresh()
+                env.running = false
+                env.save(flush: true)
+            }
         }
     }
 }
