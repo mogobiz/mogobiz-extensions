@@ -491,6 +491,9 @@ final class RiverTools {
 
             m << asStockMap(sku)
 
+            m << [miraklOffer: p.publishable]
+            m << [miraklOfferId: p.publishable ? sku.uuid: ""]
+
             return m
         }
         [:]
