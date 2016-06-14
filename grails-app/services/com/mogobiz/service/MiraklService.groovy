@@ -1,5 +1,6 @@
 package com.mogobiz.service
 
+import com.mogobiz.common.client.BulkAction
 import com.mogobiz.common.client.ClientConfig
 import com.mogobiz.common.client.Credentials
 import com.mogobiz.common.rivers.spi.RiverConfig
@@ -68,17 +69,19 @@ class MiraklService {
                     [readOnly: true, flushMode: FlushMode.MANUAL]
             ).toSet()
 
-            def hierarchies = []
+            List<MiraklCategory> hierarchies = []
             def values = []
             def attributes = []
 
             categories.each {category ->
                 def parent = category.parent
                 def hierarchyCode = "${store}_${category.sanitizedName}"
-                hierarchies << new MiraklHierarchy(
+                hierarchies << new MiraklCategory(
                         hierarchyCode,
                         category.name,
-                        parent ? Some.apply(new MiraklCategory("${store}_${parent.sanitizedName}", "")) : toScalaOption(null)
+                        BulkAction.UPDATE,
+                        parent ? Some.apply(new MiraklCategory("${store}_${parent.sanitizedName}", "")) : toScalaOption(null),
+                        category.logisticClass
                 )
                 category.features?.each {feature ->
                     def featureCode = "${hierarchyCode}_${sanitizeUrlService.sanitizeWithDashes(feature.name)}"
@@ -124,7 +127,22 @@ class MiraklService {
                 }
             }
 
-            // 1. Import product Hierarchy
+            // 1. synchronize categories
+            MiraklSync.withTransaction {
+                def sync = new MiraklSync()
+                sync.company = company
+                sync.catalog = catalog
+                sync.type = MiraklSyncType.CATEGORIES
+                sync.status = MiraklSyncStatus.QUEUED
+                sync.timestamp = new Date()
+                sync.trackingId = "${synchronizeCategories(config, hierarchies).synchroId}"
+                sync.validate()
+                if(!sync.hasErrors()){
+                    sync.save(flush: true)
+                }
+            }
+
+            // 2. Import product Hierarchy
             MiraklSync.withTransaction {
                 def sync = new MiraklSync()
                 sync.company = company
@@ -132,14 +150,14 @@ class MiraklService {
                 sync.type = MiraklSyncType.HIERARCHIES
                 sync.status = MiraklSyncStatus.QUEUED
                 sync.timestamp = new Date()
-                sync.trackingId = "${importHierarchies(config, hierarchies).importId}"
+                sync.trackingId = "${importHierarchies(config, hierarchies.collect {new MiraklHierarchy(it)}).importId}"
                 sync.validate()
                 if(!sync.hasErrors()){
                     sync.save(flush: true)
                 }
             }
 
-            // 2. Import List of Values
+            // 3. Import List of Values
             MiraklSync.withTransaction {
                 def sync = new MiraklSync()
                 sync.company = company
@@ -154,7 +172,7 @@ class MiraklService {
                 }
             }
 
-            // 3. Import Attributes
+            // 4. Import Attributes
             MiraklSync.withTransaction {
                 def sync = new MiraklSync()
                 sync.company = company
@@ -169,7 +187,7 @@ class MiraklService {
                 }
             }
 
-            // 4. Import Offers TODO
+            // 5. Import Offers TODO
 
             MiraklEnv.withTransaction {
                 env.refresh()
