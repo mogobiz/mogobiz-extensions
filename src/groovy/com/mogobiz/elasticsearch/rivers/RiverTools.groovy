@@ -886,9 +886,12 @@ final class RiverTools {
 
             def properties = []
             p.productProperties.each {ProductProperty property ->
-                def ppm = [name: property.name, value: property.value]
-                translate(ppm, property.id, ['name', 'value'], config.languages, config.defaultLang, false)
-                properties << ppm
+                final name = property.name
+                if(!name.startsWith("_")){
+                    def ppm = [name: name, value: property.value]
+                    translate(ppm, property.id, ['name', 'value'], config.languages, config.defaultLang, false)
+                    properties << ppm
+                }
             }
             m << [properties: properties]
 
