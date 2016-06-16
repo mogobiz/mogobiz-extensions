@@ -3,11 +3,17 @@ package com.mogobiz.service
 import com.mogobiz.common.client.BulkAction
 import com.mogobiz.common.client.ClientConfig
 import com.mogobiz.common.client.Credentials
+import com.mogobiz.common.rivers.AbstractRiverCache
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.mirakl.client.domain.Attribute
 import com.mogobiz.mirakl.client.domain.AttributeType
 import com.mogobiz.mirakl.client.domain.MiraklApi
 import com.mogobiz.mirakl.client.domain.MiraklAttribute
+import com.mogobiz.mirakl.client.io.ImportOffersResponse
+import com.mogobiz.mirakl.rivers.MiraklRiverFlow
+import com.mogobiz.mirakl.rivers.OfferRiver
+import rx.Subscriber
+import rx.internal.reactivestreams.SubscriberAdapter
 import scala.Some
 
 import static com.mogobiz.mirakl.client.MiraklClient.*
@@ -186,18 +192,62 @@ class MiraklService {
                 }
             }
 
-            // 5. Import Offers TODO
+            // 5. Import Offers
             final List<String> offersHeader = [MiraklApi.offersHeader()]
             offersHeader.addAll(attributes.collect {it.code})
             config.clientConfig.config << [offersHeader: offersHeader.join(";")]
+            def subscriber = new Subscriber<ImportOffersResponse>(){
+                final long before = System.currentTimeMillis()
 
-            // 6. synchronize products TODO
+                @Override
+                void onCompleted() {
+                    log.info("export within ${System.currentTimeMillis() - before} ms")
+                    AbstractRiverCache.purgeAll()
 
-            MiraklEnv.withTransaction {
-                env.refresh()
-                env.running = false
-                env.save(flush: true)
+                    // 6. synchronize products TODO
+
+                    MiraklEnv.withTransaction {
+                        env.refresh()
+                        env.running = false
+                        env.save(flush: true)
+                    }
+                }
+
+                @Override
+                void onError(Throwable th) {
+                    AbstractRiverCache.purgeAll()
+                    log.error(th.message, th)
+                    MiraklEnv.withTransaction {
+                        env.refresh()
+                        env.running = false
+                        env.save(flush: true)
+                    }
+                }
+
+                @Override
+                void onNext(ImportOffersResponse importOffersResponse) {
+                    MiraklSync.withTransaction {
+                        def sync = new MiraklSync()
+                        sync.company = company
+                        sync.catalog = catalog
+                        sync.type = MiraklSyncType.OFFERS
+                        sync.status = MiraklSyncStatus.QUEUED
+                        sync.timestamp = new Date()
+                        sync.trackingId = "${importOffersResponse.importId}"
+                        sync.validate()
+                        if(!sync.hasErrors()){
+                            sync.save(flush: true)
+                        }
+                    }
+                }
             }
+            MiraklRiverFlow.synchronize(
+                    new OfferRiver(),
+                    config,
+                    Math.min(1, Runtime.getRuntime().availableProcessors()),
+                    10,
+                    new SubscriberAdapter(subscriber)
+            )
 
         }
     }
