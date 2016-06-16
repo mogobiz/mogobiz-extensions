@@ -48,6 +48,7 @@ grails.project.dependency.resolution = {
         compile 'com.mogobiz.rivers:mogobiz-google-shopping:1.1.0-SNAPSHOT'
         compile 'com.mogobiz.rivers:mogobiz-cfp:1.1.0-SNAPSHOT'
         compile 'com.mogobiz.rivers:mogobiz-mirakl:1.1.0-SNAPSHOT'
+        compile 'com.mogobiz.rivers:mogobiz-mirakl-flow:1.1.0-SNAPSHOT'
 
     }
 

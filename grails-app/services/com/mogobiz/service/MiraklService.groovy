@@ -6,6 +6,7 @@ import com.mogobiz.common.client.Credentials
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.mirakl.client.domain.Attribute
 import com.mogobiz.mirakl.client.domain.AttributeType
+import com.mogobiz.mirakl.client.domain.MiraklApi
 import com.mogobiz.mirakl.client.domain.MiraklAttribute
 import scala.Some
 
@@ -44,14 +45,12 @@ class MiraklService {
             if (languages.size() == 0) {
                 languages = [company.defaultLanguage] as List<String>
             }
-            def url = env.url
-            def store = company.code
             def debug = true
 
             RiverConfig config = new RiverConfig(
                     clientConfig: new ClientConfig(
-                            store: store,
-                            url: url,
+                            merchant_id: env.shopId,
+                            merchant_url: env.url,
                             debug: debug,
                             credentials: new Credentials(apiKey: env.apiKey)
                     ),
@@ -71,16 +70,16 @@ class MiraklService {
 
             List<MiraklCategory> hierarchies = []
             def values = []
-            def attributes = []
+            List<MiraklAttribute> attributes = []
 
             categories.each {category ->
                 def parent = category.parent
-                def hierarchyCode = "${store}_${category.sanitizedName}"
+                def hierarchyCode = "${category.sanitizedName}"
                 hierarchies << new MiraklCategory(
                         hierarchyCode,
                         category.name,
                         BulkAction.UPDATE,
-                        parent ? Some.apply(new MiraklCategory("${store}_${parent.sanitizedName}", "")) : toScalaOption(null),
+                        parent ? Some.apply(new MiraklCategory("${parent.sanitizedName}", "")) : toScalaOption(null),
                         category.logisticClass
                 )
                 category.features?.each {feature ->
@@ -188,12 +187,18 @@ class MiraklService {
             }
 
             // 5. Import Offers TODO
+            final List<String> offersHeader = [MiraklApi.offersHeader()]
+            offersHeader.addAll(attributes.collect {it.code})
+            config.clientConfig.config << [offersHeader: offersHeader.join(";")]
+
+            // 6. synchronize products TODO
 
             MiraklEnv.withTransaction {
                 env.refresh()
                 env.running = false
                 env.save(flush: true)
             }
+
         }
     }
 }

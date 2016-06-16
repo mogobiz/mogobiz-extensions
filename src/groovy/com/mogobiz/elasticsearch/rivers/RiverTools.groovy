@@ -18,6 +18,7 @@ import com.mogobiz.elasticsearch.rivers.cache.TagRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.TranslationsRiverCache
 import com.mogobiz.geolocation.domain.Location
 import com.mogobiz.http.client.HTTPClient
+import com.mogobiz.mirakl.client.domain.MiraklOffer
 import com.mogobiz.store.domain.Brand
 import com.mogobiz.store.domain.BrandProperty
 import com.mogobiz.store.domain.Catalog
@@ -329,6 +330,10 @@ final class RiverTools {
             return m
         }
         [:]
+    }
+
+    static MiraklOffer asMiraklOffer(TicketType sku, Product p = sku.product, RiverConfig config, boolean deep = false){
+        return null // TODO
     }
 
     static Map asSkuMap(TicketType sku, Product p = sku.product, RiverConfig config, boolean deep = false){
