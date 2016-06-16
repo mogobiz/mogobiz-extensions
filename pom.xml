@@ -7,7 +7,7 @@
     <groupId>com.mogobiz</groupId>
     <artifactId>mogobiz-extensions</artifactId>
     <packaging>grails-binary-plugin</packaging>
-    <version>1.0.0</version>
+    <version>1.0.0-RC1</version>
 
     <name>mogobiz extensions grails plugin</name>
     <description>mogobiz extensions grails plugin</description>
