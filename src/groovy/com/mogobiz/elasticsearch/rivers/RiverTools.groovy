@@ -346,7 +346,7 @@ final class RiverTools {
         [:]
     }
 
-    static Closure<Long> quantityClosure = { TicketType tt ->
+    static Long quantity(TicketType tt) {
         def stock = tt.stock
         def p = tt.product
         if(!stock.stockUnlimited){
@@ -380,18 +380,18 @@ final class RiverTools {
         }
     }
 
-    static Closure<MiraklAttributeValue> vvToAttributeValue = {VariationValue vv ->
+    static MiraklAttributeValue vvToAttributeValue(VariationValue vv) {
         final variation = vv.variation
         def hierarchyCode = miraklCategoryCode(variation.category)
         def variationCode = "${hierarchyCode}_${sanitizeService.sanitizeWithDashes(variation.name)}"
         new MiraklAttributeValue(variationCode, toScalaOption(vv.value))
     }
 
-    static Closure<String> categoryFullPath = { Category category ->
+    static String categoryFullPath(Category category) {
         category?.fullpath ?: category ? retrieveCategoryPath(category, category.sanitizedName) : ""
     }
 
-    static Closure<String> miraklCategoryCode = { Category category ->
+    static String miraklCategoryCode(Category category) {
         def fullPath = categoryFullPath(category).replaceAll("/", "_")
         fullPath.length() <= 255 ? fullPath : category.sanitizedName
     }
@@ -457,7 +457,7 @@ final class RiverTools {
         def description = sku.description
 
         // retrieve quantity
-        def quantity =  toScalaOption(quantityClosure(sku))
+        def quantity =  toScalaOption(quantity(sku))
 
         // retrieve discount price
         Long reductions = null

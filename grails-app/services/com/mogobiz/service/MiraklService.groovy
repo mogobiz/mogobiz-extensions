@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2015 Mogobiz SARL. All rights reserved.
+ */
+
 package com.mogobiz.service
 
 import com.mogobiz.common.client.BulkAction
@@ -69,12 +73,10 @@ class MiraklService {
                     defaultLang: company.defaultLanguage
             )
 
-            final publishable = false // TODO publishable = true
-
             // 0. Load catalog categories
             Set<Category> categories = Category.executeQuery(
-                    'select cat FROM Category cat left join fetch cat.parent left join fetch cat.features as feature left join fetch feature.values left join fetch cat.variations as variation left join fetch variation.variationValues where cat.catalog.id=:idCatalog and cat.publishable=:publishable and cat.deleted=false',
-                    [idCatalog:config.idCatalog, publishable: publishable],
+                    'select cat FROM Category cat left join fetch cat.parent left join fetch cat.features as feature left join fetch feature.values left join fetch cat.variations as variation left join fetch variation.variationValues where cat.catalog.id=:idCatalog and cat.publishable=true and cat.deleted=false',
+                    [idCatalog:config.idCatalog],
                     [readOnly: true, flushMode: FlushMode.MANUAL]
             ).toSet()
 
@@ -199,7 +201,7 @@ class MiraklService {
             // 5. Import Offers
             final List<String> offersHeader = [MiraklApi.offersHeader()]
             offersHeader.addAll(attributes.collect {it.code})
-            config.clientConfig.config << [offersHeader: offersHeader.join(";")]
+            config.clientConfig.config = [:] << [offersHeader: offersHeader.join(";")]
             def subscriber = new Subscriber<ImportOffersResponse>(){
                 final long before = System.currentTimeMillis()
 
