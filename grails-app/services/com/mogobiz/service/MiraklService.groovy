@@ -30,6 +30,10 @@ import com.mogobiz.store.domain.MiraklSyncType
 import com.mogobiz.store.domain.Translation
 import org.hibernate.FlushMode
 
+import static com.mogobiz.tools.ScalaTools.*
+
+import static com.mogobiz.elasticsearch.rivers.RiverTools.miraklCategoryCode
+
 class MiraklService {
 
     static transactional = false
@@ -80,12 +84,12 @@ class MiraklService {
 
             categories.each {category ->
                 def parent = category.parent
-                def hierarchyCode = "${category.sanitizedName}"
+                def hierarchyCode = miraklCategoryCode(category)
                 hierarchies << new MiraklCategory(
                         hierarchyCode,
                         category.name,
                         BulkAction.UPDATE,
-                        parent ? Some.apply(new MiraklCategory("${parent.sanitizedName}", "")) : toScalaOption(null),
+                        parent ? Some.apply(new MiraklCategory(miraklCategoryCode(parent), "")) : toScalaOption(null),
                         category.logisticClass
                 )
                 category.features?.each {feature ->
