@@ -456,7 +456,7 @@ final class RiverTools {
         def price = sku.price
 
         // retrieve description
-        def description = sku.description
+        def description = toScalaOption(sku.description)
 
         // retrieve quantity
         def quantity =  toScalaOption(quantity(sku))
