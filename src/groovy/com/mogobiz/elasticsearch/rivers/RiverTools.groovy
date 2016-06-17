@@ -430,7 +430,9 @@ final class RiverTools {
                     BulkAction.UPDATE
             )
         }
-        null
+        else{
+            null
+        }
     }
 
     static MiraklOffer asMiraklOffer(TicketType sku, Product p = sku.product, RiverConfig config){

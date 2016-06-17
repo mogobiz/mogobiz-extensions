@@ -63,6 +63,7 @@ class MiraklService {
 
             RiverConfig config = new RiverConfig(
                     clientConfig: new ClientConfig(
+                            store: company.code,
                             merchant_id: env.shopId,
                             merchant_url: env.url,
                             debug: debug,
