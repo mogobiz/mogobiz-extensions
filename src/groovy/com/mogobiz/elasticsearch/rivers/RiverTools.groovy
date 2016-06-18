@@ -398,12 +398,13 @@ final class RiverTools {
 
     static MiraklProduct asMiraklProduct(Product p, RiverConfig config){
         if(p){
+            def shopId = config.clientConfig.merchant_id
             def code = p.uuid // p.code ?
             def label = p.name
             def description = toScalaOption(p.description)
             def category = miraklCategoryCode(p.category)
             def active = toScalaOption(p.state == ProductState.ACTIVE)
-            def shopSkus = p.ticketTypes?.collect {it.uuid}
+            def shopSkus = p.ticketTypes?.collect {"$shopId|${it.uuid}"}
             def brand = toScalaOption(p.brand?.name)
             List<Product2Resource> bindedResources = p.product2Resources.findAll {it.resource.xtype = ResourceType.PICTURE}.toList()
             def picture = bindedResources.size() > 0 ? bindedResources.get(0).resource : null
@@ -446,7 +447,7 @@ final class RiverTools {
         // retrieve sku ids
         def skuId = sku.uuid
         def productId = p.uuid
-        def productIdType = ProductIdType.SHOP_SKU
+        def productIdType = ProductIdType.SKU
 
         // retrieve available start date / end date
         def availableStartDate = toScalaOption(p.startDate?.time)
