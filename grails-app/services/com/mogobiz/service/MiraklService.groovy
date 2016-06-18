@@ -44,6 +44,8 @@ class MiraklService {
 
     def sanitizeUrlService
 
+    def grailsApplication
+
     def publish(Company company, MiraklEnv env, Catalog catalog, boolean manual = false) {
         if (catalog?.name?.trim()?.toLowerCase() == "impex") {
             return
@@ -61,6 +63,8 @@ class MiraklService {
             }
             def debug = true
 
+            def mirakl = grailsApplication.config.mirakl["${company.code}"] as Map
+
             RiverConfig config = new RiverConfig(
                     debug: true,
                     clientConfig: new ClientConfig(
@@ -68,7 +72,10 @@ class MiraklService {
                             merchant_id: env.shopId,
                             merchant_url: env.url,
                             debug: debug,
-                            credentials: new Credentials(apiKey: env.apiKey)
+                            credentials: new Credentials(
+                                    frontKey: mirakl.frontKey as String, //TODO extract from model, eg. env.frontKey
+                                    apiKey: env.apiKey
+                            )
                     ),
                     idCatalog: catalog.id,
                     languages: languages,
