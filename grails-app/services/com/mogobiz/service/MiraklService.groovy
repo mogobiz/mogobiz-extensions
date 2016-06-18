@@ -219,10 +219,13 @@ class MiraklService {
                 }
             }
 
-            // 5. Import Offers
-            final List<String> offersHeader = [MiraklApi.offersHeader()]
-            offersHeader.addAll(attributes.collect {it.code})
-            config.clientConfig.config = [:] << [offersHeader: offersHeader.join(";")]
+            // 5. Import Offers TODO + Products
+            final List<String> offersHeader = []
+            offersHeader .addAll(MiraklApi.offersHeader().split(";")) // offer headers
+            offersHeader.addAll(attributes.collect {it.code}) // features + variations attributes
+//            offersHeader.addAll(["category", "identifier", "title"]) // required product attributes FIXME handle attributes mapping
+//            offersHeader.addAll(MiraklApi.productsHeader().split(";")) // product headers
+            config.clientConfig.config = [:] << [offersHeader: offersHeader.unique {a, b -> a <=> b}.join(";")]
             def subscriber = new Subscriber<ImportOffersResponse>(){
                 final long before = System.currentTimeMillis()
 
@@ -230,8 +233,6 @@ class MiraklService {
                 void onCompleted() {
                     log.info("export within ${System.currentTimeMillis() - before} ms")
                     AbstractRiverCache.purgeAll()
-
-                    // 6. synchronize products TODO
 
                     MiraklEnv.withTransaction {
                         env.refresh()
@@ -279,6 +280,22 @@ class MiraklService {
                             sync.status = MiraklSyncStatus.QUEUED
                             sync.timestamp = new Date()
                             sync.trackingId = productImportId.toString()
+                            sync.validate()
+                            if(!sync.hasErrors()){
+                                sync.save(flush: true)
+                            }
+                        }
+                    }
+                    final productSynchroId = importOffersResponse?.productSynchroId
+                    if(productSynchroId){
+                        MiraklSync.withTransaction {
+                            def sync = new MiraklSync()
+                            sync.company = company
+                            sync.catalog = catalog
+                            sync.type = MiraklSyncType.PRODCUCTS //TODO add PRODUCTS_SYNCHRO type
+                            sync.status = MiraklSyncStatus.QUEUED
+                            sync.timestamp = new Date()
+                            sync.trackingId = productSynchroId.toString()
                             sync.validate()
                             if(!sync.hasErrors()){
                                 sync.save(flush: true)
