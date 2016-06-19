@@ -38,7 +38,7 @@ import java.text.NumberFormat
 import java.text.SimpleDateFormat
 
 import rx.Subscriber
-import rx.internal.reactivestreams.RxSubscriberToRsSubscriberAdapter
+import rx.internal.reactivestreams.SubscriberAdapter
 import com.mogobiz.elasticsearch.rivers.ESRiversFlow
 
 /**
@@ -641,7 +641,7 @@ curl -XPUT ${url}/$index/_alias/$store
                     }
                 }
 
-                ESRiversFlow.exportRiversItemsWithSubscription(ESRivers.getInstance(), config, 1, 10, new RxSubscriberToRsSubscriberAdapter(subscriber))
+                ESRiversFlow.exportRiversItemsWithSubscription(ESRivers.getInstance(), config, 1, 10, new SubscriberAdapter(subscriber))
             }
             else{
                 log.error("an error occured while creating index ${response.error}")
@@ -763,7 +763,7 @@ curl -XPUT ${url}/$index/_alias/$store
                     }
                 }
 
-                ESRiversFlow.exportRiversItemsWithSubscription(ESBORivers.getInstance(), config, 1, 10, new RxSubscriberToRsSubscriberAdapter(subscriber))
+                ESRiversFlow.exportRiversItemsWithSubscription(ESBORivers.getInstance(), config, 1, 10, new SubscriberAdapter(subscriber))
             }
             else{
                 log.error("an error occured while creating index ${response.error}")

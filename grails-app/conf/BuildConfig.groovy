@@ -1,7 +1,6 @@
-//grails.project.class.dir = "target/classes"
-//grails.project.test.class.dir = "target/test-classes"
-//grails.project.test.reports.dir = "target/test-reports"
-grails.project.work.dir = "target"
+grails.project.class.dir = "target/classes"
+grails.project.test.class.dir = "target/test-classes"
+grails.project.test.reports.dir = "target/test-reports"
 
 //grails.plugin.location."mogobiz-core" = "../mogobiz-core"
 
@@ -45,9 +44,11 @@ grails.project.dependency.resolution = {
             excludes 'org.elasticsearch:elasticsearch'
         }
 
-        compile 'com.mogobiz.rivers:mogobiz-elasticsearch-flow:1.0.0-RC2'
-        compile 'com.mogobiz.rivers:mogobiz-google-shopping:1.0.0-RC2'
-        compile 'com.mogobiz.rivers:mogobiz-cfp:1.0.0-RC2'
+        compile 'com.mogobiz.rivers:mogobiz-elasticsearch-flow:1.1.0-SNAPSHOT'
+        compile 'com.mogobiz.rivers:mogobiz-google-shopping:1.1.0-SNAPSHOT'
+        compile 'com.mogobiz.rivers:mogobiz-cfp:1.1.0-SNAPSHOT'
+        compile 'com.mogobiz.rivers:mogobiz-mirakl:1.1.0-SNAPSHOT'
+        compile 'com.mogobiz.rivers:mogobiz-mirakl-flow:1.1.0-SNAPSHOT'
 
     }
 
@@ -56,7 +57,7 @@ grails.project.dependency.resolution = {
               ":rest-client-builder:1.0.3") {
             export = false
         }
-        compile group:"com.mogobiz", name:"mogobiz-core", version:"1.0.0-RC2"
+        compile group:"com.mogobiz", name:"mogobiz-core", version:"1.1.0-SNAPSHOT"
 
     }
 }

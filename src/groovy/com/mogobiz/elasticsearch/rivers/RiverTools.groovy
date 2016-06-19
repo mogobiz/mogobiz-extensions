@@ -4,6 +4,7 @@
 
 package com.mogobiz.elasticsearch.rivers
 
+import com.mogobiz.common.client.BulkAction
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.elasticsearch.rivers.cache.BrandCategoriesRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.BrandRiverCache
@@ -18,6 +19,11 @@ import com.mogobiz.elasticsearch.rivers.cache.TagRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.TranslationsRiverCache
 import com.mogobiz.geolocation.domain.Location
 import com.mogobiz.http.client.HTTPClient
+import com.mogobiz.mirakl.client.domain.MiraklAttributeValue
+import com.mogobiz.mirakl.client.domain.MiraklOffer
+import com.mogobiz.mirakl.client.domain.MiraklProduct
+import com.mogobiz.mirakl.client.domain.ProductIdType
+import com.mogobiz.service.SanitizeUrlService
 import com.mogobiz.store.domain.Brand
 import com.mogobiz.store.domain.BrandProperty
 import com.mogobiz.store.domain.Catalog
@@ -32,6 +38,7 @@ import com.mogobiz.store.domain.Product
 import com.mogobiz.store.domain.Product2Resource
 import com.mogobiz.store.domain.ProductCalendar
 import com.mogobiz.store.domain.ProductProperty
+import com.mogobiz.store.domain.ProductState
 import com.mogobiz.store.domain.ReductionRule
 import com.mogobiz.store.domain.ReductionRuleType
 import com.mogobiz.store.domain.Resource
@@ -48,10 +55,12 @@ import com.mogobiz.store.domain.VariationValue
 import com.mogobiz.geolocation.domain.Poi
 import com.mogobiz.json.RenderUtil
 import com.mogobiz.store.vo.Country
+
 import static com.mogobiz.tools.FileTools.encodeFileBase64
 import static com.mogobiz.tools.HashTools.generateMD5
 import static com.mogobiz.tools.ImageTools.encodeImageBase64
 import static com.mogobiz.tools.MimeTypeTools.detectMimeType
+import static com.mogobiz.tools.ScalaTools.*
 import com.mogobiz.utils.IperUtil
 import com.mogobiz.utils.MogopayRate
 import grails.converters.JSON
@@ -74,6 +83,12 @@ final class RiverTools {
     private RiverTools(){}
 
     def static final Pattern RESOURCE_VARIATION_VALUES = ~/(.*)__(.*)__(.*)/
+
+    def static final sanitizeService = new SanitizeUrlService()
+
+    def static final none = toScalaOption(null)
+
+    def static final emptyList = toScalaList([])
 
     static Map translate(
             Map m,
@@ -263,7 +278,7 @@ final class RiverTools {
                         config.languages,
                         config.defaultLang,
                         false
-                ) << [path: category.fullpath ?: retrieveCategoryPath(category, category.sanitizedName)] << [parentId:category.parent?.id] << [increments:0]
+                ) << [path: categoryFullPath(category)] << [parentId:category.parent?.id] << [increments:0]
                 def coupons = []
                 extractCategoryCoupons(category).each {coupon ->
                     coupons << coupon.id
@@ -331,6 +346,181 @@ final class RiverTools {
         [:]
     }
 
+    static Long quantity(TicketType tt) {
+        def stock = tt.stock
+        def p = tt.product
+        if(!stock.stockUnlimited){
+            def stockCalendars = tt.stockCalendars
+            if(stockCalendars){
+                // Il y a eu des ventes, on prend le stock restant
+                if (p?.calendarType == ProductCalendar.NO_DATE) {
+                    StockCalendar stockCalendar = stockCalendars.size() > 0 ? stockCalendars.first() : null
+                    if (stockCalendar) {
+                        return Math.max(0L, stockCalendar.stock - stockCalendar.sold)
+                    }
+                    else
+                    {
+                        return stock.stock
+                    }
+                }
+                else{
+                    def stockCalendar = stockCalendars.find {stockCalendar ->
+                        stockCalendar.startDate.time.before(new Date())
+                    }
+                    return Math.max(0L, stockCalendar.stock - stockCalendar.sold)
+                }
+            }
+            else {
+                // Il n'y a pas eu de vente, on prend le stock initial
+                return stock.stock
+            }
+        }
+        else{
+            return null
+        }
+    }
+
+    static MiraklAttributeValue vvToAttributeValue(VariationValue vv) {
+        final variation = vv.variation
+        def hierarchyCode = miraklCategoryCode(variation.category)
+        def variationCode = "${hierarchyCode}_${sanitizeService.sanitizeWithDashes(variation.name)}"
+        new MiraklAttributeValue(variationCode, toScalaOption(vv.value))
+    }
+
+    static String categoryFullPath(Category category) {
+        category?.fullpath ?: category ? retrieveCategoryPath(category, category.sanitizedName) : ""
+    }
+
+    static String miraklCategoryCode(Category category) {
+        def fullPath = categoryFullPath(category).replaceAll("/", "_")
+        fullPath.length() <= 255 ? fullPath : category.sanitizedName
+    }
+
+    static MiraklProduct asMiraklProduct(Product p, RiverConfig config){
+        if(p){
+            def shopId = config.clientConfig.merchant_id
+            def code = p.uuid // p.code ?
+            def label = p.name
+            def description = toScalaOption(p.description)
+            def category = miraklCategoryCode(p.category)
+            def active = toScalaOption(p.state == ProductState.ACTIVE)
+            def shopSkus = p.ticketTypes?.collect {"$shopId|${it.uuid}"}
+            def brand = toScalaOption(p.brand?.name)
+            List<Product2Resource> bindedResources = p.product2Resources.findAll {it.resource.xtype = ResourceType.PICTURE}.toList()
+            def picture = bindedResources.size() > 0 ? bindedResources.get(0).resource : null
+            def media = toScalaOption(picture ? extractResourceUrl(picture, config) : null)
+            def miraklProperties = p.productProperties?.
+                    findAll {pp -> pp.name.toLowerCase().startsWith("_mirakl_")}?.
+                    collectEntries {pp -> [pp.name.substring(8), pp.value]}
+            def variantGroupCode = toScalaOption(miraklProperties?.variant_group_code as String ?: null)
+            def logisticClass = toScalaOption(miraklProperties?.logistic_class as String ?: null)
+            new MiraklProduct(
+                    code,
+                    label,
+                    description,
+                    category,
+                    active,
+                    emptyList, // TODO product references ?
+                    toScalaList(shopSkus),
+                    brand,
+                    none, // TODO product Url ?
+                    media,
+                    emptyList, // TODO shops authorized ?
+                    variantGroupCode,
+                    logisticClass,
+                    BulkAction.UPDATE
+            )
+        }
+        else{
+            null
+        }
+    }
+
+    static MiraklOffer asMiraklOffer(TicketType sku, Product p = sku.product, RiverConfig config){
+
+        // retrieve mirakl properties
+        def miraklProperties = p.productProperties?.
+                findAll {pp -> pp.name.toLowerCase().startsWith("_mirakl_")}?.
+                collectEntries {pp -> [pp.name.substring(8), pp.value]}
+        def state = (miraklProperties?.state ?: config.clientConfig.config?.state ?: "11") as String
+
+        // retrieve sku ids
+        def skuId = sku.uuid
+        def productId = p.uuid
+        def productIdType = ProductIdType.SKU
+
+        // retrieve available start date / end date
+        def availableStartDate = toScalaOption(p.startDate?.time)
+        def availableEndDate = toScalaOption(p.stopDate?.time)
+
+        // retrieve selling price (without taxes)
+        def price = sku.price
+
+        // retrieve description
+        def description = toScalaOption(sku.description)
+
+        // retrieve quantity
+        def quantity =  toScalaOption(quantity(sku))
+
+        // retrieve discount price
+        Long reductions = null
+        extractSkuCoupons(sku).flatten().each {Coupon coupon ->
+            if(coupon.active
+                    && coupon.anonymous
+                    && (coupon.startDate == null || coupon.startDate?.compareTo(Calendar.getInstance()) <= 0)
+                    && (coupon.endDate == null || coupon.endDate?.compareTo(Calendar.getInstance()) >= 0)){
+                def reduction = calculerReduction(coupon, price)
+                if(!reductions || reduction > reductions){
+                    reductions = reduction
+                }
+            }
+        }
+        reductions = reductions ? Math.max(0L, price - reductions) : null
+        def discountPrice = toScalaOption(reductions)
+
+        // retrieve attributes
+        List<MiraklAttributeValue> attributes = []
+
+        // handle variations
+        final variation1 = sku.variation1
+        if(variation1){
+            attributes << vvToAttributeValue(variation1)
+        }
+        final variation2 = sku.variation2
+        if(variation2){
+            attributes << vvToAttributeValue(variation2)
+        }
+        final variation3 = sku.variation3
+        if(variation3){
+            attributes << vvToAttributeValue(variation3)
+        }
+
+        // TODO handle product features
+
+        return new MiraklOffer(
+                skuId,
+                productId,
+                productIdType,
+                description,
+                price,
+                quantity,
+                state,
+                none,
+                none,
+                none,
+                availableStartDate,
+                availableEndDate,
+                discountPrice,
+                none,
+                none,
+                none,
+                none,
+                BulkAction.UPDATE,
+                toScalaList(attributes),
+                toScalaOption(asMiraklProduct(p, config))
+        )
+    }
+
     static Map asSkuMap(TicketType sku, Product p = sku.product, RiverConfig config, boolean deep = false){
         if(sku){
             def m = RenderUtil.asIsoMapForJSON([
@@ -388,7 +578,7 @@ final class RiverTools {
                             final variationValue = variations.get(index)
                             !variationValue.variation.hide && (resourceVariationValue.equalsIgnoreCase('x') ||
                                     resourceVariationValue.equalsIgnoreCase(variationValue.value) ||
-                                    resourceVariationValue.equals("${variationValue.position}"))
+                                    resourceVariationValue.equals("${variationValue.position}" as String))
                         })
                     {
                         def map = asResourceMap(resource, config)
@@ -490,6 +680,9 @@ final class RiverTools {
             m << [available: isAvailable(sku)]
 
             m << asStockMap(sku)
+
+            m << [miraklOffer: p.publishable]
+            m << [miraklOfferId: p.publishable ? sku.uuid: ""]
 
             return m
         }
@@ -883,9 +1076,12 @@ final class RiverTools {
 
             def properties = []
             p.productProperties.each {ProductProperty property ->
-                def ppm = [name: property.name, value: property.value]
-                translate(ppm, property.id, ['name', 'value'], config.languages, config.defaultLang, false)
-                properties << ppm
+                final name = property.name
+                if(!name.startsWith("_")){
+                    def ppm = [name: name, value: property.value]
+                    translate(ppm, property.id, ['name', 'value'], config.languages, config.defaultLang, false)
+                    properties << ppm
+                }
             }
             m << [properties: properties]
 
@@ -1205,7 +1401,7 @@ final class RiverTools {
                 .append('/api/store/')
                 .append(config.clientConfig.store)
                 .append('/products/')
-                .append(sku.product?.category?.fullpath ?: retrieveCategoryPath(sku.product?.category, sku.product?.category?.sanitizedName))
+                .append(categoryFullPath(sku.product?.category))
                 .append('/')
                 .append(sku.sku).toString()
     }
