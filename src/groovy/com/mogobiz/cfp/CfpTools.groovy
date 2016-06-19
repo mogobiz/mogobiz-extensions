@@ -46,7 +46,7 @@ import static java.nio.file.Paths.get
 
 // rxjava-reactive-streams
 import rx.Subscriber
-import rx.internal.reactivestreams.RxSubscriberToRsSubscriberAdapter
+import rx.internal.reactivestreams.SubscriberAdapter
 
 // akka
 
@@ -109,7 +109,7 @@ final class CfpTools {
                         extractCatalog(company, conference)
                     }
                 };
-                CfpClient.loadAllConferences(cfpUrl, new RxSubscriberToRsSubscriberAdapter<CfpConferenceDetails>(subscriber));
+                CfpClient.loadAllConferences(cfpUrl, new SubscriberAdapter<CfpConferenceDetails>(subscriber));
             }
         }
         company
