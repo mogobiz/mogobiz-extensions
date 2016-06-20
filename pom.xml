@@ -575,6 +575,30 @@
         <pluginManagement/>
 
         <plugins>
+            <plugin>
+                <groupId>com.google.code.maven-replacer-plugin</groupId>
+                <artifactId>replacer</artifactId>
+                <executions>
+                    <execution>
+                        <phase>pre-clean</phase>
+                        <goals>
+                            <goal>replace</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <ignoreMissingFile>false</ignoreMissingFile>
+                    <file>${project.basedir}/MogobizExtensionsGrailsPlugin.groovy.template</file>
+                    <outputFile>${project.basedir}/MogobizExtensionsGrailsPlugin.groovy</outputFile>
+                    <replacements>
+                        <replacement>
+                            <token>%PROJECT_VERSION%</token>
+                            <value>${project.version}</value>
+                        </replacement>
+                    </replacements>
+                </configuration>
+                <extensions>true</extensions>
+            </plugin>
             <!-- Disables the Maven surefire plugin for Grails applications, as we have our own test runner -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
