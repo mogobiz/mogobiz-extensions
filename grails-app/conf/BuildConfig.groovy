@@ -1,4 +1,4 @@
-mogobiz.version="1.0.0-RC2"
+mogobiz.version="${appVersion}"
 grails.project.class.dir = "target/classes"
 grails.project.test.class.dir = "target/test-classes"
 grails.project.test.reports.dir = "target/test-reports"
