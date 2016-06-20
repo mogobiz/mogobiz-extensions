@@ -481,6 +481,15 @@ final class RiverTools {
         // retrieve attributes
         List<MiraklAttributeValue> attributes = []
 
+//        // category
+//        attributes << new MiraklAttributeValue("category", toScalaOption(miraklCategoryCode(p.category)))
+//        // description
+//        attributes << new MiraklAttributeValue("description", toScalaOption(p.description))
+//        // identifier
+//        attributes << new MiraklAttributeValue("identifier", toScalaOption(p.uuid))
+//        // title
+//        attributes << new MiraklAttributeValue("title", toScalaOption(p.name))
+
         // handle variations
         final variation1 = sku.variation1
         if(variation1){
