@@ -57,7 +57,7 @@ grails.project.dependency.resolution = {
               ":rest-client-builder:1.0.3") {
             export = false
         }
-        compile group:"com.mogobiz", name:"mogobiz-core", version:"${mogobiz.version}"
+        compile "com.mogobiz:mogobiz-core:${mogobiz.version}"
 
     }
 }
