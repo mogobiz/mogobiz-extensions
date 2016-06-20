@@ -5,7 +5,6 @@ import com.mogobiz.common.client.BulkResponse
 import com.mogobiz.common.client.ClientConfig
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.elasticsearch.client.ESClient
-import com.mogobiz.elasticsearch.rivers.ESRivers
 import com.mogobiz.http.client.HTTPClient
 import com.mogobiz.store.domain.Brand
 import com.mogobiz.store.domain.BrandProperty
@@ -30,7 +29,6 @@ import com.mogobiz.store.domain.Product2Resource
 import com.mogobiz.store.domain.ProductProperty
 import com.mogobiz.store.domain.ProductPropertyValidation
 import com.mogobiz.store.domain.ProductRender
-import com.mogobiz.store.domain.ProductState
 import com.mogobiz.store.domain.ProductValidation
 import com.mogobiz.store.domain.Resource
 import com.mogobiz.store.domain.Stock
@@ -49,7 +47,6 @@ import grails.test.mixin.TestMixin
 import grails.test.mixin.support.GrailsUnitTestMixin
 import grails.util.Holders
 import groovy.json.JsonBuilder
-import rx.functions.Action1
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
@@ -157,7 +154,7 @@ class CfpRiverSpec extends Specification{
         finally{
             client.closeConnection(conn)
         }
-        ESClient.instance.removeIndex(Holders.config.elasticsearch.serverURL as String, 'devoxx', 1, [debug:true])
+        ESClient.instance.removeIndex(Holders.config.elasticsearch.serverURL as String, 'devoxx', [debug:true])
     }
 
     def "export cfp catalog should succeed" (){
