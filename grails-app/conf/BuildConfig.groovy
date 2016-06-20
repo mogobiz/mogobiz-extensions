@@ -2,7 +2,7 @@ mogobiz.version="1.0.0-RC2"
 grails.project.class.dir = "target/classes"
 grails.project.test.class.dir = "target/test-classes"
 grails.project.test.reports.dir = "target/test-reports"
-grails.plugin.location."mogobiz-core" = "../mogobiz-core"
+//grails.plugin.location."mogobiz-core" = "../mogobiz-core"
 
 grails.project.fork = [
     // configure settings for compilation JVM, note that if you alter the Groovy version forked compilation is required
@@ -39,8 +39,8 @@ grails.project.dependency.resolution = {
     dependencies {
         // specify dependencies here under either 'build', 'compile', 'runtime', 'test' or 'provided' scopes eg.
         // runtime 'mysql:mysql-connector-java:5.1.27'
-        compile 'org.elasticsearch:elasticsearch:1.2.1'
-        compile ('org.elasticsearch:elasticsearch-analysis-icu:2.2.0') {
+        compile 'org.elasticsearch:elasticsearch:1.7.3'
+        compile ('org.elasticsearch:elasticsearch-analysis-icu:2.7.0') {
             excludes 'org.elasticsearch:elasticsearch'
         }
 

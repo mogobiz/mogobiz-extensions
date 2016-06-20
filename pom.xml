@@ -2,12 +2,15 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <parent>
+        <artifactId>mogobiz-grails</artifactId>
+        <groupId>com.mogobiz</groupId>
+        <version>1.0.0-RC2</version>
+    </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.mogobiz</groupId>
     <artifactId>mogobiz-extensions</artifactId>
     <packaging>grails-binary-plugin</packaging>
-    <version>1.0.0-RC2</version>
 
     <name>mogobiz extensions grails plugin</name>
     <description>mogobiz extensions grails plugin</description>
@@ -15,57 +18,7 @@
     <properties>
         <grails.version>2.3.8</grails.version>
         <h2.version>1.3.170</h2.version>
-        <akka.version>2.3.12</akka.version>
-        <akka.stream.version>1.0-M3</akka.stream.version>
     </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <!-- spock-core //-->
-            <dependency>
-                <groupId>org.spockframework</groupId>
-                <artifactId>spock-core</artifactId>
-                <version>0.7-groovy-2.0</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.codehaus.groovy</groupId>
-                        <artifactId>groovy-all</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-
-            <!-- nekohtml //-->
-            <dependency>
-                <groupId>net.sourceforge.nekohtml</groupId>
-                <artifactId>nekohtml</artifactId>
-                <version>1.9.15</version>
-                <type>jar</type>
-                <scope>compile</scope>
-                <!--
-                <exclusions>
-                    <exclusion>
-                        <groupId>xerces</groupId>
-                        <artifactId>xercesImpl</artifactId>
-                    </exclusion>
-                </exclusions>
-                //-->
-            </dependency>
-
-            <dependency>
-                <groupId>xerces</groupId>
-                <artifactId>xercesImpl</artifactId>
-                <version>2.8.1</version>
-                <scope>runtime</scope>
-                <exclusions>
-                    <exclusion>
-                        <groupId>xml-apis</groupId>
-                        <artifactId>xml-apis</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-
-        </dependencies>
-    </dependencyManagement>
 
     <dependencies>
 
@@ -160,14 +113,12 @@
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>javax.servlet-api</artifactId>
-            <version>3.0.1</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.11</version>
             <scope>test</scope>
         </dependency>
 
@@ -181,15 +132,65 @@
         <dependency>
             <groupId>org.elasticsearch</groupId>
             <artifactId>elasticsearch</artifactId>
-            <version>1.2.1</version>
             <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>org.elasticsearch</groupId>
             <artifactId>elasticsearch-analysis-icu</artifactId>
-            <version>2.2.0</version>
             <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mogobiz.rivers</groupId>
+            <artifactId>mogobiz-http-client</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.codehaus.groovy</groupId>
+                    <artifactId>groovy-all</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mogobiz.rivers</groupId>
+            <artifactId>mogobiz-common</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.codehaus.groovy</groupId>
+                    <artifactId>groovy-all</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mogobiz.rivers</groupId>
+            <artifactId>mogobiz-common-flow</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.codehaus.groovy</groupId>
+                    <artifactId>groovy-all</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mogobiz.rivers</groupId>
+            <artifactId>mogobiz-elasticsearch</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.codehaus.groovy</groupId>
+                    <artifactId>groovy-all</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -222,6 +223,7 @@
             <groupId>com.mogobiz</groupId>
             <artifactId>mogobiz-tools</artifactId>
             <version>${project.version}</version>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>
@@ -260,9 +262,13 @@
         </dependency>
 
         <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>org.codehaus.groovy.modules.http-builder</groupId>
             <artifactId>http-builder</artifactId>
-            <version>0.5.2</version>
             <scope>compile</scope>
             <exclusions>
                 <exclusion>
@@ -279,128 +285,103 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
-            <version>2.2.3</version>
             <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.2.3</version>
             <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>org.twitter4j</groupId>
             <artifactId>twitter4j-async</artifactId>
-            <version>2.2.5</version>
             <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>org.twitter4j</groupId>
             <artifactId>twitter4j-core</artifactId>
-            <version>2.2.5</version>
             <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>org.twitter4j</groupId>
             <artifactId>twitter4j-media-support</artifactId>
-            <version>2.2.5</version>
             <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>org.twitter4j</groupId>
             <artifactId>twitter4j-stream</artifactId>
-            <version>2.2.5</version>
             <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
-            <version>2.11.2</version>
             <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.oltu.oauth2</groupId>
             <artifactId>org.apache.oltu.oauth2.common</artifactId>
-            <version>0.31</version>
             <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.oltu.oauth2</groupId>
             <artifactId>org.apache.oltu.oauth2.authzserver</artifactId>
-            <version>0.31</version>
             <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.oltu.oauth2</groupId>
             <artifactId>org.apache.oltu.oauth2.resourceserver</artifactId>
-            <version>0.31</version>
             <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>com.restfb</groupId>
             <artifactId>restfb</artifactId>
-            <version>1.6.7</version>
             <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>com.google.zxing</groupId>
             <artifactId>core</artifactId>
-            <version>1.7</version>
             <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-            <version>5.1.30</version>
             <scope>runtime</scope>
         </dependency>
 
         <dependency>
             <groupId>postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>9.1-901.jdbc4</version>
             <scope>runtime</scope>
         </dependency>
 
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-actor_2.11</artifactId>
-            <version>${akka.version}</version>
             <scope>runtime</scope>
         </dependency>
 
         <dependency>
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-stream-experimental_2.11</artifactId>
-            <version>${akka.stream.version}</version>
             <scope>runtime</scope>
         </dependency>
 
-        <!-- rxjava
-        <dependency>
-            <groupId>io.reactivex</groupId>
-            <artifactId>rxjava</artifactId>
-            <version>1.0.7</version>
-            <scope>compile</scope>
-        </dependency>
-         -->
         <!-- rxjava-reactive-streams -->
         <dependency>
             <groupId>io.reactivex</groupId>
             <artifactId>rxjava-reactive-streams</artifactId>
-            <version>1.0.1</version>
             <scope>compile</scope>
             <exclusions>
                 <exclusion>
@@ -414,7 +395,6 @@
         <dependency>
             <groupId>io.reactivex</groupId>
             <artifactId>rxjava</artifactId>
-            <version>1.0.15</version>
             <scope>compile</scope>
         </dependency>
 
@@ -422,7 +402,6 @@
         <dependency>
             <groupId>io.reactivex</groupId>
             <artifactId>rxgroovy</artifactId>
-            <version>1.0.3</version>
             <scope>compile</scope>
             <exclusions>
                 <exclusion>
@@ -431,33 +410,27 @@
                 </exclusion>
             </exclusions>
         </dependency>
-        <!--
-        <dependency>
-            <groupId>com.netflix.rxjava</groupId>
-            <artifactId>rxjava-groovy</artifactId>
-            <version>0.20.7</version>
-            <scope>compile</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.codehaus.groovy</groupId>
-                    <artifactId>groovy-all</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        //-->
 
         <dependency>
             <groupId>org.codehaus.jettison</groupId>
             <artifactId>jettison</artifactId>
-            <version>1.2</version>
             <scope>runtime</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>xml-apis</groupId>
+                    <artifactId>xml-apis</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
 
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>cache</artifactId>
-            <version>1.1.3</version>
             <scope>compile</scope>
             <type>zip</type>
         </dependency>
@@ -465,7 +438,6 @@
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>facebook-graph</artifactId>
-            <version>0.14</version>
             <scope>compile</scope>
             <type>zip</type>
         </dependency>
@@ -473,7 +445,6 @@
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>platform-core</artifactId>
-            <version>1.0.0</version>
             <scope>compile</scope>
             <type>zip</type>
         </dependency>
@@ -481,7 +452,6 @@
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>google-data</artifactId>
-            <version>0.1.3</version>
             <scope>compile</scope>
             <type>zip</type>
         </dependency>
@@ -489,7 +459,6 @@
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>email-confirmation</artifactId>
-            <version>2.0.8</version>
             <scope>compile</scope>
             <type>zip</type>
             <exclusions>
@@ -503,7 +472,6 @@
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>shiro</artifactId>
-            <version>1.2.1</version>
             <scope>compile</scope>
             <type>zip</type>
             <exclusions>
@@ -517,7 +485,6 @@
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>mail</artifactId>
-            <version>1.0.5</version>
             <scope>compile</scope>
             <type>zip</type>
         </dependency>
@@ -525,7 +492,6 @@
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>quartz</artifactId>
-            <version>1.0.1</version>
             <scope>compile</scope>
             <type>zip</type>
         </dependency>
@@ -533,7 +499,6 @@
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>recaptcha</artifactId>
-            <version>0.6.8</version>
             <scope>compile</scope>
             <type>zip</type>
         </dependency>
@@ -541,7 +506,6 @@
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>cache-headers</artifactId>
-            <version>1.1.6</version>
             <scope>compile</scope>
             <type>zip</type>
         </dependency>
@@ -549,7 +513,6 @@
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>cached-resources</artifactId>
-            <version>1.0</version>
             <scope>compile</scope>
             <type>zip</type>
         </dependency>
@@ -557,7 +520,6 @@
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>cookie</artifactId>
-            <version>0.51</version>
             <scope>compile</scope>
             <type>zip</type>
         </dependency>
@@ -565,7 +527,6 @@
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>rest</artifactId>
-            <version>0.8</version>
             <scope>compile</scope>
             <type>zip</type>
         </dependency>
@@ -573,7 +534,6 @@
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>joda-time</artifactId>
-            <version>1.4</version>
             <scope>compile</scope>
             <type>zip</type>
         </dependency>
@@ -581,7 +541,6 @@
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>hibernate</artifactId>
-            <version>3.6.10.15</version>
             <scope>runtime</scope>
             <type>zip</type>
         </dependency>
@@ -589,7 +548,6 @@
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>database-migration</artifactId>
-            <version>1.4.0</version>
             <scope>runtime</scope>
             <type>zip</type>
         </dependency>
@@ -597,7 +555,6 @@
         <dependency>
             <groupId>org.grails.plugins</groupId>
             <artifactId>resources</artifactId>
-            <version>1.2.8</version>
             <scope>runtime</scope>
             <type>zip</type>
         </dependency>
@@ -622,7 +579,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.17</version>
                 <configuration>
                     <skip>true</skip>
                 </configuration>
@@ -642,7 +598,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-clean-plugin</artifactId>
-                <version>2.4.1</version>
                 <configuration>
                     <filesets>
                         <fileset>
@@ -670,7 +625,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-install-plugin</artifactId>
-                <version>2.5.2</version>
                 <executions>
                     <execution>
                         <id>install-plugin</id>
@@ -694,7 +648,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
-                <version>2.8.2</version>
                 <executions>
                     <execution>
                         <id>deploy-plugin</id>
@@ -720,73 +673,4 @@
         </plugins>
     </build>
 
-    <!-- distributionManagement -->
-    <distributionManagement>
-        <repository>
-            <id>mogobiz.release</id>
-            <name>Internal Release Repository</name>
-            <url>http://art.ebiznext.com/artifactory/libs-release-local</url>
-        </repository>
-        <snapshotRepository>
-            <id>mogobiz.snapshots</id>
-            <name>Internal Snapshot Repository</name>
-            <url>http://art.ebiznext.com/artifactory/libs-snapshot-local</url>
-        </snapshotRepository>
-    </distributionManagement>
-
-    <repositories>
-        <repository>
-            <id>grails</id>
-            <name>grails</name>
-            <url>http://repo.grails.org/grails/core</url>
-        </repository>
-        <repository>
-            <id>grails-plugins</id>
-            <name>grails-plugins</name>
-            <url>http://repo.grails.org/grails/plugins</url>
-        </repository>
-        <repository>
-            <id>mogobiz.release</id>
-            <name>Internal Release Repository</name>
-            <url>http://art.ebiznext.com/artifactory/libs-release-local</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-        <repository>
-            <id>mogobiz.snapshots</id>
-            <name>Internal Snapshot Repository</name>
-            <url>http://art.ebiznext.com/artifactory/libs-snapshot-local</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
-
-    <profiles>
-        <profile>
-            <id>tools</id>
-            <activation>
-                <property>
-                    <name>java.vendor</name>
-                    <value>Sun Microsystems Inc.</value>
-                </property>
-            </activation>
-            <dependencies>
-                <dependency>
-                    <groupId>com.sun</groupId>
-                    <artifactId>tools</artifactId>
-                    <version>${java.version}</version>
-                    <scope>system</scope>
-                    <systemPath>${java.home}/../lib/tools.jar</systemPath>
-                </dependency>
-            </dependencies>
-        </profile>
-    </profiles>
 </project>
