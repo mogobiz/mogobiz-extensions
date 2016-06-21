@@ -680,8 +680,8 @@
                             <goal>deploy-file</goal>
                         </goals>
                         <configuration>
-                            <repositoryId>mogobiz.snapshots</repositoryId>
-                            <url>http://art.ebiznext.com/artifactory/libs-snapshot-local</url>
+                            <repositoryId>mogobiz.release</repositoryId>
+                            <url>http://art.ebiznext.com/artifactory/libs-release-local</url>
                             <file>${project.build.directory}/${project.build.finalName}.jar</file>
                             <groupId>${project.groupId}</groupId>
                             <artifactId>${project.artifactId}</artifactId>
