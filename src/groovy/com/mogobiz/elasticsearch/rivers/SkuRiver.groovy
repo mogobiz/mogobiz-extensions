@@ -267,6 +267,8 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
         skuProperties << new ESProperty(name:'stockOutSelling', type:ESClient.TYPE.BOOLEAN, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
         skuProperties << new ESProperty(name:'stock', type:ESClient.TYPE.LONG, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
         skuProperties << new ESProperty(name:'byDateTimes', type:ESClient.TYPE.NESTED, properties: byDateTimeProperties)
+        skuProperties << new ESProperty(name:'miraklOffer', type:ESClient.TYPE.BOOLEAN, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+        skuProperties << new ESProperty(name:'miraklOfferId', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
 
         new ESMapping(type:getType(),
                 timestamp:true,

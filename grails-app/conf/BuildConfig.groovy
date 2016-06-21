@@ -1,7 +1,7 @@
+mogobiz.version="${appVersion}"
 grails.project.class.dir = "target/classes"
 grails.project.test.class.dir = "target/test-classes"
 grails.project.test.reports.dir = "target/test-reports"
-
 //grails.plugin.location."mogobiz-core" = "../mogobiz-core"
 
 grails.project.fork = [
@@ -39,14 +39,16 @@ grails.project.dependency.resolution = {
     dependencies {
         // specify dependencies here under either 'build', 'compile', 'runtime', 'test' or 'provided' scopes eg.
         // runtime 'mysql:mysql-connector-java:5.1.27'
-        compile 'org.elasticsearch:elasticsearch:1.2.1'
-        compile ('org.elasticsearch:elasticsearch-analysis-icu:2.2.0') {
+        compile 'org.elasticsearch:elasticsearch:1.7.3'
+        compile ('org.elasticsearch:elasticsearch-analysis-icu:2.7.0') {
             excludes 'org.elasticsearch:elasticsearch'
         }
 
-        compile 'com.mogobiz.rivers:mogobiz-elasticsearch-flow:1.0.0'
-        compile 'com.mogobiz.rivers:mogobiz-google-shopping:1.0.0'
-        compile 'com.mogobiz.rivers:mogobiz-cfp:1.0.0'
+        compile "com.mogobiz.rivers:mogobiz-elasticsearch-flow:${mogobiz.version}"
+        compile "com.mogobiz.rivers:mogobiz-google-shopping:${mogobiz.version}"
+        compile "com.mogobiz.rivers:mogobiz-cfp:${mogobiz.version}"
+        compile "com.mogobiz.rivers:mogobiz-mirakl:${mogobiz.version}"
+        compile "com.mogobiz.rivers:mogobiz-mirakl-flow:${mogobiz.version}"
 
     }
 
@@ -55,7 +57,7 @@ grails.project.dependency.resolution = {
               ":rest-client-builder:1.0.3") {
             export = false
         }
-        compile group:"com.mogobiz", name:"mogobiz-core", version:"1.0.0"
+        compile "com.mogobiz:mogobiz-core:${mogobiz.version}"
 
     }
 }

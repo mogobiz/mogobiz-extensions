@@ -5,3 +5,5 @@ data
 *.iml
 out
 tmp
+MogobizExtensionsGrailsPlugin.groovy
+plugin.xml
