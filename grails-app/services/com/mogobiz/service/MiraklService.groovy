@@ -13,6 +13,7 @@ import com.mogobiz.mirakl.client.domain.Attribute
 import com.mogobiz.mirakl.client.domain.AttributeType
 import com.mogobiz.mirakl.client.domain.MiraklApi
 import com.mogobiz.mirakl.client.domain.MiraklAttribute
+import com.mogobiz.mirakl.client.domain.SynchronizationStatus
 import com.mogobiz.mirakl.client.io.ImportOffersResponse
 import com.mogobiz.mirakl.rivers.MiraklRiverFlow
 import com.mogobiz.mirakl.rivers.OfferRiver
@@ -36,7 +37,7 @@ import org.hibernate.FlushMode
 
 import static com.mogobiz.tools.ScalaTools.*
 
-import static com.mogobiz.elasticsearch.rivers.RiverTools.miraklCategoryCode
+import static com.mogobiz.elasticsearch.rivers.RiverTools.*
 
 class MiraklService {
 
@@ -63,8 +64,6 @@ class MiraklService {
             }
             def debug = true
 
-            def mirakl = grailsApplication.config.mirakl["${company.code}"] as Map
-
             RiverConfig config = new RiverConfig(
                     debug: true,
                     clientConfig: new ClientConfig(
@@ -73,7 +72,7 @@ class MiraklService {
                             merchant_url: env.url,
                             debug: debug,
                             credentials: new Credentials(
-                                    frontKey: mirakl.frontKey as String, //TODO extract from model, eg. env.frontKey
+                                    frontKey: env.frontKey as String,
                                     apiKey: env.apiKey
                             )
                     ),
@@ -312,6 +311,103 @@ class MiraklService {
                     new SubscriberAdapter(subscriber)
             )
 
+        }
+    }
+
+    def synchronize(Catalog catalog){
+        def excludedStatus = [MiraklSyncStatus.COMPLETE, MiraklSyncStatus.CANCELLED, MiraklSyncStatus.FAILED]
+        def toSynchronize = catalog ?
+                MiraklSync.findAllByStatusNotInListAndCatalog(excludedStatus, catalog) :
+                MiraklSync.findAllByStatusNotInList(excludedStatus)
+        toSynchronize.each {sync ->
+            def company = sync.company
+            def env = MiraklEnv.findAllByCompany(company).first() // TODO retrieve from sync.miraklEnv
+            RiverConfig riverConfig = new RiverConfig(
+                    debug: true,
+                    clientConfig: new ClientConfig(
+                            store: company.code,
+                            merchant_id: env.shopId,
+                            merchant_url: env.url,
+                            debug: true,
+                            credentials: new Credentials(
+                                    frontKey: env.frontKey as String,
+                                    apiKey: env.apiKey
+                            )
+                    )
+            )
+            def trackingId = sync.trackingId as Long
+            SynchronizationStatus synchronizationStatus = null
+            String errorReport = null
+            def waitingStatus = [SynchronizationStatus.QUEUED, SynchronizationStatus.WAITING, SynchronizationStatus.RUNNING]
+            switch(sync.type){
+                case MiraklSyncType.CATEGORIES:
+                    def synchronizationStatusResponse = refreshCategoriesSynchronizationStatus(riverConfig, trackingId)
+                    while(synchronizationStatusResponse.status in waitingStatus){
+                        synchronizationStatusResponse = refreshCategoriesSynchronizationStatus(riverConfig, trackingId)
+                    }
+                    synchronizationStatus = synchronizationStatusResponse.status
+                    if(synchronizationStatusResponse.hasErrorReport){
+                        errorReport = loadCategoriesSynchronizationErrorReport(riverConfig, trackingId)
+                    }
+                    break
+                case MiraklSyncType.HIERARCHIES:
+                    def trackingImportStatus = trackHierarchiesImportStatusResponse(riverConfig, trackingId)
+                    while(trackingImportStatus.importStatus in waitingStatus){
+                        trackingImportStatus = trackHierarchiesImportStatusResponse(riverConfig, trackingId)
+                    }
+                    synchronizationStatus = trackingImportStatus.importStatus
+                    if(trackingImportStatus.hasErrorReport){
+                        errorReport = loadHierarchiesSynchronizationErrorReport(riverConfig, trackingId)
+                    }
+                    break
+                case MiraklSyncType.VALUES:
+                    def trackingImportStatus = trackValuesImportStatusResponse(riverConfig, trackingId)
+                    while(trackingImportStatus.importStatus in waitingStatus){
+                        trackingImportStatus = trackValuesImportStatusResponse(riverConfig, trackingId)
+                    }
+                    synchronizationStatus = trackingImportStatus.importStatus
+                    if(trackingImportStatus.hasErrorReport){
+                        errorReport = loadValuesSynchronizationErrorReport(riverConfig, trackingId)
+                    }
+                    break
+                case MiraklSyncType.ATTRIBUTES:
+                    def trackingImportStatus = trackAttributesImportStatusResponse(riverConfig, trackingId)
+                    while(trackingImportStatus.importStatus in waitingStatus){
+                        trackingImportStatus = trackAttributesImportStatusResponse(riverConfig, trackingId)
+                    }
+                    synchronizationStatus = trackingImportStatus.importStatus
+                    if(trackingImportStatus.hasErrorReport){
+                        errorReport = loadAttributesSynchronizationErrorReport(riverConfig, trackingId)
+                    }
+                    break
+                case MiraklSyncType.PRODCUCTS:
+                    def synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
+                    while(synchronizationStatusResponse.status in waitingStatus){
+                        synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
+                    }
+                    synchronizationStatus = synchronizationStatusResponse.status
+                    if(synchronizationStatusResponse.hasErrorReport){
+                        errorReport = loadProductsSynchronizationErrorReport(riverConfig, trackingId)
+                    }
+                    break
+                case MiraklSyncType.OFFERS:
+                    def trackingImportStatus = trackOffersImportStatusResponse(riverConfig, trackingId)
+                    while(trackingImportStatus.importStatus in waitingStatus){
+                        trackingImportStatus = trackOffersImportStatusResponse(riverConfig, trackingId)
+                    }
+                    synchronizationStatus = trackingImportStatus.importStatus
+                    if(trackingImportStatus.hasErrorReport){
+                        errorReport = loadOffersSynchronizationErrorReport(riverConfig, trackingId)
+                    }
+                    break
+                default:
+                    break
+            }
+            sync.status = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
+            sync.errorReport = errorReport
+            if(sync.validate()){
+                sync.save(flush: true)
+            }
         }
     }
 }
