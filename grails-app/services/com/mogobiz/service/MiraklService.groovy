@@ -338,70 +338,75 @@ class MiraklService {
             def trackingId = sync.trackingId as Long
             SynchronizationStatus synchronizationStatus = null
             String errorReport = null
-            def waitingStatus = [SynchronizationStatus.QUEUED, SynchronizationStatus.WAITING, SynchronizationStatus.RUNNING]
-            switch(sync.type){
-                case MiraklSyncType.CATEGORIES:
-                    def synchronizationStatusResponse = refreshCategoriesSynchronizationStatus(riverConfig, trackingId)
-                    while(synchronizationStatusResponse.status in waitingStatus){
-                        synchronizationStatusResponse = refreshCategoriesSynchronizationStatus(riverConfig, trackingId)
-                    }
-                    synchronizationStatus = synchronizationStatusResponse.status
-                    if(synchronizationStatusResponse.hasErrorReport){
-                        errorReport = loadCategoriesSynchronizationErrorReport(riverConfig, trackingId)
-                    }
-                    break
-                case MiraklSyncType.HIERARCHIES:
-                    def trackingImportStatus = trackHierarchiesImportStatusResponse(riverConfig, trackingId)
-                    while(trackingImportStatus.importStatus in waitingStatus){
-                        trackingImportStatus = trackHierarchiesImportStatusResponse(riverConfig, trackingId)
-                    }
-                    synchronizationStatus = trackingImportStatus.importStatus
-                    if(trackingImportStatus.hasErrorReport){
-                        errorReport = loadHierarchiesSynchronizationErrorReport(riverConfig, trackingId)
-                    }
-                    break
-                case MiraklSyncType.VALUES:
-                    def trackingImportStatus = trackValuesImportStatusResponse(riverConfig, trackingId)
-                    while(trackingImportStatus.importStatus in waitingStatus){
-                        trackingImportStatus = trackValuesImportStatusResponse(riverConfig, trackingId)
-                    }
-                    synchronizationStatus = trackingImportStatus.importStatus
-                    if(trackingImportStatus.hasErrorReport){
-                        errorReport = loadValuesSynchronizationErrorReport(riverConfig, trackingId)
-                    }
-                    break
-                case MiraklSyncType.ATTRIBUTES:
-                    def trackingImportStatus = trackAttributesImportStatusResponse(riverConfig, trackingId)
-                    while(trackingImportStatus.importStatus in waitingStatus){
-                        trackingImportStatus = trackAttributesImportStatusResponse(riverConfig, trackingId)
-                    }
-                    synchronizationStatus = trackingImportStatus.importStatus
-                    if(trackingImportStatus.hasErrorReport){
-                        errorReport = loadAttributesSynchronizationErrorReport(riverConfig, trackingId)
-                    }
-                    break
-                case MiraklSyncType.PRODCUCTS:
-                    def synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
-                    while(synchronizationStatusResponse.status in waitingStatus){
-                        synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
-                    }
-                    synchronizationStatus = synchronizationStatusResponse.status
-                    if(synchronizationStatusResponse.hasErrorReport){
-                        errorReport = loadProductsSynchronizationErrorReport(riverConfig, trackingId)
-                    }
-                    break
-                case MiraklSyncType.OFFERS:
-                    def trackingImportStatus = trackOffersImportStatusResponse(riverConfig, trackingId)
-                    while(trackingImportStatus.importStatus in waitingStatus){
-                        trackingImportStatus = trackOffersImportStatusResponse(riverConfig, trackingId)
-                    }
-                    synchronizationStatus = trackingImportStatus.importStatus
-                    if(trackingImportStatus.hasErrorReport){
-                        errorReport = loadOffersSynchronizationErrorReport(riverConfig, trackingId)
-                    }
-                    break
-                default:
-                    break
+            final waitingStatus = [SynchronizationStatus.QUEUED, SynchronizationStatus.WAITING, SynchronizationStatus.RUNNING]
+            try{
+                switch(sync.type){
+                    case MiraklSyncType.CATEGORIES:
+                        def synchronizationStatusResponse = refreshCategoriesSynchronizationStatus(riverConfig, trackingId)
+                        while(synchronizationStatusResponse.status in waitingStatus){
+                            synchronizationStatusResponse = refreshCategoriesSynchronizationStatus(riverConfig, trackingId)
+                        }
+                        synchronizationStatus = synchronizationStatusResponse.status
+                        if(synchronizationStatusResponse.hasErrorReport){
+                            errorReport = loadCategoriesSynchronizationErrorReport(riverConfig, trackingId)
+                        }
+                        break
+                    case MiraklSyncType.HIERARCHIES:
+                        def trackingImportStatus = trackHierarchiesImportStatusResponse(riverConfig, trackingId)
+                        while(trackingImportStatus.importStatus in waitingStatus){
+                            trackingImportStatus = trackHierarchiesImportStatusResponse(riverConfig, trackingId)
+                        }
+                        synchronizationStatus = trackingImportStatus.importStatus
+                        if(trackingImportStatus.hasErrorReport){
+                            errorReport = loadHierarchiesSynchronizationErrorReport(riverConfig, trackingId)
+                        }
+                        break
+                    case MiraklSyncType.VALUES:
+                        def trackingImportStatus = trackValuesImportStatusResponse(riverConfig, trackingId)
+                        while(trackingImportStatus.importStatus in waitingStatus){
+                            trackingImportStatus = trackValuesImportStatusResponse(riverConfig, trackingId)
+                        }
+                        synchronizationStatus = trackingImportStatus.importStatus
+                        if(trackingImportStatus.hasErrorReport){
+                            errorReport = loadValuesSynchronizationErrorReport(riverConfig, trackingId)
+                        }
+                        break
+                    case MiraklSyncType.ATTRIBUTES:
+                        def trackingImportStatus = trackAttributesImportStatusResponse(riverConfig, trackingId)
+                        while(trackingImportStatus.importStatus in waitingStatus){
+                            trackingImportStatus = trackAttributesImportStatusResponse(riverConfig, trackingId)
+                        }
+                        synchronizationStatus = trackingImportStatus.importStatus
+                        if(trackingImportStatus.hasErrorReport){
+                            errorReport = loadAttributesSynchronizationErrorReport(riverConfig, trackingId)
+                        }
+                        break
+                    case MiraklSyncType.PRODCUCTS:
+                        def synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
+                        while(synchronizationStatusResponse.status in waitingStatus){
+                            synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
+                        }
+                        synchronizationStatus = synchronizationStatusResponse.status
+                        if(synchronizationStatusResponse.hasErrorReport){
+                            errorReport = loadProductsSynchronizationErrorReport(riverConfig, trackingId)
+                        }
+                        break
+                    case MiraklSyncType.OFFERS:
+                        def trackingImportStatus = trackOffersImportStatusResponse(riverConfig, trackingId)
+                        while(trackingImportStatus.status in waitingStatus){
+                            trackingImportStatus = trackOffersImportStatusResponse(riverConfig, trackingId)
+                        }
+                        synchronizationStatus = trackingImportStatus.status
+                        if(trackingImportStatus.hasErrorReport){
+                            errorReport = loadOffersSynchronizationErrorReport(riverConfig, trackingId)
+                        }
+                        break
+                    default:
+                        break
+                }
+            }
+            catch(Exception e){
+                log.error(e.message)
             }
             sync.status = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
             sync.errorReport = errorReport
