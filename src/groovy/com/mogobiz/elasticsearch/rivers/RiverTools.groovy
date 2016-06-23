@@ -152,7 +152,7 @@ final class RiverTools {
 
     static Map asBrandMap(final Brand b, final RiverConfig config, boolean deep = false) {
         if(b){
-            def m = BrandRiverCache.instance.get(b.uuid)
+            def m = !deep ? BrandRiverCache.instance.get(b.uuid) : null
             if(!m){
                 m = translate(
                         RenderUtil.asIsoMapForJSON(
@@ -198,7 +198,7 @@ final class RiverTools {
                 b.brandProperties.each {BrandProperty property ->
                     m << ["${property.name}":property.value]
                 }
-                BrandRiverCache.instance.put(b.uuid, m)
+                if (!deep) BrandRiverCache.instance.put(b.uuid, m)
             }
             if(deep){
                 def categories = BrandCategoriesRiverCache.instance.get(b.uuid)?.join(",") ?: ""
