@@ -151,6 +151,7 @@ class MiraklService {
             if(synchronizeCategoriesId){
                 MiraklSync.withTransaction {
                     def sync = new MiraklSync()
+                    sync.miraklEnv = env
                     sync.company = company
                     sync.catalog = catalog
                     sync.type = MiraklSyncType.CATEGORIES
@@ -169,6 +170,7 @@ class MiraklService {
             if(importHierarchiesId){
                 MiraklSync.withTransaction {
                     def sync = new MiraklSync()
+                    sync.miraklEnv = env
                     sync.company = company
                     sync.catalog = catalog
                     sync.type = MiraklSyncType.HIERARCHIES
@@ -187,6 +189,7 @@ class MiraklService {
             if(importValuesId){
                 MiraklSync.withTransaction {
                     def sync = new MiraklSync()
+                    sync.miraklEnv = env
                     sync.company = company
                     sync.catalog = catalog
                     sync.type = MiraklSyncType.VALUES
@@ -205,6 +208,7 @@ class MiraklService {
             if(importAttributesId){
                 MiraklSync.withTransaction {
                     def sync = new MiraklSync()
+                    sync.miraklEnv = env
                     sync.company = company
                     sync.catalog = catalog
                     sync.type = MiraklSyncType.ATTRIBUTES
@@ -257,6 +261,7 @@ class MiraklService {
                     if(importId){
                         MiraklSync.withTransaction {
                             def sync = new MiraklSync()
+                            sync.miraklEnv = env
                             sync.company = company
                             sync.catalog = catalog
                             sync.type = MiraklSyncType.OFFERS
@@ -273,6 +278,7 @@ class MiraklService {
                     if(productImportId){
                         MiraklSync.withTransaction {
                             def sync = new MiraklSync()
+                            sync.miraklEnv = env
                             sync.company = company
                             sync.catalog = catalog
                             sync.type = MiraklSyncType.PRODCUCTS
@@ -289,6 +295,7 @@ class MiraklService {
                     if(productSynchroId){
                         MiraklSync.withTransaction {
                             def sync = new MiraklSync()
+                            sync.miraklEnv = env
                             sync.company = company
                             sync.catalog = catalog
                             sync.type = MiraklSyncType.PRODCUCTS //TODO add PRODUCTS_SYNCHRO type
@@ -321,7 +328,7 @@ class MiraklService {
                 MiraklSync.findAllByStatusNotInList(excludedStatus)
         toSynchronize.each {sync ->
             def company = sync.company
-            def env = MiraklEnv.findAllByCompany(company).first() // TODO retrieve from sync.miraklEnv
+            def env = sync.miraklEnv ?: MiraklEnv.findAllByCompany(company).first()
             RiverConfig riverConfig = new RiverConfig(
                     debug: true,
                     clientConfig: new ClientConfig(
@@ -381,7 +388,7 @@ class MiraklService {
                             errorReport = loadAttributesSynchronizationErrorReport(riverConfig, trackingId)
                         }
                         break
-                    case MiraklSyncType.PRODCUCTS:
+                    case MiraklSyncType.PRODUCTS:
                         def synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
                         while(synchronizationStatusResponse.status in waitingStatus){
                             synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
