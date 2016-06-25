@@ -7,6 +7,7 @@ package com.mogobiz.service
 import com.mogobiz.common.client.BulkResponse
 import com.mogobiz.common.client.ClientConfig
 import com.mogobiz.common.rivers.AbstractRiverCache
+import com.mogobiz.common.rivers.GenericRiversFlow
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.constant.IperConstant
 import com.mogobiz.elasticsearch.client.ESClient
@@ -39,7 +40,6 @@ import java.text.SimpleDateFormat
 
 import rx.Subscriber
 import rx.internal.reactivestreams.SubscriberAdapter
-import com.mogobiz.elasticsearch.rivers.ESRiversFlow
 
 /**
  *
@@ -641,7 +641,7 @@ curl -XPUT ${url}/$index/_alias/$store
                     }
                 }
 
-                ESRiversFlow.exportRiversItemsWithSubscription(ESRivers.getInstance(), config, 1, 10, new SubscriberAdapter(subscriber))
+                GenericRiversFlow.publish(ESRivers.getInstance(), config, 1, 10, new SubscriberAdapter(subscriber))
             }
             else{
                 log.error("an error occured while creating index ${response.error}")

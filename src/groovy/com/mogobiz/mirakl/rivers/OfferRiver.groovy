@@ -5,6 +5,7 @@
 package com.mogobiz.mirakl.rivers
 
 import akka.dispatch.Futures
+import com.mogobiz.common.rivers.spi.AbstractGenericRiver
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.elasticsearch.rivers.RiverTools
 import com.mogobiz.elasticsearch.rivers.cache.CouponsRiverCache
@@ -22,7 +23,7 @@ import java.util.concurrent.Callable
 /**
  *
  */
-class OfferRiver extends AbstractMiraklRiver<TicketType, MiraklOffer, ImportOffersResponse> {
+class OfferRiver extends AbstractGenericRiver<TicketType, MiraklOffer, ImportOffersResponse> {
 
     @Override
     Observable<TicketType> retrieveCatalogItems(RiverConfig config) {
@@ -94,6 +95,11 @@ class OfferRiver extends AbstractMiraklRiver<TicketType, MiraklOffer, ImportOffe
     }
 
     @Override
+    MiraklOffer asRiverItem(Object e, RiverConfig config) {
+        return asRiverItem(e as TicketType, config) //FIXME
+    }
+
+    @Override
     MiraklOffer asRiverItem(TicketType sku, RiverConfig config) {
         return RiverTools.asMiraklOffer(sku, sku.product, config)
     }
@@ -109,4 +115,8 @@ class OfferRiver extends AbstractMiraklRiver<TicketType, MiraklOffer, ImportOffe
         return f
     }
 
+    @Override
+    String getType() {
+        return "mirakl_offer"
+    }
 }
