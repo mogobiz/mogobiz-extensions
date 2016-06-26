@@ -23,7 +23,7 @@ import java.util.concurrent.Callable
 /**
  *
  */
-class OfferRiver extends AbstractGenericRiver<TicketType, MiraklOffer, ImportOffersResponse> {
+class OfferRiver extends AbstractGenericRiver<MiraklOffer, ImportOffersResponse> {
 
     @Override
     Observable<TicketType> retrieveCatalogItems(RiverConfig config) {
@@ -96,11 +96,7 @@ class OfferRiver extends AbstractGenericRiver<TicketType, MiraklOffer, ImportOff
 
     @Override
     MiraklOffer asRiverItem(Object e, RiverConfig config) {
-        return asRiverItem(e as TicketType, config) //FIXME
-    }
-
-    @Override
-    MiraklOffer asRiverItem(TicketType sku, RiverConfig config) {
+        def sku = e as TicketType
         return RiverTools.asMiraklOffer(sku, sku.product, config)
     }
 
