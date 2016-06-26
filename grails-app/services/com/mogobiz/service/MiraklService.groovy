@@ -17,6 +17,8 @@ import com.mogobiz.mirakl.client.domain.MiraklAttribute
 import com.mogobiz.mirakl.client.domain.SynchronizationStatus
 import com.mogobiz.mirakl.client.io.ImportOffersResponse
 import com.mogobiz.mirakl.rivers.OfferRiver
+import com.mogobiz.store.domain.Product
+import com.mogobiz.store.domain.TicketType
 import rx.Subscriber
 import rx.internal.reactivestreams.SubscriberAdapter
 import scala.Some
@@ -100,7 +102,8 @@ class MiraklService {
                         category.name,
                         BulkAction.UPDATE,
                         parent ? Some.apply(new MiraklCategory(miraklCategoryCode(parent), "")) : toScalaOption(null),
-                        category.logisticClass
+                        category.logisticClass,
+                        category.uuid
                 )
                 category.features?.each {feature ->
                     def featureCode = "${hierarchyCode}_${sanitizeUrlService.sanitizeWithDashes(feature.name)}"
@@ -147,7 +150,8 @@ class MiraklService {
             }
 
             // 1. synchronize categories
-            final synchronizeCategoriesId = synchronizeCategories(config, hierarchies)?.synchroId
+            final synchronizeCategories = synchronizeCategories(config, hierarchies)
+            final synchronizeCategoriesId = synchronizeCategories?.synchroId
             if(synchronizeCategoriesId){
                 MiraklSync.withTransaction {
                     def sync = new MiraklSync()
@@ -157,10 +161,21 @@ class MiraklService {
                     sync.type = MiraklSyncType.CATEGORIES
                     sync.status = MiraklSyncStatus.QUEUED
                     sync.timestamp = new Date()
-                    sync.trackingId = synchronizeCategoriesId.toString()
+                    sync.trackingId = synchronizeCategoriesId
                     sync.validate()
                     if(!sync.hasErrors()){
                         sync.save(flush: true)
+                    }
+                    synchronizeCategories.ids?.each{uuid ->
+                        def cat = Category.findByUuid(uuid)
+                        if(cat){
+                            cat.miraklStatus = sync.status
+                            cat.miraklTrackingId = sync.trackingId
+                            cat.validate()
+                            if(!cat.hasErrors()){
+                                cat.save(flush: true)
+                            }
+                        }
                     }
                 }
             }
@@ -272,6 +287,17 @@ class MiraklService {
                             if(!sync.hasErrors()){
                                 sync.save(flush: true)
                             }
+                            importOffersResponse.ids?.each{uuid ->
+                                def sku = TicketType.findByUuid(uuid)
+                                if(sku){
+                                    sku.miraklStatus = sync.status
+                                    sku.miraklTrackingId = sync.trackingId
+                                    sku.validate()
+                                    if(!sku.hasErrors()){
+                                        sku.save(flush: true)
+                                    }
+                                }
+                            }
                         }
                     }
                     final productImportId = importOffersResponse?.productImportId
@@ -289,6 +315,17 @@ class MiraklService {
                             if(!sync.hasErrors()){
                                 sync.save(flush: true)
                             }
+//                            importOffersResponse.productIds?.each{uuid ->
+//                                def product = Product.findByUuid(uuid)
+//                                if(product){
+//                                    product.miraklStatus = sync.status
+//                                    product.miraklTrackingId = sync.trackingId
+//                                    product.validate()
+//                                    if(!product.hasErrors()){
+//                                        product.save(flush: true)
+//                                    }
+//                                }
+//                            }
                         }
                     }
                     final productSynchroId = importOffersResponse?.productSynchroId
@@ -298,13 +335,24 @@ class MiraklService {
                             sync.miraklEnv = env
                             sync.company = company
                             sync.catalog = catalog
-                            sync.type = MiraklSyncType.PRODUCTS //TODO add PRODUCTS_SYNCHRO type
+                            sync.type = MiraklSyncType.PRODUCTS_SYNCHRO
                             sync.status = MiraklSyncStatus.QUEUED
                             sync.timestamp = new Date()
                             sync.trackingId = productSynchroId.toString()
                             sync.validate()
                             if(!sync.hasErrors()){
                                 sync.save(flush: true)
+                            }
+                            importOffersResponse.productIds?.each{uuid ->
+                                def product = Product.findByUuid(uuid)
+                                if(product){
+                                    product.miraklStatus = sync.status
+                                    product.miraklTrackingId = sync.trackingId
+                                    product.validate()
+                                    if(!product.hasErrors()){
+                                        product.save(flush: true)
+                                    }
+                                }
                             }
                         }
                     }
@@ -356,6 +404,11 @@ class MiraklService {
                         synchronizationStatus = synchronizationStatusResponse.status
                         if(synchronizationStatusResponse.hasErrorReport){
                             errorReport = loadCategoriesSynchronizationErrorReport(riverConfig, trackingId)
+                            synchronizationStatus = SynchronizationStatus.FAILED
+                        }
+                        Category.findAllByMiraklTrackingId(trackingId.toString()).each {cat ->
+                            cat.miraklStatus = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
+                            cat.save(flush: true)
                         }
                         break
                     case MiraklSyncType.HIERARCHIES:
@@ -366,6 +419,7 @@ class MiraklService {
                         synchronizationStatus = trackingImportStatus.importStatus
                         if(trackingImportStatus.hasErrorReport){
                             errorReport = loadHierarchiesSynchronizationErrorReport(riverConfig, trackingId)
+                            synchronizationStatus = SynchronizationStatus.FAILED
                         }
                         break
                     case MiraklSyncType.VALUES:
@@ -376,6 +430,7 @@ class MiraklService {
                         synchronizationStatus = trackingImportStatus.importStatus
                         if(trackingImportStatus.hasErrorReport){
                             errorReport = loadValuesSynchronizationErrorReport(riverConfig, trackingId)
+                            synchronizationStatus = SynchronizationStatus.FAILED
                         }
                         break
                     case MiraklSyncType.ATTRIBUTES:
@@ -386,6 +441,7 @@ class MiraklService {
                         synchronizationStatus = trackingImportStatus.importStatus
                         if(trackingImportStatus.hasErrorReport){
                             errorReport = loadAttributesSynchronizationErrorReport(riverConfig, trackingId)
+                            synchronizationStatus = SynchronizationStatus.FAILED
                         }
                         break
                     case MiraklSyncType.PRODUCTS:
@@ -396,6 +452,22 @@ class MiraklService {
                         synchronizationStatus = synchronizationStatusResponse.status
                         if(synchronizationStatusResponse.hasErrorReport){
                             errorReport = loadProductsSynchronizationErrorReport(riverConfig, trackingId)
+                            synchronizationStatus = SynchronizationStatus.FAILED
+                        }
+                        break
+                    case MiraklSyncType.PRODUCTS_SYNCHRO:
+                        def synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
+                        while(synchronizationStatusResponse.status in waitingStatus){
+                            synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
+                        }
+                        synchronizationStatus = synchronizationStatusResponse.status
+                        if(synchronizationStatusResponse.hasErrorReport){
+                            errorReport = loadProductsSynchronizationErrorReport(riverConfig, trackingId)
+                            synchronizationStatus = SynchronizationStatus.FAILED
+                        }
+                        Product.findAllByMiraklTrackingId(trackingId.toString()).each { prod ->
+                            prod.miraklStatus = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
+                            prod.save(flush: true)
                         }
                         break
                     case MiraklSyncType.OFFERS:
@@ -406,6 +478,11 @@ class MiraklService {
                         synchronizationStatus = trackingImportStatus.status
                         if(trackingImportStatus.hasErrorReport){
                             errorReport = loadOffersSynchronizationErrorReport(riverConfig, trackingId)
+                            synchronizationStatus = SynchronizationStatus.FAILED
+                        }
+                        TicketType.findAllByMiraklTrackingId(trackingId.toString()).each { sku ->
+                            sku.miraklStatus = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
+                            sku.save(flush: true)
                         }
                         break
                     default:
