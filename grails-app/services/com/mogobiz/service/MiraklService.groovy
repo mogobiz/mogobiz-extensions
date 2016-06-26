@@ -281,7 +281,7 @@ class MiraklService {
                             sync.miraklEnv = env
                             sync.company = company
                             sync.catalog = catalog
-                            sync.type = MiraklSyncType.PRODCUCTS
+                            sync.type = MiraklSyncType.PRODUCTS
                             sync.status = MiraklSyncStatus.QUEUED
                             sync.timestamp = new Date()
                             sync.trackingId = productImportId.toString()
@@ -298,7 +298,7 @@ class MiraklService {
                             sync.miraklEnv = env
                             sync.company = company
                             sync.catalog = catalog
-                            sync.type = MiraklSyncType.PRODCUCTS //TODO add PRODUCTS_SYNCHRO type
+                            sync.type = MiraklSyncType.PRODUCTS //TODO add PRODUCTS_SYNCHRO type
                             sync.status = MiraklSyncStatus.QUEUED
                             sync.timestamp = new Date()
                             sync.trackingId = productSynchroId.toString()
