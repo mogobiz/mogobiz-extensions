@@ -6,6 +6,7 @@ package com.mogobiz.service
 
 import com.mogobiz.common.client.BulkResponse
 import com.mogobiz.common.client.ClientConfig
+import com.mogobiz.common.client.Credentials
 import com.mogobiz.common.rivers.AbstractRiverCache
 import com.mogobiz.common.rivers.GenericRiversFlow
 import com.mogobiz.common.rivers.spi.RiverConfig
@@ -353,7 +354,17 @@ class ElasticsearchService {
             Map config = [debug: true],
             boolean aggregation = false) {
         ESRequest request = generateRequest(store, type, query, included, excluded, aggregation)
-        request ? client.search(request, config) : new ESSearchResponse(total: 0, hits: [])
+        request ? client.search(request, addSearchguardCredentials(config)) : new ESSearchResponse(total: 0, hits: [])
+    }
+
+    private def Map addSearchguardCredentials(Map config) {
+        def searchguard = grailsApplication.config.searchguard as Map
+        def active = searchguard?.active
+        if (active) {
+            config << [username: searchguard.username]
+            config << [password: searchguard.password]
+        }
+        config
     }
 
     def String saveToLocalStorage(String store, String eventStart, boolean update = false) {
@@ -406,7 +417,7 @@ class ElasticsearchService {
         def url = env.url
         def store = env.company.code
         def conf = [debug: true]
-        client.retrieveAliasIndexes(url, "previous_$store", conf)
+        client.retrieveAliasIndexes(url, "previous_$store", addSearchguardCredentials(config))
     }
 
     @Synchronized
@@ -414,7 +425,7 @@ class ElasticsearchService {
         boolean ret = false
         def url = env.url
         def store = env.company.code
-        def conf = [debug: true]
+        def conf = addSearchguardCredentials([debug: true])
         def activeIndex = env.activeIndex
         boolean running = EsEnv.withTransaction {
             EsEnv.findByRunning(true) != null
@@ -479,6 +490,14 @@ class ElasticsearchService {
                     languages: languages,
                     defaultLang: company.defaultLanguage
             )
+            def searchguard = grailsApplication.config.searchguard as Map
+            def active = searchguard?.active
+            if (active) {
+                config.clientConfig.credentials = new Credentials(
+                        client_id: searchguard.username,
+                        client_secret: searchguard.password
+                )
+            }
             def conn = null
             try
             {
@@ -528,7 +547,7 @@ class ElasticsearchService {
                         AbstractRiverCache.purgeAll()
                         def extra = ""
                         def success = true
-                        def conf = [debug: debug]
+                        def conf = addSearchguardCredentials([debug: debug])
                         def previousIndices = client.retrieveAliasIndexes(url, store, conf)
                         if (previousIndices.empty || (!previousIndices.any { String previous -> !client.removeAlias(conf, url, store, previous).acknowledged })) {
                             if (!client.createAlias(conf, url, store, index)) {
@@ -585,7 +604,6 @@ curl -XPUT ${url}/$index/_alias/$store
                                     def jahiaClearCache = grailsApplication.config.external?.jahiaClearCache
                                     if(jahiaClearCache){
                                         def jahiaSecret = grailsApplication.config.external.jahiaSecret ?: '12345'
-                                        conn = null
                                         try{
                                             conn = httpClient.doGet([debug: true], jahiaClearCache, ['secret': jahiaSecret, 'storeCode': company.code])
                                             log.info("call to $jahiaClearCache -> ${conn.responseCode}")
@@ -704,7 +722,7 @@ curl -XPUT ${url}/$index/_alias/$store
                         log.info("export within ${System.currentTimeMillis() - before} ms")
                         def extra = ""
                         def success = true
-                        def conf = [debug: debug]
+                        def conf = addSearchguardCredentials([debug: debug])
                         def previousIndices = client.retrieveAliasIndexes(url, store, conf)
                         if (previousIndices.empty || (!previousIndices.any { String previous -> !client.removeAlias(conf, url, store, previous).acknowledged })) {
                             if (!client.createAlias(conf, url, store, index)) {
