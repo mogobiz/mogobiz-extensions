@@ -8,6 +8,7 @@ import com.mogobiz.common.client.BulkAction
 import com.mogobiz.common.client.ClientConfig
 import com.mogobiz.common.client.Credentials
 import com.mogobiz.common.rivers.AbstractRiverCache
+import com.mogobiz.common.rivers.GenericRiversFlow
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.mirakl.client.domain.Attribute
 import com.mogobiz.mirakl.client.domain.AttributeType
@@ -15,7 +16,6 @@ import com.mogobiz.mirakl.client.domain.MiraklApi
 import com.mogobiz.mirakl.client.domain.MiraklAttribute
 import com.mogobiz.mirakl.client.domain.SynchronizationStatus
 import com.mogobiz.mirakl.client.io.ImportOffersResponse
-import com.mogobiz.mirakl.rivers.MiraklRiverFlow
 import com.mogobiz.mirakl.rivers.OfferRiver
 import rx.Subscriber
 import rx.internal.reactivestreams.SubscriberAdapter
@@ -281,7 +281,7 @@ class MiraklService {
                             sync.miraklEnv = env
                             sync.company = company
                             sync.catalog = catalog
-                            sync.type = MiraklSyncType.PRODCUCTS
+                            sync.type = MiraklSyncType.PRODUCTS
                             sync.status = MiraklSyncStatus.QUEUED
                             sync.timestamp = new Date()
                             sync.trackingId = productImportId.toString()
@@ -298,7 +298,7 @@ class MiraklService {
                             sync.miraklEnv = env
                             sync.company = company
                             sync.catalog = catalog
-                            sync.type = MiraklSyncType.PRODCUCTS //TODO add PRODUCTS_SYNCHRO type
+                            sync.type = MiraklSyncType.PRODUCTS //TODO add PRODUCTS_SYNCHRO type
                             sync.status = MiraklSyncStatus.QUEUED
                             sync.timestamp = new Date()
                             sync.trackingId = productSynchroId.toString()
@@ -310,7 +310,7 @@ class MiraklService {
                     }
                 }
             }
-            MiraklRiverFlow.synchronize(
+            GenericRiversFlow.synchronize(
                     new OfferRiver(),
                     config,
                     Math.min(1, Runtime.getRuntime().availableProcessors()),

@@ -205,11 +205,6 @@ class SkuRiver extends AbstractGoogleRiver<TicketType>{
     }
 
     @Override
-    GoogleClient getClient() {
-        return GoogleClient.getInstance()
-    }
-
-    @Override
     String getType() {
         return 'sku'
     }
