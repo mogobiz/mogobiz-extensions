@@ -621,6 +621,32 @@ curl -XPUT ${url}/$index/_alias/$store
                                         log.warn("grailsApplication.config.external.jahiaClearCache is undefined")
                                     }
                                     log.info("End clearing Jahia Cache")
+                                    log.info("Start cache")
+                                    def cache = grailsApplication.config.cache as Map
+                                    final home = cache?.home as String
+                                    final version = cache?.version as String
+                                    final prefix = cache?.prefix as String
+                                    final cacheUrls = env.cacheUrls
+                                    if(home && version && prefix && cacheUrls?.trim()?.length() > 0){
+                                        def runtime = Runtime.runtime
+                                        def args = [] as List<String>
+                                        def jar = "$home/mogobiz-cache-${version}.jar"
+                                        def app = "$home/application.conf"
+                                        def log4j = "$home/log4j.xml"
+                                        args << "-cp"
+                                        args << "\"$jar:$app:$log4j\""
+                                        args << "com.mogobiz.cache.bin.ProcessCache"
+                                        args << prefix
+                                        args << store
+                                        args << cacheUrls
+                                        try{
+                                            runtime.exec("java", args.toArray(new String[args.size()]))
+                                        }
+                                        catch(IOException io){
+                                            log.error(io.message, io)
+                                        }
+                                    }
+                                    log.info("End cache")
                                 }
                                 catch (Exception ex) {
                                     log.warn("Unable to clear Jahia cache -> ${ex.message}")
