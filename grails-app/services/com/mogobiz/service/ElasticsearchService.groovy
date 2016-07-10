@@ -625,20 +625,26 @@ curl -XPUT ${url}/$index/_alias/$store
                                     def cache = grailsApplication.config.cache as Map
                                     final home = cache?.home as String
                                     final version = cache?.version as String
-                                    final prefix = cache?.prefix as String
-                                    final cacheUrls = env.cacheUrls
-                                    if(home && version && prefix && cacheUrls?.trim()?.length() > 0){
+                                    final run = cache?.run as String
+                                    final cacheUrls = env.cacheUrls ?: []
+                                    if(home && version && run){
+                                        cacheUrls << "$run/$store/products/\${product.id}"
+                                        cacheUrls << "$run/$store/brands?brandId=\${brand.id}"
+                                        cacheUrls << "$run/$store/categories?categoryPath=\${category.path | encode}"
+                                        cacheUrls << "$run/$store/categories?parentId=\${category.parentId}"
                                         def runtime = Runtime.runtime
                                         def args = [] as List<String>
                                         def jar = "$home/mogobiz-cache-${version}.jar"
                                         def app = "$home/application.conf"
                                         def log4j = "$home/log4j.xml"
                                         args << "-cp"
-                                        args << "\"$jar:$app:$log4j\""
+                                        final pathSeparator = System.getProperty("path.separator") ?: ":"
+                                        args << "\"$jar$pathSeparator$app$pathSeparator$log4j\""
                                         args << "com.mogobiz.cache.bin.ProcessCache"
-                                        args << prefix
                                         args << store
-                                        args << cacheUrls
+                                        cacheUrls.each { cacheUrl ->
+                                            args << "$cacheUrl"
+                                        }
                                         try{
                                             runtime.exec("java", args.toArray(new String[args.size()]))
                                         }
