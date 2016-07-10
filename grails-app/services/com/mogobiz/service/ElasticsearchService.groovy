@@ -621,42 +621,42 @@ curl -XPUT ${url}/$index/_alias/$store
                                         log.warn("grailsApplication.config.external.jahiaClearCache is undefined")
                                     }
                                     log.info("End clearing Jahia Cache")
-                                    log.info("Start cache")
-                                    def cache = grailsApplication.config.cache as Map
-                                    final home = cache?.home as String
-                                    final version = cache?.version as String
-                                    final run = cache?.run as String
-                                    final cacheUrls = env.cacheUrls ?: []
-                                    if(home && version && run){
-                                        cacheUrls << "$run/$store/products/\${product.id}"
-                                        cacheUrls << "$run/$store/brands?brandId=\${brand.id}"
-                                        cacheUrls << "$run/$store/categories?categoryPath=\${category.path | encode}"
-                                        cacheUrls << "$run/$store/categories?parentId=\${category.parentId}"
-                                        def runtime = Runtime.runtime
-                                        def args = [] as List<String>
-                                        def jar = "$home/mogobiz-cache-${version}.jar"
-                                        def app = "$home/application.conf"
-                                        def log4j = "$home/log4j.xml"
-                                        args << "-cp"
-                                        final pathSeparator = System.getProperty("path.separator") ?: ":"
-                                        args << "\"$jar$pathSeparator$app$pathSeparator$log4j\""
-                                        args << "com.mogobiz.cache.bin.ProcessCache"
-                                        args << store
-                                        cacheUrls.each { cacheUrl ->
-                                            args << "$cacheUrl"
-                                        }
-                                        try{
-                                            runtime.exec("java", args.toArray(new String[args.size()]))
-                                        }
-                                        catch(IOException io){
-                                            log.error(io.message, io)
-                                        }
-                                    }
-                                    log.info("End cache")
                                 }
                                 catch (Exception ex) {
                                     log.warn("Unable to clear Jahia cache -> ${ex.message}")
                                 }
+                                log.info("Start cache")
+                                def cache = grailsApplication.config.cache as Map
+                                final home = cache?.home as String
+                                final version = cache?.version as String
+                                final run = cache?.run as String
+                                final cacheUrls = env.cacheUrls ?: []
+                                if(home && version && run){
+                                    cacheUrls << "$run/$store/products/\${product.id}"
+                                    cacheUrls << "$run/$store/brands?brandId=\${brand.id}"
+                                    cacheUrls << "$run/$store/categories?categoryPath=\${category.path | encode}"
+                                    cacheUrls << "$run/$store/categories?parentId=\${category.parentId}"
+                                    def runtime = Runtime.runtime
+                                    def args = [] as List<String>
+                                    def jar = "$home/mogobiz-cache-${version}.jar"
+                                    def app = "$home/application.conf"
+                                    def log4j = "$home/log4j.xml"
+                                    args << "-cp"
+                                    final pathSeparator = System.getProperty("path.separator") ?: ":"
+                                    args << "\"$jar$pathSeparator$app$pathSeparator$log4j\""
+                                    args << "com.mogobiz.cache.bin.ProcessCache"
+                                    args << store
+                                    cacheUrls.each { cacheUrl ->
+                                        args << "$cacheUrl"
+                                    }
+                                    try{
+                                        runtime.exec("java", args.toArray(new String[args.size()]))
+                                    }
+                                    catch(IOException io){
+                                        log.error(io.message, io)
+                                    }
+                                }
+                                log.info("End cache")
                             }
                         }
                         EsEnv.withTransaction {
