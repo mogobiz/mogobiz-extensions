@@ -467,6 +467,17 @@ class MiraklService {
                         }
                         Product.findAllByMiraklTrackingId(trackingId.toString()).each { prod ->
                             prod.miraklStatus = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
+                            if(synchronizationStatus == SynchronizationStatus.COMPLETE){
+                                Map<String, String> externalCodes = [:]
+                                (prod.externalCode ?: "").split(",").each{
+                                    final tokens = it.split("::")
+                                    if(tokens.length >= 2){
+                                        externalCodes << ["${tokens.first()}": "${tokens.drop(1).join("::")}"]
+                                    }
+                                }
+                                externalCodes.put("mirakl", prod.uuid)
+                                prod.externalCode = externalCodes.collect {"${it.key}::${it.value}"}.join(",")
+                            }
                             prod.save(flush: true)
                         }
                         break
@@ -482,6 +493,17 @@ class MiraklService {
                         }
                         TicketType.findAllByMiraklTrackingId(trackingId.toString()).each { sku ->
                             sku.miraklStatus = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
+                            if(synchronizationStatus == SynchronizationStatus.COMPLETE){
+                                Map<String, String> externalCodes = [:]
+                                (sku.externalCode ?: "").split(",").each{
+                                    final tokens = it.split("::")
+                                    if(tokens.length >= 2){
+                                        externalCodes << ["${tokens.first()}": "${tokens.drop(1).join("::")}"]
+                                    }
+                                }
+                                externalCodes.put("mirakl", sku.uuid)
+                                sku.externalCode = externalCodes.collect {"${it.key}::${it.value}"}.join(",")
+                            }
                             sku.save(flush: true)
                         }
                         break
