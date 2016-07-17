@@ -417,7 +417,7 @@ class ElasticsearchService {
         def url = env.url
         def store = env.company.code
         def conf = [debug: true]
-        client.retrieveAliasIndexes(url, "previous_$store", addSearchguardCredentials(config))
+        client.retrieveAliasIndexes(url, "previous_$store", addSearchguardCredentials(conf))
     }
 
     @Synchronized
