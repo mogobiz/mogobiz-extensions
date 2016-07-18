@@ -546,7 +546,8 @@ final class RiverTools {
                     'name',
                     'description',
                     'picture',
-                    'position'
+                    'position',
+                    "externalCode"
             ], sku)
 
             translate(m, sku.id, ['name', 'description'], config.languages, config.defaultLang, false)
@@ -690,8 +691,8 @@ final class RiverTools {
 
             m << asStockMap(sku)
 
-            m << [miraklOffer: p.publishable]
-            m << [miraklOfferId: p.publishable ? sku.uuid: ""]
+//            m << [miraklOffer: p.publishable]
+//            m << [miraklOfferId: p.publishable ? sku.uuid: ""]
 
             return m
         }
@@ -958,7 +959,8 @@ final class RiverTools {
                     "keywords",
                     "dateCreated",
                     "lastUpdated",
-                    "availabilityDate"
+                    "availabilityDate",
+                    "externalCode"
             ], p)
 
             m << [calendarType:p.calendarType?.name()]
