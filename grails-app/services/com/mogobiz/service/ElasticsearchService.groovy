@@ -636,18 +636,18 @@ curl -XPUT ${url}/$index/_alias/$store
                                     cacheUrls << "$run/$store/brands?brandId=\${brand.id}"
                                     cacheUrls << "$run/$store/categories?categoryPath=\${category.path | encode}"
                                     cacheUrls << "$run/$store/categories?parentId=\${category.parentId}"
-                                    def args = [] as List<String>
+                                    List<String> args = []
                                     args << "java"
-                                    def jar = "$home/mogobiz-cache-${version}.jar"
-                                    def app = "$home/application.conf"
-                                    def log4j = "$home/log4j.xml"
+                                    def jar = "$home/mogobiz-cache-${version}.jar".toString()
+                                    def app = "$home/application.conf".toString()
+                                    def log4j = "$home/log4j.xml".toString()
                                     args << "-cp"
                                     final pathSeparator = System.getProperty("path.separator") ?: ":"
-                                    args << "\"$jar$pathSeparator$app$pathSeparator$log4j\""
+                                    args << "\"$jar$pathSeparator$app$pathSeparator$log4j\"".toString()
                                     args << "com.mogobiz.cache.bin.ProcessCache"
                                     args << store
                                     cacheUrls.each { cacheUrl ->
-                                        args << "$cacheUrl"
+                                        args << cacheUrl.toString()
                                     }
                                     BufferedReader br = null
                                     try{
@@ -657,7 +657,7 @@ curl -XPUT ${url}/$index/_alias/$store
                                         String line
                                         while ((line = br.readLine()) != null) {
                                             log.info(line)
-                                    }
+                                        }
                                     }
                                     catch(Throwable th){
                                         log.error(th.message, th)
