@@ -636,8 +636,8 @@ curl -XPUT ${url}/$index/_alias/$store
                                     cacheUrls << "$run/$store/brands?brandId=\${brand.id}"
                                     cacheUrls << "$run/$store/categories?categoryPath=\${category.path | encode}"
                                     cacheUrls << "$run/$store/categories?parentId=\${category.parentId}"
-                                    def runtime = Runtime.runtime
                                     def args = [] as List<String>
+                                    args << "java"
                                     def jar = "$home/mogobiz-cache-${version}.jar"
                                     def app = "$home/application.conf"
                                     def log4j = "$home/log4j.xml"
@@ -649,11 +649,21 @@ curl -XPUT ${url}/$index/_alias/$store
                                     cacheUrls.each { cacheUrl ->
                                         args << "$cacheUrl"
                                     }
+                                    BufferedReader br = null
                                     try{
-                                        runtime.exec("java", args.toArray(new String[args.size()]))
+                                        final ProcessBuilder pb = new ProcessBuilder(args)
+                                        final Process process = pb.start()
+                                        br = new BufferedReader(new InputStreamReader(process.inputStream))
+                                        String line
+                                        while ((line = br.readLine()) != null) {
+                                            log.info(line)
                                     }
-                                    catch(IOException io){
-                                        log.error(io.message, io)
+                                    }
+                                    catch(Throwable th){
+                                        log.error(th.message, th)
+                                    }
+                                    finally{
+                                        br?.close()
                                     }
                                 }
                                 log.info("End cache")

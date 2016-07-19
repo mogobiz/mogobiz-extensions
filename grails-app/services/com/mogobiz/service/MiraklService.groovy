@@ -17,6 +17,7 @@ import com.mogobiz.mirakl.client.domain.MiraklAttribute
 import com.mogobiz.mirakl.client.domain.SynchronizationStatus
 import com.mogobiz.mirakl.client.io.ImportOffersResponse
 import com.mogobiz.mirakl.rivers.OfferRiver
+import com.mogobiz.store.cmd.PagedListCommand
 import com.mogobiz.store.domain.Product
 import com.mogobiz.store.domain.TicketType
 import rx.Subscriber
@@ -521,4 +522,15 @@ class MiraklService {
             }
         }
     }
+
+    def PagedList<MiraklSync> refreshSynchronization(Catalog catalog, PagedListCommand cmd, List<MiraklSyncType> includedTypes = [
+            MiraklSyncType.PRODUCTS,
+            MiraklSyncType.OFFERS,
+            MiraklSyncType.PRODUCTS_SYNCHRO
+    ]){
+        int totalCount = MiraklSync.countByTypeInListAndCatalog(includedTypes, catalog)
+        def list = MiraklSync.findAllByTypeInListAndCatalog(includedTypes, catalog, (cmd?.pagination ?: [:]) + [sort: "timestamp", order: "desc"])
+        new PagedList<MiraklSync>(list: list, totalCount: totalCount)
+    }
+
 }
