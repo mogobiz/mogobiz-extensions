@@ -50,12 +50,19 @@ class MiraklService {
 
     def grailsApplication
 
+    def catalogService
+
     def publish(Company company, MiraklEnv env, Catalog catalog, boolean manual = false) {
         if (catalog?.name?.trim()?.toLowerCase() == "impex") {
             return
         }
         if (company && env && env.company == company && !env.running && catalog && catalog.company == company && (manual || catalog.activationDate < new Date())) {
             log.info("${manual ? "Manual " : ""}Export to Mirakl has started ...")
+            final readOnly = catalog.readOnly
+            if(readOnly){
+                catalogService.refreshMiraklCatalog(catalog)
+                env = catalog.miraklEnv
+            }
             MiraklEnv.withTransaction {
                 env.refresh()
                 env.running = true
@@ -97,17 +104,17 @@ class MiraklService {
 
             categories.each {category ->
                 def parent = category.parent
-                def hierarchyCode = miraklCategoryCode(category)
+                def hierarchyCode = extractMiraklExternalCode(category.externalCode) ?: miraklCategoryCode(category)
                 hierarchies << new MiraklCategory(
                         hierarchyCode,
                         category.name,
                         BulkAction.UPDATE,
-                        parent ? Some.apply(new MiraklCategory(miraklCategoryCode(parent), "")) : toScalaOption(null),
+                        parent ? Some.apply(new MiraklCategory(extractMiraklExternalCode(parent.externalCode) ?: miraklCategoryCode(parent), "")) : toScalaOption(null),
                         category.logisticClass,
                         category.uuid
                 )
                 category.features?.each {feature ->
-                    def featureCode = "${hierarchyCode}_${sanitizeUrlService.sanitizeWithDashes(feature.name)}"
+                    def featureCode = extractMiraklExternalCode(feature.externalCode) ?: "${hierarchyCode}_${sanitizeUrlService.sanitizeWithDashes(feature.name)}"
                     def featureLabel = "${feature.name}"
                     def featureListValues = new MiraklValue(
                             "$featureCode-list",
@@ -124,11 +131,11 @@ class MiraklService {
                     ))
                     feature.values.collect { featureValue ->
                         def val = "${featureValue.value}"
-                        values << new MiraklValue(sanitizeUrlService.sanitizeWithDashes(val), val, Some.apply(featureListValues))
+                        values << new MiraklValue(extractMiraklExternalCode(featureValue.externalCode) ?: sanitizeUrlService.sanitizeWithDashes(val), val, Some.apply(featureListValues))
                     }
                 }
                 category.variations?.each { variation ->
-                    def variationCode = "${hierarchyCode}_${sanitizeUrlService.sanitizeWithDashes(variation.name)}"
+                    def variationCode = extractMiraklExternalCode(variation.externalCode) ?: "${hierarchyCode}_${sanitizeUrlService.sanitizeWithDashes(variation.name)}"
                     def variationlabel = "${variation.name}"
                     def variationListValues = new MiraklValue(
                             "$variationCode-list",
@@ -145,11 +152,12 @@ class MiraklService {
                     ))
                     variation.variationValues.each { variationValue ->
                         def val = "${variationValue.value}"
-                        values << new MiraklValue(sanitizeUrlService.sanitizeWithDashes(val), val, Some.apply(variationListValues))
+                        values << new MiraklValue(extractMiraklExternalCode(variationValue.externalCode) ?: sanitizeUrlService.sanitizeWithDashes(val), val, Some.apply(variationListValues))
                     }
                 }
             }
 
+            if(!readOnly){
             // 1. synchronize categories
             final synchronizeCategories = synchronizeCategories(config, hierarchies)
             final synchronizeCategoriesId = synchronizeCategories?.synchroId
@@ -236,6 +244,7 @@ class MiraklService {
                         sync.save(flush: true)
                     }
                 }
+            }
             }
 
             // 5. Import Offers TODO + Products
@@ -469,13 +478,7 @@ class MiraklService {
                         Product.findAllByMiraklTrackingId(trackingId.toString()).each { prod ->
                             prod.miraklStatus = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
                             if(synchronizationStatus == SynchronizationStatus.COMPLETE){
-                                Map<String, String> externalCodes = [:]
-                                (prod.externalCode ?: "").split(",").each{
-                                    final tokens = it.split("::")
-                                    if(tokens.length >= 2){
-                                        externalCodes << ["${tokens.first()}": "${tokens.drop(1).join("::")}"]
-                                    }
-                                }
+                                Map<String, String> externalCodes = extractExternalCodes(prod.externalCode)
                                 externalCodes.put("mirakl", prod.uuid)
                                 prod.externalCode = externalCodes.collect {"${it.key}::${it.value}"}.join(",")
                             }
@@ -495,13 +498,7 @@ class MiraklService {
                         TicketType.findAllByMiraklTrackingId(trackingId.toString()).each { sku ->
                             sku.miraklStatus = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
                             if(synchronizationStatus == SynchronizationStatus.COMPLETE){
-                                Map<String, String> externalCodes = [:]
-                                (sku.externalCode ?: "").split(",").each{
-                                    final tokens = it.split("::")
-                                    if(tokens.length >= 2){
-                                        externalCodes << ["${tokens.first()}": "${tokens.drop(1).join("::")}"]
-                                    }
-                                }
+                                Map<String, String> externalCodes = extractExternalCodes(sku.externalCode)
                                 externalCodes.put("mirakl", sku.uuid)
                                 sku.externalCode = externalCodes.collect {"${it.key}::${it.value}"}.join(",")
                             }

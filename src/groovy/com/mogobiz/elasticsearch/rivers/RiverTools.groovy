@@ -391,6 +391,25 @@ final class RiverTools {
         category?.fullpath ?: category ? retrieveCategoryPath(category, category.sanitizedName) : ""
     }
 
+    static Map<String, String> extractExternalCodes(String externalCode){
+        Map<String, String> externalCodes = [:]
+        (externalCode ?: "").split(",").each{
+            final tokens = it.split("::")
+            if(tokens.length >= 2){
+                externalCodes << ["${tokens.first()}": "${tokens.drop(1).join("::")}"]
+            }
+        }
+        externalCodes
+    }
+
+    static String extractExternalCode(String externalCode, String ext){
+        extractExternalCodes(externalCode).get(ext)
+    }
+
+    static String extractMiraklExternalCode(String externalCode){
+        extractExternalCode(externalCode, "mirakl")
+    }
+
     static String miraklCategoryCode(Category category) {
         def fullPath = categoryFullPath(category).replaceAll("/", "_")
         fullPath.length() <= 255 ? fullPath : category.sanitizedName
