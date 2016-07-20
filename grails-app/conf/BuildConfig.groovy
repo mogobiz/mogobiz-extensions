@@ -44,6 +44,8 @@ grails.project.dependency.resolution = {
             excludes 'org.elasticsearch:elasticsearch'
         }
 
+        compile (group:"com.mogobiz", name:"mogobiz-tools", version:"${mogobiz.version}")  {excludes "groovy-all"}
+
         compile "com.mogobiz.rivers:mogobiz-google-shopping:${mogobiz.version}"
         compile "com.mogobiz.rivers:mogobiz-cfp:${mogobiz.version}"
         compile "com.mogobiz.rivers:mogobiz-mirakl:${mogobiz.version}"
