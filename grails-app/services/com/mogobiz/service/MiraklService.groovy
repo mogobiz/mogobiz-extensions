@@ -158,98 +158,98 @@ class MiraklService {
             }
 
             if(!readOnly){
-            // 1. synchronize categories
-            final synchronizeCategories = synchronizeCategories(config, hierarchies)
-            final synchronizeCategoriesId = synchronizeCategories?.synchroId
-            if(synchronizeCategoriesId){
-                MiraklSync.withTransaction {
-                    def sync = new MiraklSync()
-                    sync.miraklEnv = env
-                    sync.company = company
-                    sync.catalog = catalog
-                    sync.type = MiraklSyncType.CATEGORIES
-                    sync.status = MiraklSyncStatus.QUEUED
-                    sync.timestamp = new Date()
-                    sync.trackingId = synchronizeCategoriesId
-                    sync.validate()
-                    if(!sync.hasErrors()){
-                        sync.save(flush: true)
-                    }
-                    synchronizeCategories.ids?.each{uuid ->
-                        def cat = Category.findByUuid(uuid)
-                        if(cat){
-                            cat.miraklStatus = sync.status
-                            cat.miraklTrackingId = sync.trackingId
-                            cat.validate()
-                            if(!cat.hasErrors()){
-                                cat.save(flush: true)
+                // 1. synchronize categories
+                final synchronizeCategories = synchronizeCategories(config, hierarchies)
+                final synchronizeCategoriesId = synchronizeCategories?.synchroId
+                if(synchronizeCategoriesId){
+                    MiraklSync.withTransaction {
+                        def sync = new MiraklSync()
+                        sync.miraklEnv = env
+                        sync.company = company
+                        sync.catalog = catalog
+                        sync.type = MiraklSyncType.CATEGORIES
+                        sync.status = MiraklSyncStatus.QUEUED
+                        sync.timestamp = new Date()
+                        sync.trackingId = synchronizeCategoriesId
+                        sync.validate()
+                        if(!sync.hasErrors()){
+                            sync.save(flush: true)
+                        }
+                        synchronizeCategories.ids?.each{uuid ->
+                            def cat = Category.findByUuid(uuid)
+                            if(cat){
+                                cat.miraklStatus = sync.status
+                                cat.miraklTrackingId = sync.trackingId
+                                cat.validate()
+                                if(!cat.hasErrors()){
+                                    cat.save(flush: true)
+                                }
                             }
+                        }
+                    }
+                }
+
+                // 2. Import product Hierarchy
+                final importHierarchiesId = synchronizeCategoriesId ? importHierarchies(config, hierarchies.collect {new MiraklHierarchy(it)})?.importId : null
+                if(importHierarchiesId){
+                    MiraklSync.withTransaction {
+                        def sync = new MiraklSync()
+                        sync.miraklEnv = env
+                        sync.company = company
+                        sync.catalog = catalog
+                        sync.type = MiraklSyncType.HIERARCHIES
+                        sync.status = MiraklSyncStatus.QUEUED
+                        sync.timestamp = new Date()
+                        sync.trackingId = importHierarchiesId.toString()
+                        sync.validate()
+                        if(!sync.hasErrors()){
+                            sync.save(flush: true)
+                        }
+                    }
+                }
+
+                // 3. Import List of Values
+                final importValuesId = importHierarchiesId ? importValues(config, values)?.importId : null
+                if(importValuesId){
+                    MiraklSync.withTransaction {
+                        def sync = new MiraklSync()
+                        sync.miraklEnv = env
+                        sync.company = company
+                        sync.catalog = catalog
+                        sync.type = MiraklSyncType.VALUES
+                        sync.status = MiraklSyncStatus.QUEUED
+                        sync.timestamp = new Date()
+                        sync.trackingId = importValuesId.toString()
+                        sync.validate()
+                        if(!sync.hasErrors()){
+                            sync.save(flush: true)
+                        }
+                    }
+                }
+
+                // 4. Import Attributes
+                final importAttributesId = importValuesId ? importAttributes(config, attributes)?.importId : null
+                if(importAttributesId){
+                    MiraklSync.withTransaction {
+                        def sync = new MiraklSync()
+                        sync.miraklEnv = env
+                        sync.company = company
+                        sync.catalog = catalog
+                        sync.type = MiraklSyncType.ATTRIBUTES
+                        sync.status = MiraklSyncStatus.QUEUED
+                        sync.timestamp = new Date()
+                        sync.trackingId = importAttributesId.toString()
+                        sync.validate()
+                        if(!sync.hasErrors()){
+                            sync.save(flush: true)
                         }
                     }
                 }
             }
 
-            // 2. Import product Hierarchy
-            final importHierarchiesId = synchronizeCategoriesId ? importHierarchies(config, hierarchies.collect {new MiraklHierarchy(it)})?.importId : null
-            if(importHierarchiesId){
-                MiraklSync.withTransaction {
-                    def sync = new MiraklSync()
-                    sync.miraklEnv = env
-                    sync.company = company
-                    sync.catalog = catalog
-                    sync.type = MiraklSyncType.HIERARCHIES
-                    sync.status = MiraklSyncStatus.QUEUED
-                    sync.timestamp = new Date()
-                    sync.trackingId = importHierarchiesId.toString()
-                    sync.validate()
-                    if(!sync.hasErrors()){
-                        sync.save(flush: true)
-                    }
-                }
-            }
-
-            // 3. Import List of Values
-            final importValuesId = importHierarchiesId ? importValues(config, values)?.importId : null
-            if(importValuesId){
-                MiraklSync.withTransaction {
-                    def sync = new MiraklSync()
-                    sync.miraklEnv = env
-                    sync.company = company
-                    sync.catalog = catalog
-                    sync.type = MiraklSyncType.VALUES
-                    sync.status = MiraklSyncStatus.QUEUED
-                    sync.timestamp = new Date()
-                    sync.trackingId = importValuesId.toString()
-                    sync.validate()
-                    if(!sync.hasErrors()){
-                        sync.save(flush: true)
-                    }
-                }
-            }
-
-            // 4. Import Attributes
-            final importAttributesId = importValuesId ? importAttributes(config, attributes)?.importId : null
-            if(importAttributesId){
-                MiraklSync.withTransaction {
-                    def sync = new MiraklSync()
-                    sync.miraklEnv = env
-                    sync.company = company
-                    sync.catalog = catalog
-                    sync.type = MiraklSyncType.ATTRIBUTES
-                    sync.status = MiraklSyncStatus.QUEUED
-                    sync.timestamp = new Date()
-                    sync.trackingId = importAttributesId.toString()
-                    sync.validate()
-                    if(!sync.hasErrors()){
-                        sync.save(flush: true)
-                    }
-                }
-            }
-            }
-
             // 5. Import Offers TODO + Products
             final List<String> offersHeader = []
-            offersHeader .addAll(MiraklApi.offersHeader().split(";")) // offer headers
+            offersHeader.addAll(MiraklApi.offersHeader().split(";")) // offer headers
             offersHeader.addAll(attributes.collect {it.code}) // features + variations attributes
 //            offersHeader.addAll(["category", "identifier", "title"]) // required product attributes FIXME handle attributes mapping
 //            offersHeader.addAll(MiraklApi.productsHeader().split(";")) // product headers
