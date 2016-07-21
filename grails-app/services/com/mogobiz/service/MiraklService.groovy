@@ -403,6 +403,9 @@ class MiraklService {
             def trackingId = sync.trackingId as Long
             SynchronizationStatus synchronizationStatus = null
             String errorReport = null
+            Long linesRead = 0L
+            Long linesInError = 0L
+            long linesInSuccess = 0L
             final waitingStatus = [SynchronizationStatus.QUEUED, SynchronizationStatus.WAITING, SynchronizationStatus.RUNNING]
             try{
                 switch(sync.type){
@@ -412,6 +415,9 @@ class MiraklService {
                             synchronizationStatusResponse = refreshCategoriesSynchronizationStatus(riverConfig, trackingId)
                         }
                         synchronizationStatus = synchronizationStatusResponse.status
+                        linesRead = synchronizationStatusResponse.linesRead
+                        linesInError = synchronizationStatusResponse.linesInError
+                        linesInSuccess = synchronizationStatusResponse.linesInSuccess
                         if(synchronizationStatusResponse.hasErrorReport){
                             errorReport = loadCategoriesSynchronizationErrorReport(riverConfig, trackingId)
                             synchronizationStatus = SynchronizationStatus.FAILED
@@ -460,6 +466,9 @@ class MiraklService {
                             synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
                         }
                         synchronizationStatus = synchronizationStatusResponse.status
+                        linesRead = synchronizationStatusResponse.linesRead
+                        linesInError = synchronizationStatusResponse.linesInError
+                        linesInSuccess = synchronizationStatusResponse.linesInSuccess
                         if(synchronizationStatusResponse.hasErrorReport){
                             errorReport = loadProductsSynchronizationErrorReport(riverConfig, trackingId)
                             synchronizationStatus = SynchronizationStatus.FAILED
@@ -471,6 +480,9 @@ class MiraklService {
                             synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
                         }
                         synchronizationStatus = synchronizationStatusResponse.status
+                        linesRead = synchronizationStatusResponse.linesRead
+                        linesInError = synchronizationStatusResponse.linesInError
+                        linesInSuccess = synchronizationStatusResponse.linesInSuccess
                         if(synchronizationStatusResponse.hasErrorReport){
                             errorReport = loadProductsSynchronizationErrorReport(riverConfig, trackingId)
                             synchronizationStatus = SynchronizationStatus.FAILED
@@ -491,6 +503,9 @@ class MiraklService {
                             trackingImportStatus = trackOffersImportStatusResponse(riverConfig, trackingId)
                         }
                         synchronizationStatus = trackingImportStatus.status
+                        linesRead = trackingImportStatus.linesRead
+                        linesInError = trackingImportStatus.linesInError
+                        linesInSuccess = trackingImportStatus.linesInSuccess
                         if(trackingImportStatus.hasErrorReport){
                             errorReport = loadOffersSynchronizationErrorReport(riverConfig, trackingId)
                             synchronizationStatus = SynchronizationStatus.FAILED
@@ -514,6 +529,9 @@ class MiraklService {
             }
             sync.status = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
             sync.errorReport = errorReport
+            sync.linesRead = linesRead
+            sync.linesInError = linesInError
+            sync.linesInSuccess = linesInSuccess
             if(sync.validate()){
                 sync.save(flush: true)
             }
