@@ -255,10 +255,9 @@ class MiraklService {
 
             // 5. Import Offers TODO + Products
             final List<String> offersHeader = []
+            offersHeader.addAll(["mogobiz-category", "mogobiz-identifier", "mogobiz-description", "mogobiz-title"]) // mogobiz product attributes mapping
             offersHeader.addAll(MiraklApi.offersHeader().split(";")) // offer headers
             offersHeader.addAll(attributes.collect {it.code}) // features + variations attributes
-//            offersHeader.addAll(["category", "identifier", "title"]) // required product attributes FIXME handle attributes mapping
-//            offersHeader.addAll(MiraklApi.productsHeader().split(";")) // product headers
             config.clientConfig.config = [:] << [offersHeader: offersHeader.unique {a, b -> a <=> b}.join(";")]
             def subscriber = new Subscriber<ImportOffersResponse>(){
                 final long before = System.currentTimeMillis()
@@ -386,6 +385,10 @@ class MiraklService {
     }
 
     def synchronize(Catalog catalog){
+        final readOnly = catalog?.readOnly
+        if(readOnly){
+            catalogService.refreshMiraklCatalog(catalog)
+        }
         def excludedStatus = [MiraklSyncStatus.COMPLETE, MiraklSyncStatus.CANCELLED, MiraklSyncStatus.FAILED]
         def toSynchronize = catalog ?
                 MiraklSync.findAllByStatusNotInListAndCatalog(excludedStatus, catalog) :

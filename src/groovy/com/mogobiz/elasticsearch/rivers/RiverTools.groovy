@@ -475,7 +475,7 @@ final class RiverTools {
         def state = (miraklProperties?.state ?: config.clientConfig.config?.state ?: "11") as String
 
         // retrieve sku ids
-        def skuId = sku.uuid
+        def skuId = sku.uuid // sku.code ?
         def productId = extractMiraklExternalCode(p.externalCode) ?: p.uuid
         def productIdType = ProductIdType.SHOP_SKU
 
