@@ -8,6 +8,7 @@ import akka.dispatch.Futures
 import com.mogobiz.common.rivers.spi.AbstractGenericRiver
 import com.mogobiz.common.rivers.spi.RiverConfig
 import com.mogobiz.elasticsearch.rivers.RiverTools
+import com.mogobiz.elasticsearch.rivers.cache.CategoryFeaturesRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.CouponsRiverCache
 import com.mogobiz.mirakl.client.MiraklClient
 import com.mogobiz.mirakl.client.domain.MiraklOffer
@@ -66,6 +67,9 @@ class OfferRiver extends AbstractGenericRiver<MiraklOffer, ImportOffersResponse>
         couponsMap.each {k, v ->
             CouponsRiverCache.instance.put(k as String, v as Set<Coupon>)
         }
+
+        Category.executeQuery('select cat FROM Category cat left join fetch cat.features where cat.catalog.id=:idCatalog',
+                [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]).each {CategoryFeaturesRiverCache.instance.put(it.uuid, it.features)}
 
         Observable.from(TicketType.executeQuery(
                 'SELECT sku FROM TicketType sku ' +

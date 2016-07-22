@@ -380,11 +380,22 @@ final class RiverTools {
         }
     }
 
+    static MiraklAttributeValue categoryFeatureToAttributeValue(Feature feature) {
+        def ret = null
+        if(feature.category){
+            final category = feature.category ?: feature.product.category
+            final featureCode = extractMiraklExternalCode(feature.externalCode) ?: "${extractMiraklExternalCode(category.externalCode) ?: miraklCategoryCode(feature.category)}_${sanitizeService.sanitizeWithDashes(feature.name)}"
+            final featureValue = feature.values.collect {extractMiraklExternalCode(it.externalCode) ?: sanitizeService.sanitizeWithDashes(it.value)}.join("|")
+            ret = new MiraklAttributeValue(featureCode, toScalaOption(featureValue))
+        }
+        ret
+    }
+
     static MiraklAttributeValue vvToAttributeValue(VariationValue vv) {
         final variation = vv.variation
-        def hierarchyCode = miraklCategoryCode(variation.category)
-        def variationCode = "${hierarchyCode}_${sanitizeService.sanitizeWithDashes(variation.name)}"
-        new MiraklAttributeValue(variationCode, toScalaOption(vv.value))
+        final variationCode = extractMiraklExternalCode(variation.externalCode) ?: "${extractMiraklExternalCode(variation.category.externalCode) ?: miraklCategoryCode(variation.category)}_${sanitizeService.sanitizeWithDashes(variation.name)}"
+        final variationValue = extractMiraklExternalCode(vv.externalCode) ?: sanitizeService.sanitizeWithDashes(vv.value)
+        new MiraklAttributeValue(variationCode, toScalaOption(variationValue))
     }
 
     static String categoryFullPath(Category category) {
@@ -418,12 +429,12 @@ final class RiverTools {
     static MiraklProduct asMiraklProduct(Product p, RiverConfig config){
         if(p){
             def shopId = config.clientConfig.merchant_id
-            def code = p.uuid // p.code ?
+            def code = extractMiraklExternalCode(p.externalCode) ?: p.uuid // p.code ?
             def label = p.name
-            def description = toScalaOption(p.description)
-            def category = miraklCategoryCode(p.category)
+            def description = toScalaOption(p.descriptionAsText ?: p.description)
+            def category = extractMiraklExternalCode(p.category.externalCode) ?: miraklCategoryCode(p.category)
             def active = toScalaOption(p.state == ProductState.ACTIVE)
-            def shopSkus = p.ticketTypes?.collect {"$shopId|${it.uuid}"}
+            def shopSkus = ([] << "$shopId|$code") as List<String>
             def brand = toScalaOption(p.brand?.name)
             List<Product2Resource> bindedResources = p.product2Resources.findAll {it.resource.xtype = ResourceType.PICTURE}.toList()
             def picture = bindedResources.size() > 0 ? bindedResources.get(0).resource : null
@@ -444,7 +455,7 @@ final class RiverTools {
                     brand,
                     none, // TODO product Url ?
                     media,
-                    emptyList, // TODO shops authorized ?
+                    toScalaList(([] << shopId) as List<String>),
                     variantGroupCode,
                     logisticClass,
                     BulkAction.UPDATE
@@ -465,8 +476,8 @@ final class RiverTools {
 
         // retrieve sku ids
         def skuId = sku.uuid
-        def productId = p.uuid
-        def productIdType = ProductIdType.SKU
+        def productId = extractMiraklExternalCode(p.externalCode) ?: p.uuid
+        def productIdType = ProductIdType.SHOP_SKU
 
         // retrieve available start date / end date
         def availableStartDate = toScalaOption(p.startDate?.time)
@@ -523,7 +534,17 @@ final class RiverTools {
             attributes << vvToAttributeValue(variation3)
         }
 
-        // TODO handle product features
+        // handle features
+        Set<Feature> features = []
+        categoryWithParents(p.category).each { cat ->
+            features.addAll(CategoryFeaturesRiverCache.instance.get(cat.uuid) ?: [])
+        }
+        features.flatten().unique {a,b -> a.id <=> b.id}.each {f ->
+            def attribute = categoryFeatureToAttributeValue(f)
+            if(attribute){
+                attributes << attribute
+            }
+        }
 
         return new MiraklOffer(
                 skuId,
