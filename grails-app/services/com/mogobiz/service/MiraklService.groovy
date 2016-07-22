@@ -389,7 +389,7 @@ class MiraklService {
         if(readOnly){
             catalogService.refreshMiraklCatalog(catalog)
         }
-        def excludedStatus = [MiraklSyncStatus.COMPLETE, MiraklSyncStatus.CANCELLED, MiraklSyncStatus.FAILED]
+        def excludedStatus = [MiraklSyncStatus.COMPLETE, MiraklSyncStatus.CANCELLED, MiraklSyncStatus.FAILED, MiraklSyncStatus.TRANSFORMATION_FAILED]
         def toSynchronize = catalog ?
                 MiraklSync.findAllByStatusNotInListAndCatalog(excludedStatus, catalog) :
                 MiraklSync.findAllByStatusNotInList(excludedStatus)
@@ -415,7 +415,7 @@ class MiraklService {
             Long linesRead = 0L
             Long linesInError = 0L
             long linesInSuccess = 0L
-            final waitingStatus = [SynchronizationStatus.QUEUED, SynchronizationStatus.WAITING, SynchronizationStatus.RUNNING]
+            final waitingStatus = [SynchronizationStatus.QUEUED, SynchronizationStatus.WAITING, SynchronizationStatus.RUNNING, SynchronizationStatus.TRANSFORMATION_WAITING, SynchronizationStatus.TRANSFORMATION_RUNNING]
             try{
                 switch(sync.type){
                     case MiraklSyncType.CATEGORIES:
@@ -470,17 +470,21 @@ class MiraklService {
                         }
                         break
                     case MiraklSyncType.PRODUCTS:
-                        def synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
-                        while(synchronizationStatusResponse.status in waitingStatus){
-                            synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
+                        def synchronizationStatusResponse = trackProductsImportStatusResponse(riverConfig, trackingId)
+                        while(synchronizationStatusResponse.importStatus in waitingStatus){
+                            synchronizationStatusResponse = trackProductsImportStatusResponse(riverConfig, trackingId)
                         }
-                        synchronizationStatus = synchronizationStatusResponse.status
-                        linesRead = synchronizationStatusResponse.linesRead
-                        linesInError = synchronizationStatusResponse.linesInError
-                        linesInSuccess = synchronizationStatusResponse.linesInSuccess
+                        synchronizationStatus = synchronizationStatusResponse.importStatus
+                        linesRead = synchronizationStatusResponse.transformLinesRead
+                        linesInError = synchronizationStatusResponse.transformLinesInError
+                        linesInSuccess = synchronizationStatusResponse.transformLinesInSucces
                         if(synchronizationStatusResponse.hasErrorReport){
-                            errorReport = loadProductsSynchronizationErrorReport(riverConfig, trackingId)
+                            errorReport = loadProductsImportSynchronizationErrorReport(riverConfig, trackingId)
                             synchronizationStatus = SynchronizationStatus.FAILED
+                        }
+                        else if(synchronizationStatusResponse.hasTransformationErrorReport){
+                            errorReport = loadProductsImportTransformationErrorReport(riverConfig, trackingId)
+                            synchronizationStatus = SynchronizationStatus.TRANSFORMATION_FAILED
                         }
                         break
                     case MiraklSyncType.PRODUCTS_SYNCHRO:
