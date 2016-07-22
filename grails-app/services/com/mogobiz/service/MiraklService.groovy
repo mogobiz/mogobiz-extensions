@@ -105,6 +105,7 @@ class MiraklService {
             categories.each {category ->
                 def parent = category.parent
                 def hierarchyCode = extractMiraklExternalCode(category.externalCode) ?: miraklCategoryCode(category)
+                def hierarchyPath = categoryFullPath(category)
                 hierarchies << new MiraklCategory(
                         hierarchyCode,
                         category.name,
@@ -115,35 +116,39 @@ class MiraklService {
                 )
                 category.features?.each {feature ->
                     def featureCode = extractMiraklExternalCode(feature.externalCode) ?: "${hierarchyCode}_${sanitizeUrlService.sanitizeWithDashes(feature.name)}"
-                    def featureLabel = "${feature.name}"
+                    def featureLabel = "${feature.name} feature ($hierarchyPath)"
                     def featureListValues = new MiraklValue(
                             "$featureCode-list",
                             featureLabel
                     )
+                    def codes = []
+                    feature.values.collect { featureValue ->
+                        def val = "${featureValue.value}"
+                        def code = extractMiraklExternalCode(featureValue.externalCode) ?: sanitizeUrlService.sanitizeWithDashes(val)
+                        codes << code
+                        values << new MiraklValue(code, val, Some.apply(featureListValues))
+                    }
                     attributes << new MiraklAttribute(new Attribute(
                             code: featureCode,
-                            label: featureLabel,
+                            label: feature.name,
                             hierarchyCode: hierarchyCode,
-                            type: AttributeType.LIST,
+                            type: AttributeType.LIST_MULTIPLE_VALUES,
                             typeParameter: featureListValues.code,
+                            defaultValue: codes.join("|"),
                             variant: false,
                             required: false
                     ))
-                    feature.values.collect { featureValue ->
-                        def val = "${featureValue.value}"
-                        values << new MiraklValue(extractMiraklExternalCode(featureValue.externalCode) ?: sanitizeUrlService.sanitizeWithDashes(val), val, Some.apply(featureListValues))
-                    }
                 }
                 category.variations?.each { variation ->
                     def variationCode = extractMiraklExternalCode(variation.externalCode) ?: "${hierarchyCode}_${sanitizeUrlService.sanitizeWithDashes(variation.name)}"
-                    def variationlabel = "${variation.name}"
+                    def variationlabel = "${variation.name} variation ($hierarchyPath)"
                     def variationListValues = new MiraklValue(
                             "$variationCode-list",
                             variationlabel
                     )
                     attributes << new MiraklAttribute(new Attribute(
                             code: variationCode,
-                            label: variationlabel,
+                            label: variation.name,
                             hierarchyCode: hierarchyCode,
                             type: AttributeType.LIST,
                             typeParameter: variationListValues.code,
@@ -152,7 +157,8 @@ class MiraklService {
                     ))
                     variation.variationValues.each { variationValue ->
                         def val = "${variationValue.value}"
-                        values << new MiraklValue(extractMiraklExternalCode(variationValue.externalCode) ?: sanitizeUrlService.sanitizeWithDashes(val), val, Some.apply(variationListValues))
+                        def code = extractMiraklExternalCode(variationValue.externalCode) ?: sanitizeUrlService.sanitizeWithDashes(val)
+                        values << new MiraklValue(code, val, Some.apply(variationListValues))
                     }
                 }
             }
