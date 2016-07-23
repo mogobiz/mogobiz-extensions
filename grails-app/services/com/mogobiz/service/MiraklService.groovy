@@ -253,11 +253,19 @@ class MiraklService {
                 }
             }
 
-            // 5. Import Offers TODO + Products
+            // 5. Import Offers + Products
             final List<String> offersHeader = []
-            offersHeader.addAll(["mogobiz-category", "mogobiz-identifier", "mogobiz-description", "mogobiz-title"]) // mogobiz product attributes mapping
-            offersHeader.addAll(MiraklApi.offersHeader().split(";")) // offer headers
+            offersHeader.addAll([
+                    "mogobiz-category",
+                    "mogobiz-identifier",
+                    "mogobiz-title",
+                    "mogobiz-description",
+                    "mogobiz-media",
+                    "mogobiz-brand",
+                    "mogobiz-product-identifier"
+            ]) // mogobiz product attributes mapping
             offersHeader.addAll(attributes.collect {it.code}) // features + variations attributes
+            offersHeader.addAll(MiraklApi.offersHeader().split(";")) // offer headers
             config.clientConfig.config = [:] << [offersHeader: offersHeader.unique {a, b -> a <=> b}.join(";")]
             def subscriber = new Subscriber<ImportOffersResponse>(){
                 final long before = System.currentTimeMillis()

@@ -426,23 +426,24 @@ final class RiverTools {
         fullPath.length() <= 255 ? fullPath : category.sanitizedName
     }
 
-    static MiraklProduct asMiraklProduct(Product p, RiverConfig config){
+    static MiraklProduct asMiraklProduct(TicketType sku, RiverConfig config){
+        Product p = sku?.product
         if(p){
             def shopId = config.clientConfig.merchant_id
-            def code = extractMiraklExternalCode(p.externalCode) ?: p.uuid // p.code ?
+            def code = extractMiraklExternalCode(sku.externalCode) ?: sku.uuid
+            def variantGroupCode = toScalaOption(extractMiraklExternalCode(p.externalCode) ?: p.uuid) // p.code ?
             def label = p.name
-            def description = toScalaOption(p.descriptionAsText ?: p.description)
+            def description = toScalaOption(sku.description ?: p.descriptionAsText)
             def category = extractMiraklExternalCode(p.category.externalCode) ?: miraklCategoryCode(p.category)
             def active = toScalaOption(p.state == ProductState.ACTIVE)
             def shopSkus = ([] << "$shopId|$code") as List<String>
             def brand = toScalaOption(p.brand?.name)
             List<Product2Resource> bindedResources = p.product2Resources.findAll {it.resource.xtype = ResourceType.PICTURE}.toList()
-            def picture = bindedResources.size() > 0 ? bindedResources.get(0).resource : null
+            def picture = sku.picture ?: bindedResources.size() > 0 ? bindedResources.get(0).resource : null
             def media = toScalaOption(picture ? extractResourceUrl(picture, config) : null)
             def miraklProperties = p.productProperties?.
                     findAll {pp -> pp.name.toLowerCase().startsWith("_mirakl_")}?.
                     collectEntries {pp -> [pp.name.substring(8), pp.value]}
-            def variantGroupCode = toScalaOption(miraklProperties?.variant_group_code as String ?: null)
             def logisticClass = toScalaOption(miraklProperties?.logistic_class as String ?: null)
             new MiraklProduct(
                     code,
@@ -475,8 +476,8 @@ final class RiverTools {
         def state = (miraklProperties?.state ?: config.clientConfig.config?.state ?: "11") as String
 
         // retrieve sku ids
-        def skuId = sku.uuid // sku.code ?
-        def productId = extractMiraklExternalCode(p.externalCode) ?: p.uuid
+        def skuId = sku.uuid
+        def productId = extractMiraklExternalCode(sku.externalCode) ?: sku.uuid
         def productIdType = ProductIdType.SHOP_SKU
 
         // retrieve available start date / end date
@@ -487,7 +488,7 @@ final class RiverTools {
         def price = sku.price
 
         // retrieve description
-        def description = toScalaOption(sku.description)
+        def description = toScalaOption(sku.description ?: p?.descriptionAsText)
 
         // retrieve quantity
         def quantity =  toScalaOption(quantity(sku))
@@ -566,7 +567,7 @@ final class RiverTools {
                 none,
                 BulkAction.UPDATE,
                 toScalaList(attributes),
-                toScalaOption(asMiraklProduct(p, config))
+                toScalaOption(asMiraklProduct(sku, config))
         )
     }
 
