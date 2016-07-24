@@ -10,6 +10,7 @@ import com.mogobiz.common.client.Credentials
 import com.mogobiz.common.rivers.AbstractRiverCache
 import com.mogobiz.common.rivers.GenericRiversFlow
 import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.mirakl.client.MiraklSftpConfig
 import com.mogobiz.mirakl.client.domain.Attribute
 import com.mogobiz.mirakl.client.domain.AttributeType
 import com.mogobiz.mirakl.client.domain.MiraklApi
@@ -401,6 +402,21 @@ class MiraklService {
         def toSynchronize = catalog ?
                 MiraklSync.findAllByStatusNotInListAndCatalog(excludedStatus, catalog) :
                 MiraklSync.findAllByStatusNotInList(excludedStatus)
+        toSynchronize.collect {it.miraklEnv}.flatten().findAll {it.operator}.unique {a,b -> a.id <=> b.id}.each{env ->
+            if(env.remoteHost && env.remotePath && env.username && env.localPath && (env.password || env.keyPath)){
+                def miraklSftpConfig = new MiraklSftpConfig(
+                        remoteHost: env.remoteHost,
+                        remotePath: env.remotePath,
+                        username: env.username,
+                        password: env.password,
+                        keyPath: env.keyPath,
+                        passphrase: env.passPhrase,
+                        localPath: env.localPath
+                )
+                synchronizeImports(miraklSftpConfig)
+                // TODO handle mirakl ftp files
+            }
+        }
         toSynchronize.each {sync ->
             def company = sync.company
             def env = sync.miraklEnv ?: MiraklEnv.findAllByCompany(company).first()
