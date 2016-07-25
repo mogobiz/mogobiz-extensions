@@ -15,6 +15,7 @@ import com.mogobiz.mirakl.client.domain.Attribute
 import com.mogobiz.mirakl.client.domain.AttributeType
 import com.mogobiz.mirakl.client.domain.MiraklApi
 import com.mogobiz.mirakl.client.domain.MiraklAttribute
+import com.mogobiz.mirakl.client.domain.MiraklReportItem
 import com.mogobiz.mirakl.client.domain.OutputShop
 import com.mogobiz.mirakl.client.domain.SynchronizationStatus
 import com.mogobiz.mirakl.client.io.ImportOffersResponse
@@ -23,7 +24,10 @@ import com.mogobiz.mirakl.rivers.OfferRiver
 import com.mogobiz.store.cmd.PagedListCommand
 import com.mogobiz.store.domain.Product
 import com.mogobiz.store.domain.TicketType
+import com.mogobiz.tools.CsvLine
+import com.mogobiz.tools.Reader
 import rx.Subscriber
+import rx.functions.Action1
 import rx.internal.reactivestreams.SubscriberAdapter
 import scala.Some
 
@@ -405,7 +409,8 @@ class MiraklService {
                 MiraklSync.findAllByStatusNotInListAndCatalog(excludedStatus, catalog) :
                 MiraklSync.findAllByStatusNotInList(excludedStatus)
         toSynchronize.collect {it.miraklEnv}.flatten().findAll {it.operator}.unique {a,b -> a.id <=> b.id}.each{env ->
-            if(env.remoteHost && env.remotePath && env.username && env.localPath && (env.password || env.keyPath)){
+            if(env.frontKey && env.remoteHost && env.remotePath && env.username && env.localPath && (env.password || env.keyPath)){
+                final String localPath = env.localPath
                 def miraklSftpConfig = new MiraklSftpConfig(
                         remoteHost: env.remoteHost,
                         remotePath: env.remotePath,
@@ -413,10 +418,40 @@ class MiraklService {
                         password: env.password,
                         keyPath: env.keyPath,
                         passphrase: env.passPhrase,
-                        localPath: env.localPath
+                        localPath: localPath
                 )
                 synchronizeImports(miraklSftpConfig)
-                // TODO handle mirakl ftp files
+                def files = new File(localPath).listFiles(new FilenameFilter() {
+                    public boolean accept(File dir, String name) {
+                        final matcher = IMPORT_PRODUCTS.matcher(name)
+                        return matcher.find() && matcher.groupCount() == 4
+                    }
+                })
+                RiverConfig riverConfig = new RiverConfig(
+                        debug: true,
+                        clientConfig: new ClientConfig(
+                                merchant_url: env.url,
+                                debug: true,
+                                credentials: new Credentials(
+                                        frontKey: env.frontKey as String
+                                )
+                        )
+                )
+                files.each {file ->
+                    log.info("START HANDLING PRODUCT FILE ${file.path}")
+                    rx.Observable<CsvLine> lines = Reader.parseCsvFile(file)
+                    def results = lines.toBlocking()
+                    List<MiraklReportItem> reportItems = []
+                    results.forEach(new Action1<CsvLine>() {
+                        @Override
+                        void call(CsvLine csvLine) {
+                            reportItems << new MiraklReportItem(csvLine) //TODO check Product
+                        }
+                    })
+                    sendProductIntegrationReports(riverConfig, file.name, SynchronizationStatus.COMPLETE, reportItems)
+                    // TODO P21
+                    log.info("END HANDLING PRODUCT FILE ${file.path}")
+                }
             }
         }
         toSynchronize.each {sync ->
