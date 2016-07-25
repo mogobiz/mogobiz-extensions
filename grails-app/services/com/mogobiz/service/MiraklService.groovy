@@ -15,8 +15,10 @@ import com.mogobiz.mirakl.client.domain.Attribute
 import com.mogobiz.mirakl.client.domain.AttributeType
 import com.mogobiz.mirakl.client.domain.MiraklApi
 import com.mogobiz.mirakl.client.domain.MiraklAttribute
+import com.mogobiz.mirakl.client.domain.OutputShop
 import com.mogobiz.mirakl.client.domain.SynchronizationStatus
 import com.mogobiz.mirakl.client.io.ImportOffersResponse
+import com.mogobiz.mirakl.client.io.SearchShopsRequest
 import com.mogobiz.mirakl.rivers.OfferRiver
 import com.mogobiz.store.cmd.PagedListCommand
 import com.mogobiz.store.domain.Product
@@ -585,4 +587,10 @@ class MiraklService {
         new PagedList<MiraklSync>(list: list, totalCount: totalCount)
     }
 
+    def PagedList<OutputShop> searchShops(String url, String frontKey, SearchShopsRequest request = new SearchShopsRequest()){
+        def clientConfig = new ClientConfig(merchant_url: url, credentials: new Credentials(frontKey: frontKey))
+        def riverConfig = new RiverConfig(debug: true, clientConfig: clientConfig)
+        def response = searchShops(riverConfig, request)
+        new PagedList<OutputShop>(list: response.shops, totalCount: response.totalCount)
+    }
 }
