@@ -445,6 +445,44 @@ final class RiverTools {
                     findAll {pp -> pp.name.toLowerCase().startsWith("_mirakl_")}?.
                     collectEntries {pp -> [pp.name.substring(8), pp.value]}
             def logisticClass = toScalaOption(miraklProperties?.logistic_class as String ?: null)
+            // retrieve attributes
+            List<MiraklAttributeValue> attributes = []
+
+//        // category
+//        attributes << new MiraklAttributeValue("category", toScalaOption(miraklCategoryCode(p.category)))
+//        // description
+//        attributes << new MiraklAttributeValue("description", toScalaOption(p.description))
+//        // identifier
+//        attributes << new MiraklAttributeValue("identifier", toScalaOption(p.uuid))
+//        // title
+//        attributes << new MiraklAttributeValue("title", toScalaOption(p.name))
+
+            // handle variations
+            final variation1 = sku.variation1
+            if(variation1){
+                attributes << vvToAttributeValue(variation1)
+            }
+            final variation2 = sku.variation2
+            if(variation2){
+                attributes << vvToAttributeValue(variation2)
+            }
+            final variation3 = sku.variation3
+            if(variation3){
+                attributes << vvToAttributeValue(variation3)
+            }
+
+            // handle features
+            Set<Feature> features = []
+            categoryWithParents(p.category).each { cat ->
+                features.addAll(CategoryFeaturesRiverCache.instance.get(cat.uuid) ?: [])
+            }
+            features.flatten().unique {a,b -> a.id <=> b.id}.each {f ->
+                def attribute = categoryFeatureToAttributeValue(f)
+                if(attribute){
+                    attributes << attribute
+                }
+            }
+
             new MiraklProduct(
                     code,
                     label,
@@ -459,7 +497,8 @@ final class RiverTools {
                     toScalaList(([] << shopId) as List<String>),
                     variantGroupCode,
                     logisticClass,
-                    BulkAction.UPDATE
+                    BulkAction.UPDATE,
+                    toScalaList(attributes)
             )
         }
         else{
@@ -509,44 +548,6 @@ final class RiverTools {
         reductions = reductions ? Math.max(0L, price - reductions) : null
         def discountPrice = toScalaOption(reductions)
 
-        // retrieve attributes
-        List<MiraklAttributeValue> attributes = []
-
-//        // category
-//        attributes << new MiraklAttributeValue("category", toScalaOption(miraklCategoryCode(p.category)))
-//        // description
-//        attributes << new MiraklAttributeValue("description", toScalaOption(p.description))
-//        // identifier
-//        attributes << new MiraklAttributeValue("identifier", toScalaOption(p.uuid))
-//        // title
-//        attributes << new MiraklAttributeValue("title", toScalaOption(p.name))
-
-        // handle variations
-        final variation1 = sku.variation1
-        if(variation1){
-            attributes << vvToAttributeValue(variation1)
-        }
-        final variation2 = sku.variation2
-        if(variation2){
-            attributes << vvToAttributeValue(variation2)
-        }
-        final variation3 = sku.variation3
-        if(variation3){
-            attributes << vvToAttributeValue(variation3)
-        }
-
-        // handle features
-        Set<Feature> features = []
-        categoryWithParents(p.category).each { cat ->
-            features.addAll(CategoryFeaturesRiverCache.instance.get(cat.uuid) ?: [])
-        }
-        features.flatten().unique {a,b -> a.id <=> b.id}.each {f ->
-            def attribute = categoryFeatureToAttributeValue(f)
-            if(attribute){
-                attributes << attribute
-            }
-        }
-
         return new MiraklOffer(
                 skuId,
                 productId,
@@ -566,7 +567,6 @@ final class RiverTools {
                 none,
                 none,
                 BulkAction.UPDATE,
-                toScalaList(attributes),
                 toScalaOption(asMiraklProduct(sku, config))
         )
     }
