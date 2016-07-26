@@ -23,6 +23,7 @@ import com.mogobiz.mirakl.client.domain.MiraklAttributeValue
 import com.mogobiz.mirakl.client.domain.MiraklOffer
 import com.mogobiz.mirakl.client.domain.MiraklProduct
 import com.mogobiz.mirakl.client.domain.ProductIdType
+import com.mogobiz.mirakl.client.domain.ProductReference
 import com.mogobiz.service.SanitizeUrlService
 import com.mogobiz.store.domain.Brand
 import com.mogobiz.store.domain.BrandProperty
@@ -483,13 +484,22 @@ final class RiverTools {
                 }
             }
 
+            // handle product references (ISBN, EAN, ...)
+            List<ProductReference> productReferences = []
+            Map<String, String> externalReferences = extractExternalCodes(sku.externalCode)
+            externalReferences.each{ k, v ->
+                if(!k.equalsIgnoreCase("mirakl")){
+                    productReferences << new ProductReference(referenceType: k, reference: v)
+                }
+            }
+
             new MiraklProduct(
                     code,
                     label,
                     description,
                     category,
                     active,
-                    emptyList, // TODO product references ?
+                    toScalaList(productReferences),
                     toScalaList(shopSkus),
                     brand,
                     none, // TODO product Url ?

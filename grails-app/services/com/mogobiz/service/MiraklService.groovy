@@ -15,8 +15,11 @@ import com.mogobiz.mirakl.client.domain.Attribute
 import com.mogobiz.mirakl.client.domain.AttributeType
 import com.mogobiz.mirakl.client.domain.MiraklApi
 import com.mogobiz.mirakl.client.domain.MiraklAttribute
+import com.mogobiz.mirakl.client.domain.MiraklAttributeValue
+import com.mogobiz.mirakl.client.domain.MiraklProduct
 import com.mogobiz.mirakl.client.domain.MiraklReportItem
 import com.mogobiz.mirakl.client.domain.OutputShop
+import com.mogobiz.mirakl.client.domain.ProductReference
 import com.mogobiz.mirakl.client.domain.SynchronizationStatus
 import com.mogobiz.mirakl.client.io.ImportOffersResponse
 import com.mogobiz.mirakl.client.io.SearchShopsRequest
@@ -263,13 +266,14 @@ class MiraklService {
             // 5. Import Offers + Products
             final List<String> offersHeader = []
             offersHeader.addAll([
-                    "mogobiz-category",
-                    "mogobiz-identifier",
-                    "mogobiz-title",
-                    "mogobiz-description",
-                    "mogobiz-media",
-                    "mogobiz-brand",
-                    "mogobiz-product-identifier"
+                    MiraklApi.category(),
+                    MiraklApi.identifier(),
+                    MiraklApi.title(),
+                    MiraklApi.variantIdentifier(),
+                    MiraklApi.description(),
+                    MiraklApi.media(),
+                    MiraklApi.brand(),
+                    MiraklApi.productReferences()
             ]) // mogobiz product attributes mapping
             offersHeader.addAll(attributes.collect {it.code}) // features + variations attributes
             offersHeader.addAll(MiraklApi.offersHeader().split(";")) // offer headers
@@ -316,15 +320,15 @@ class MiraklService {
                             sync.validate()
                             if(!sync.hasErrors()){
                                 sync.save(flush: true)
-                            }
-                            importOffersResponse.ids?.each{uuid ->
-                                def sku = TicketType.findByUuid(uuid)
-                                if(sku){
-                                    sku.miraklStatus = sync.status
-                                    sku.miraklTrackingId = sync.trackingId
-                                    sku.validate()
-                                    if(!sku.hasErrors()){
-                                        sku.save(flush: true)
+                                importOffersResponse.ids?.each{ id ->
+                                    def sku = TicketType.findByExternalCodeLikeOrUuid("%mirakl::$id%", id)
+                                    if(sku){
+                                        sku.miraklStatus = sync.status
+                                        sku.miraklTrackingId = sync.trackingId
+                                        sku.validate()
+                                        if(!sku.hasErrors()){
+                                            sku.save(flush: true)
+                                        }
                                     }
                                 }
                             }
@@ -345,17 +349,6 @@ class MiraklService {
                             if(!sync.hasErrors()){
                                 sync.save(flush: true)
                             }
-//                            importOffersResponse.productIds?.each{uuid ->
-//                                def product = Product.findByUuid(uuid)
-//                                if(product){
-//                                    product.miraklStatus = sync.status
-//                                    product.miraklTrackingId = sync.trackingId
-//                                    product.validate()
-//                                    if(!product.hasErrors()){
-//                                        product.save(flush: true)
-//                                    }
-//                                }
-//                            }
                         }
                     }
                     final productSynchroId = importOffersResponse?.productSynchroId
@@ -372,15 +365,15 @@ class MiraklService {
                             sync.validate()
                             if(!sync.hasErrors()){
                                 sync.save(flush: true)
-                            }
-                            importOffersResponse.productIds?.each{uuid ->
-                                def product = Product.findByUuid(uuid)
-                                if(product){
-                                    product.miraklStatus = sync.status
-                                    product.miraklTrackingId = sync.trackingId
-                                    product.validate()
-                                    if(!product.hasErrors()){
-                                        product.save(flush: true)
+                                importOffersResponse.productIds?.each{ productId ->
+                                    def sku = TicketType.findByExternalCodeLikeOrUuid("%mirakl::$productId%", productId)
+                                    if(sku){
+                                        sku.miraklProductStatus = sync.status
+                                        sku.miraklProductTrackingId = sync.trackingId
+                                        sku.validate()
+                                        if(!sku.hasErrors()){
+                                            sku.save(flush: true)
+                                        }
                                     }
                                 }
                             }
@@ -408,8 +401,10 @@ class MiraklService {
         def toSynchronize = catalog ?
                 MiraklSync.findAllByStatusNotInListAndCatalog(excludedStatus, catalog) :
                 MiraklSync.findAllByStatusNotInList(excludedStatus)
-        toSynchronize.collect {it.miraklEnv}.flatten().findAll {it.operator}.unique {a,b -> a.id <=> b.id}.each{env ->
-            if(env.frontKey && env.remoteHost && env.remotePath && env.username && env.localPath && (env.password || env.keyPath)){
+        def operators = !catalog ? MiraklEnv.findAllByOperator(true) : (toSynchronize.collect {it.miraklEnv}.flatten().findAll {it.operator}.unique {a,b -> a.id <=> b.id})
+        operators.each{env ->
+            if(env.frontKey && env.remoteHost && env.remotePath && env.username && env.localPath && (env.password || env.keyPath)){ // TODO add creation validation
+                // 0 - upload operator ftp files
                 final String localPath = env.localPath
                 def miraklSftpConfig = new MiraklSftpConfig(
                         remoteHost: env.remoteHost,
@@ -421,10 +416,11 @@ class MiraklService {
                         localPath: localPath
                 )
                 synchronizeImports(miraklSftpConfig)
+                // 1 - filter files uploaded
                 def files = new File(localPath).listFiles(new FilenameFilter() {
                     public boolean accept(File dir, String name) {
                         final matcher = IMPORT_PRODUCTS.matcher(name)
-                        return matcher.find() && matcher.groupCount() == 4
+                        return matcher.find() && matcher.groupCount() == 4 && matcher.group(1) in env.shopIds.split(",")
                     }
                 })
                 RiverConfig riverConfig = new RiverConfig(
@@ -433,24 +429,150 @@ class MiraklService {
                                 merchant_url: env.url,
                                 debug: true,
                                 credentials: new Credentials(
-                                        frontKey: env.frontKey as String
+                                        apiKey: env.apiKey, // required for specific api calls
+                                        frontKey: env.frontKey
                                 )
                         )
                 )
+                final xcompany = env.company
+                // 2 - load operator attributes
+                def attributes = files.size() > 0 ? listAttributes(riverConfig)?.attributes : []
+                // 3 - handle uploaded files
                 files.each {file ->
-                    log.info("START HANDLING PRODUCT FILE ${file.path}")
+                    final matcher = IMPORT_PRODUCTS.matcher(file.name)
+                    matcher.find()
+                    final shopId = matcher.group(1)
+                    log.info("START HANDLING PRODUCT FILE ${file.path} FOR MIRAKL SHOP $shopId")
+                    Catalog xcatalog = null
+                    // 3.1 - create mirakl catalog for external publication
+                    MiraklEnv xenv = MiraklEnv.findByShopIdAndCompany(shopId, xcompany)
+                    if(!xenv){
+                        xenv = env
+                        xcatalog = Catalog.findByCompanyAndExternalCodeLikeAndReadOnlyAndDeleted(xcompany, "%mirakl::$shopId%", true, false)
+                        if(!xcatalog){
+                            xcatalog = new Catalog(
+                                    name: "$shopId",
+                                    externalCode: "%mirakl::$shopId%",
+                                    company: xcompany,
+                                    miraklEnv: xenv,
+                                    readOnly: true
+                            )
+                            xcatalog.validate()
+                            if(!xcatalog.hasErrors()){
+                                catalogService.handleMiraklCategoriesByHierarchyAndLevel(xcatalog, riverConfig)
+                            }
+                        }
+                    }
+                    // 3.2 - parse csv file
                     rx.Observable<CsvLine> lines = Reader.parseCsvFile(file)
                     def results = lines.toBlocking()
+                    // 3.3 - check each line
                     List<MiraklReportItem> reportItems = []
+                    List<MiraklProduct> products = []
                     results.forEach(new Action1<CsvLine>() {
                         @Override
                         void call(CsvLine csvLine) {
-                            reportItems << new MiraklReportItem(csvLine) //TODO check Product
+                            List<MiraklAttributeValue> vattributes = []
+                            final Map<String, String> fields = csvLine.fields
+                            def errorMessage = none
+                            // 3.3.1 - check all required attributes by mirakl operator
+                            def error = attributes.any {attribute ->
+                                def ret = false
+                                final def code = attribute.code
+                                if(attribute.required && (!fields.containsKey(code) || fields.get(code).trim().isEmpty())){
+                                    errorMessage = toScalaOption("${code} is required")
+                                    ret = true
+                                }
+                                else{
+                                    vattributes << new MiraklAttributeValue(code, toScalaOption(fields.get(code)))
+                                }
+                                ret
+                            }
+                            // 3.3.2 - check product definition for mogobiz and import products and skus for external publications
+                            if(!error){
+                                final categoryCode = fields.get(MiraklApi.category())
+                                final code = fields.get(MiraklApi.identifier())
+                                final label = fields.get(MiraklApi.title())
+                                final description = fields.get(MiraklApi.description())
+                                final variantGroupCode = fields.get(MiraklApi.variantIdentifier())
+                                final brandName = fields.get(MiraklApi.brand())
+                                final picture = fields.get(MiraklApi.media())
+                                List<ProductReference> productReferences = []
+                                fields.get(MiraklApi.productReferences())?.each{k,v ->
+                                    productReferences << new ProductReference(referenceType: k, reference: v)
+                                }
+
+                                // find sku and product
+                                TicketType xsku = TicketType.findAllByExternalCodeLikeOrUuid("%mirakl::$code%", code).find {
+                                    it.miraklStatus && it.miraklTrackingId && MiraklSync.findByTrackingId(it.miraklTrackingId)?.miraklEnv?.shopId == shopId
+                                }
+                                Product xproduct = xsku?.product
+                                Category xcategory = xproduct?.category ?: Category.findAllByExternalCodeLikeOrUuid("%mirakl::$categoryCode%", categoryCode).find {
+                                    it.company == xcompany && it.catalog == xcatalog
+                                }
+                                if(xcategory){
+                                    xcatalog = xcatalog ?: xcategory?.catalog
+                                    if(!xsku){
+                                        // TODO create product and sku
+                                    }
+                                    products << new MiraklProduct(
+                                            code,
+                                            label,
+                                            toScalaOption(description),
+                                            categoryCode,
+                                            toScalaOption(true),
+                                            toScalaList(productReferences),
+                                            toScalaList(([] << "$shopId|$code") as List<String>),
+                                            toScalaOption(brandName),
+                                            none,
+                                            toScalaOption(picture),
+                                            toScalaList(([] << "$shopId") as List<String>),
+                                            toScalaOption(variantGroupCode),
+                                            none, //TODO logistic-class
+                                            BulkAction.UPDATE,
+                                            toScalaList(vattributes)
+                                    )
+                                }
+                                else {
+                                    log.warn("category not found $categoryCode")
+                                    errorMessage = toScalaOption("unknow category $categoryCode")
+                                }
+                            }
+                            reportItems << new MiraklReportItem(csvLine, errorMessage)
                         }
                     })
                     sendProductIntegrationReports(riverConfig, file.name, SynchronizationStatus.COMPLETE, reportItems)
-                    // TODO P21
-                    log.info("END HANDLING PRODUCT FILE ${file.path}")
+                    if(products.size() > 0){
+                        def synchronizationResponse = synchronizeProducts(riverConfig, products)
+                        final productSynchroId = synchronizationResponse?.synchroId
+                        if(productSynchroId){
+                            def sync = new MiraklSync()
+                            sync.miraklEnv = xenv
+                            sync.company = xcompany
+                            sync.catalog = xcatalog
+                            sync.type = MiraklSyncType.PRODUCTS_SYNCHRO
+                            sync.status = MiraklSyncStatus.QUEUED
+                            sync.timestamp = new Date()
+                            sync.trackingId = productSynchroId.toString()
+                            sync.validate()
+                            if (!sync.hasErrors()) {
+                                sync.save(flush: true)
+                                synchronizationResponse?.ids?.each { id ->
+                                    def sku = TicketType.findByExternalCodeLikeOrUuid("%mirakl::$id%", id)
+                                    if (sku) {
+                                        sku.miraklProductStatus = sync.status
+                                        sku.miraklProductTrackingId = sync.trackingId
+                                        sku.validate()
+                                        if (!sku.hasErrors()) {
+                                            sku.save(flush: true)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    file.delete()
+                    log.info("END HANDLING PRODUCT FILE ${file.path} FOR MIRAKL SHOP $shopId")
                 }
             }
         }
@@ -561,14 +683,16 @@ class MiraklService {
                             errorReport = loadProductsSynchronizationErrorReport(riverConfig, trackingId)
                             synchronizationStatus = SynchronizationStatus.FAILED
                         }
-                        Product.findAllByMiraklTrackingId(trackingId.toString()).each { prod ->
-                            prod.miraklStatus = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
+                        TicketType.findAllByMiraklProductTrackingId(trackingId.toString()).each { sku ->
+                            sku.miraklProductStatus = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
                             if(synchronizationStatus == SynchronizationStatus.COMPLETE){
-                                Map<String, String> externalCodes = extractExternalCodes(prod.externalCode)
-                                externalCodes.put("mirakl", prod.uuid)
-                                prod.externalCode = externalCodes.collect {"${it.key}::${it.value}"}.join(",")
+                                Map<String, String> externalCodes = extractExternalCodes(sku.externalCode)
+                                if(!externalCodes.containsKey("mirakl")){
+                                    externalCodes.put("mirakl", sku.uuid)
+                                    sku.externalCode = externalCodes.collect {"${it.key}::${it.value}"}.join(",")
+                                }
                             }
-                            prod.save(flush: true)
+                            sku.save(flush: true)
                         }
                         break
                     case MiraklSyncType.OFFERS:
@@ -588,8 +712,10 @@ class MiraklService {
                             sku.miraklStatus = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
                             if(synchronizationStatus == SynchronizationStatus.COMPLETE){
                                 Map<String, String> externalCodes = extractExternalCodes(sku.externalCode)
-                                externalCodes.put("mirakl", sku.uuid)
-                                sku.externalCode = externalCodes.collect {"${it.key}::${it.value}"}.join(",")
+                                if(!externalCodes.containsKey("mirakl")){
+                                    externalCodes.put("mirakl", sku.uuid)
+                                    sku.externalCode = externalCodes.collect {"${it.key}::${it.value}"}.join(",")
+                                }
                             }
                             sku.save(flush: true)
                         }
