@@ -516,9 +516,13 @@ class MiraklService {
 
                                 // find sku and product
                                 TicketType xsku = TicketType.findAllByExternalCodeLikeOrUuid("%mirakl::$code%", code).find {
-                                    def ret = it.miraklStatus && it.miraklTrackingId
-                                    def e = ret ? MiraklSync.findByTrackingId(it.miraklTrackingId)?.miraklEnv : null
-                                    ret && (e?.shopId == shopId || shopId in e?.shopIds)
+                                    def ret = it.product.category.catalog == xcatalog
+                                    if(!ret){
+                                        ret = !it.product.category.catalog.deleted && it.miraklStatus && it.miraklTrackingId
+                                        def e = ret ? MiraklSync.findByTrackingId(it.miraklTrackingId)?.miraklEnv : null
+                                        ret && (e?.shopId == shopId || shopId in e?.shopIds)
+                                    }
+                                    ret
                                 }
                                 Product xproduct = xsku?.product
                                 Category xcategory = xproduct?.category ?: Category.findAllByExternalCodeLikeOrUuid("%mirakl::$categoryCode%", categoryCode).find {
@@ -574,7 +578,7 @@ class MiraklService {
                                                 }
                                             }
                                             // lookup sku variations
-                                            Map<String, VariationValue> variations = [:]
+                                            Map<String, VariationValue> variationValues = [:]
                                             def xvariations = Variation.findAllByCategory(xcategory)
                                             xvariations?.eachWithIndex { Variation entry, int i ->
                                                 def vcode = extractMiraklExternalCode(entry.externalCode)
@@ -583,11 +587,14 @@ class MiraklService {
                                                     if(vvalue?.length() > 0){
                                                         def variationValue = VariationValue.findByVariationAndExternalCode(entry, "mirakl::$vvalue")
                                                         if(variationValue){
-                                                            variations.put("variation${i+1}", variationValue)
+                                                            variationValues.put("variation${i+1}".toString(), variationValue)
                                                         }
                                                     }
                                                 }
                                             }
+                                            def variation1 = variationValues.get("variation1")
+                                            def variation2 = variationValues.get("variation2")
+                                            def variation3 = variationValues.get("variation3")
                                             xsku = new TicketType(
                                                     uuid: code,
                                                     sku: code,
@@ -598,9 +605,9 @@ class MiraklService {
                                                     product: xproduct,
                                                     price: 0L, //TODO update during offers import
                                                     picture: xpicture,
-                                                    variation1: variations.get("variation1"),
-                                                    variation2: variations.get("variation2"),
-                                                    variation3: variations.get("variation3")
+                                                    variation1: variation1,
+                                                    variation2: variation2,
+                                                    variation3: variation3
                                             )
                                             xsku.validate()
                                             if(!xsku.hasErrors()){
