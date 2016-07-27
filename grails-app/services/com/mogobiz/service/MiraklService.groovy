@@ -25,8 +25,17 @@ import com.mogobiz.mirakl.client.io.ImportOffersResponse
 import com.mogobiz.mirakl.client.io.SearchShopsRequest
 import com.mogobiz.mirakl.rivers.OfferRiver
 import com.mogobiz.store.cmd.PagedListCommand
+import com.mogobiz.store.domain.Brand
 import com.mogobiz.store.domain.Product
+import com.mogobiz.store.domain.ProductCalendar
+import com.mogobiz.store.domain.ProductState
+import com.mogobiz.store.domain.ProductType
+import com.mogobiz.store.domain.Resource
+import com.mogobiz.store.domain.ResourceType
+import com.mogobiz.store.domain.Seller
 import com.mogobiz.store.domain.TicketType
+import com.mogobiz.store.domain.Variation
+import com.mogobiz.store.domain.VariationValue
 import com.mogobiz.tools.CsvLine
 import com.mogobiz.tools.Reader
 import rx.Subscriber
@@ -452,14 +461,17 @@ class MiraklService {
                         if(!xcatalog){
                             xcatalog = new Catalog(
                                     name: "$shopId",
-                                    externalCode: "%mirakl::$shopId%",
+                                    externalCode: "mirakl::$shopId",
                                     company: xcompany,
                                     miraklEnv: xenv,
-                                    readOnly: true
+                                    readOnly: true,
+                                    activationDate: new Date()
                             )
                             xcatalog.validate()
                             if(!xcatalog.hasErrors()){
-                                catalogService.handleMiraklCategoriesByHierarchyAndLevel(xcatalog, riverConfig)
+                                xcatalog.save(flush:true)
+                                def seller = Seller.findByCompanyAndActive(xcompany, true) //TODO create mirakl seller ?
+                                catalogService.handleMiraklCategoriesByHierarchyAndLevel(xcatalog, riverConfig, seller)
                             }
                         }
                     }
@@ -496,7 +508,7 @@ class MiraklService {
                                 final description = fields.get(MiraklApi.description())
                                 final variantGroupCode = fields.get(MiraklApi.variantIdentifier())
                                 final brandName = fields.get(MiraklApi.brand())
-                                final picture = fields.get(MiraklApi.media())
+                                final media = fields.get(MiraklApi.media())
                                 List<ProductReference> productReferences = []
                                 fields.get(MiraklApi.productReferences())?.each{k,v ->
                                     productReferences << new ProductReference(referenceType: k, reference: v)
@@ -504,7 +516,9 @@ class MiraklService {
 
                                 // find sku and product
                                 TicketType xsku = TicketType.findAllByExternalCodeLikeOrUuid("%mirakl::$code%", code).find {
-                                    it.miraklStatus && it.miraklTrackingId && MiraklSync.findByTrackingId(it.miraklTrackingId)?.miraklEnv?.shopId == shopId
+                                    def ret = it.miraklStatus && it.miraklTrackingId
+                                    def e = ret ? MiraklSync.findByTrackingId(it.miraklTrackingId)?.miraklEnv : null
+                                    ret && (e?.shopId == shopId || shopId in e?.shopIds)
                                 }
                                 Product xproduct = xsku?.product
                                 Category xcategory = xproduct?.category ?: Category.findAllByExternalCodeLikeOrUuid("%mirakl::$categoryCode%", categoryCode).find {
@@ -513,7 +527,90 @@ class MiraklService {
                                 if(xcategory){
                                     xcatalog = xcatalog ?: xcategory?.catalog
                                     if(!xsku){
-                                        // TODO create product and sku
+                                        xproduct = Product.findAllByExternalCodeLikeOrUuid("%mirakl::$variantGroupCode%", variantGroupCode).find {
+                                            it.category == xcategory
+                                        }
+                                        if(!xproduct){
+                                            xproduct = new Product(
+                                                    uuid: variantGroupCode,
+                                                    externalCode: "%mirakl::$variantGroupCode%",
+                                                    code: variantGroupCode,
+                                                    name: label,
+                                                    xtype: ProductType.PRODUCT, //TODO add product type mapping
+                                                    state: ProductState.ACTIVE,
+                                                    description: description,
+                                                    calendarType: ProductCalendar.NO_DATE, //TODO add calendar type mapping
+                                                    sanitizedName: sanitizeUrlService.sanitizeWithDashes(label),
+                                                    publishable: false,
+                                                    category: xcategory,
+                                                    company: xcompany,
+                                                    brand: Brand.findByCompanyAndNameLike(xcompany, "%$brandName%")
+                                            )
+                                            xproduct.validate()
+                                            if(!xproduct.hasErrors()){
+                                                xproduct.save(flush: true)
+                                            }
+                                            else{
+                                                def message = xproduct.errors.allErrors.collect {it.toString()}.join(",")
+                                                errorMessage = toScalaOption(message)
+                                                xproduct = null
+                                            }
+                                        }
+                                        if(xproduct){
+                                            def xpicture = null
+                                            if(media){
+                                                def name = new File(new URI(media).path).name
+                                                def resource = new Resource(
+                                                        name: name,
+                                                        sanitizedName: sanitizeUrlService.sanitizeWithDashes(name),
+                                                        xtype: ResourceType.PICTURE,
+                                                        url: media,
+                                                        company: xcompany
+                                                )
+                                                resource.validate()
+                                                if(!resource.hasErrors()){
+                                                    resource.save(flush:true)
+                                                    xpicture = resource
+                                                }
+                                            }
+                                            // lookup sku variations
+                                            Map<String, VariationValue> variations = [:]
+                                            def xvariations = Variation.findAllByCategory(xcategory)
+                                            xvariations?.eachWithIndex { Variation entry, int i ->
+                                                def vcode = extractMiraklExternalCode(entry.externalCode)
+                                                if(vcode){
+                                                    String vvalue = fields.get(vcode)?.trim()
+                                                    if(vvalue?.length() > 0){
+                                                        def variationValue = VariationValue.findByVariationAndExternalCode(entry, "mirakl::$vvalue")
+                                                        if(variationValue){
+                                                            variations.put("variation${i+1}", variationValue)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            xsku = new TicketType(
+                                                    uuid: code,
+                                                    sku: code,
+                                                    externalCode: "mirakl::$code",
+                                                    name: label,
+                                                    description: description,
+                                                    publishable: false,
+                                                    product: xproduct,
+                                                    price: 0L, //TODO update during offers import
+                                                    picture: xpicture,
+                                                    variation1: variations.get("variation1"),
+                                                    variation2: variations.get("variation2"),
+                                                    variation3: variations.get("variation3")
+                                            )
+                                            xsku.validate()
+                                            if(!xsku.hasErrors()){
+                                                xsku.save(flush: true)
+                                            }
+                                            else{
+                                                def message = xsku.errors.allErrors.collect {it.toString()}.join(",")
+                                                errorMessage = toScalaOption(message)
+                                            }
+                                        }
                                     }
                                     products << new MiraklProduct(
                                             code,
@@ -525,7 +622,7 @@ class MiraklService {
                                             toScalaList(([] << "$shopId|$code") as List<String>),
                                             toScalaOption(brandName),
                                             none,
-                                            toScalaOption(picture),
+                                            toScalaOption(media),
                                             toScalaList(([] << "$shopId") as List<String>),
                                             toScalaOption(variantGroupCode),
                                             none, //TODO logistic-class

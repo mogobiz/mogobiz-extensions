@@ -408,7 +408,7 @@ final class RiverTools {
         (externalCode ?: "").split(",").each{
             final tokens = it.split("::")
             if(tokens.length >= 2){
-                externalCodes << ["${tokens.first()}": "${tokens.drop(1).join("::")}"]
+                externalCodes.put(tokens.first().toString(), tokens.drop(1).join("::"))
             }
         }
         externalCodes
