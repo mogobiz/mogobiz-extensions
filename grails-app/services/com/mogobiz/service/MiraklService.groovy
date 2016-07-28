@@ -520,7 +520,7 @@ class MiraklService {
                                     if(!ret){
                                         ret = !it.product.category.catalog.deleted && it.miraklStatus && it.miraklTrackingId
                                         def e = ret ? MiraklSync.findByTrackingId(it.miraklTrackingId)?.miraklEnv : null
-                                        ret && (e?.shopId == shopId || shopId in e?.shopIds)
+                                        ret = ret && (e?.shopId == shopId || shopId in e?.shopIds)
                                     }
                                     ret
                                 }
