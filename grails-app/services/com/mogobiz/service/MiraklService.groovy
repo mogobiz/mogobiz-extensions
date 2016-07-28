@@ -543,7 +543,6 @@ class MiraklService {
         Long linesRead = 0L
         Long linesInError = 0L
         long linesInSuccess = 0L
-        final waitingStatus = [SynchronizationStatus.QUEUED, SynchronizationStatus.WAITING, SynchronizationStatus.RUNNING, SynchronizationStatus.TRANSFORMATION_WAITING, SynchronizationStatus.TRANSFORMATION_RUNNING]
         final waitingStatus = [SynchronizationStatus.QUEUED, SynchronizationStatus.WAITING, SynchronizationStatus.RUNNING, SynchronizationStatus.TRANSFORMATION_WAITING, SynchronizationStatus.TRANSFORMATION_RUNNING, SynchronizationStatus.WAITING_SYNCHRONIZATION_PRODUCT]
         int nbAttempts = 0
         final int maxAttempts = 5
