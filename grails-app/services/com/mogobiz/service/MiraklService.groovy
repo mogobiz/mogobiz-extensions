@@ -544,12 +544,17 @@ class MiraklService {
         Long linesInError = 0L
         long linesInSuccess = 0L
         final waitingStatus = [SynchronizationStatus.QUEUED, SynchronizationStatus.WAITING, SynchronizationStatus.RUNNING, SynchronizationStatus.TRANSFORMATION_WAITING, SynchronizationStatus.TRANSFORMATION_RUNNING]
+        int nbAttempts = 0
+        final int maxAttempts = 5
+        long millis = 100
         try {
             switch (sync.type) {
                 case MiraklSyncType.CATEGORIES:
                     def synchronizationStatusResponse = refreshCategoriesSynchronizationStatus(riverConfig, trackingId)
-                    while (synchronizationStatusResponse.status in waitingStatus) {
+                    while (nbAttempts < maxAttempts && synchronizationStatusResponse.status in waitingStatus) {
+                        Thread.currentThread().sleep(millis)
                         synchronizationStatusResponse = refreshCategoriesSynchronizationStatus(riverConfig, trackingId)
+                        nbAttempts++
                     }
                     synchronizationStatus = synchronizationStatusResponse.status
                     linesRead = synchronizationStatusResponse.linesRead
@@ -566,8 +571,10 @@ class MiraklService {
                     break
                 case MiraklSyncType.HIERARCHIES:
                     def trackingImportStatus = trackHierarchiesImportStatusResponse(riverConfig, trackingId)
-                    while (trackingImportStatus.importStatus in waitingStatus) {
+                    while (nbAttempts < maxAttempts && trackingImportStatus.importStatus in waitingStatus) {
+                        Thread.currentThread().sleep(millis)
                         trackingImportStatus = trackHierarchiesImportStatusResponse(riverConfig, trackingId)
+                        nbAttempts++
                     }
                     synchronizationStatus = trackingImportStatus.importStatus
                     if (trackingImportStatus.hasErrorReport) {
@@ -577,8 +584,10 @@ class MiraklService {
                     break
                 case MiraklSyncType.VALUES:
                     def trackingImportStatus = trackValuesImportStatusResponse(riverConfig, trackingId)
-                    while (trackingImportStatus.importStatus in waitingStatus) {
+                    while (nbAttempts < maxAttempts && trackingImportStatus.importStatus in waitingStatus) {
+                        Thread.currentThread().sleep(millis)
                         trackingImportStatus = trackValuesImportStatusResponse(riverConfig, trackingId)
+                        nbAttempts++
                     }
                     synchronizationStatus = trackingImportStatus.importStatus
                     if (trackingImportStatus.hasErrorReport) {
@@ -588,8 +597,10 @@ class MiraklService {
                     break
                 case MiraklSyncType.ATTRIBUTES:
                     def trackingImportStatus = trackAttributesImportStatusResponse(riverConfig, trackingId)
-                    while (trackingImportStatus.importStatus in waitingStatus) {
+                    while (nbAttempts < maxAttempts && trackingImportStatus.importStatus in waitingStatus) {
+                        Thread.currentThread().sleep(millis)
                         trackingImportStatus = trackAttributesImportStatusResponse(riverConfig, trackingId)
+                        nbAttempts++
                     }
                     synchronizationStatus = trackingImportStatus.importStatus
                     if (trackingImportStatus.hasErrorReport) {
@@ -599,8 +610,10 @@ class MiraklService {
                     break
                 case MiraklSyncType.PRODUCTS:
                     def synchronizationStatusResponse = trackProductsImportStatusResponse(riverConfig, trackingId)
-                    while (synchronizationStatusResponse.importStatus in waitingStatus) {
+                    while (nbAttempts < maxAttempts && synchronizationStatusResponse.importStatus in waitingStatus) {
+                        Thread.currentThread().sleep(millis)
                         synchronizationStatusResponse = trackProductsImportStatusResponse(riverConfig, trackingId)
+                        nbAttempts++
                     }
                     synchronizationStatus = synchronizationStatusResponse.importStatus
                     linesRead = synchronizationStatusResponse.transformLinesRead
@@ -616,8 +629,10 @@ class MiraklService {
                     break
                 case MiraklSyncType.PRODUCTS_SYNCHRO:
                     def synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
-                    while (synchronizationStatusResponse.status in waitingStatus) {
+                    while (nbAttempts < maxAttempts && synchronizationStatusResponse.status in waitingStatus) {
+                        Thread.currentThread().sleep(millis)
                         synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
+                        nbAttempts++
                     }
                     synchronizationStatus = synchronizationStatusResponse.status
                     linesRead = synchronizationStatusResponse.linesRead
@@ -641,8 +656,10 @@ class MiraklService {
                     break
                 case MiraklSyncType.OFFERS:
                     def trackingImportStatus = trackOffersImportStatusResponse(riverConfig, trackingId)
-                    while (trackingImportStatus.status in waitingStatus) {
+                    while (nbAttempts < maxAttempts && trackingImportStatus.status in waitingStatus) {
+                        Thread.currentThread().sleep(millis)
                         trackingImportStatus = trackOffersImportStatusResponse(riverConfig, trackingId)
+                        nbAttempts++
                     }
                     synchronizationStatus = trackingImportStatus.status
                     linesRead = trackingImportStatus.linesRead
