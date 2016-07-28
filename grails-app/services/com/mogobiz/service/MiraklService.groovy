@@ -10,6 +10,7 @@ import com.mogobiz.common.client.Credentials
 import com.mogobiz.common.rivers.AbstractRiverCache
 import com.mogobiz.common.rivers.GenericRiversFlow
 import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.mirakl.client.MiraklClient
 import com.mogobiz.mirakl.client.MiraklSftpConfig
 import com.mogobiz.mirakl.client.domain.Attribute
 import com.mogobiz.mirakl.client.domain.AttributeType
@@ -38,6 +39,7 @@ import com.mogobiz.store.domain.Variation
 import com.mogobiz.store.domain.VariationValue
 import com.mogobiz.tools.CsvLine
 import com.mogobiz.tools.Reader
+import com.mogobiz.utils.PermissionType
 import rx.Subscriber
 import rx.functions.Action1
 import rx.internal.reactivestreams.SubscriberAdapter
@@ -70,6 +72,8 @@ class MiraklService {
     def grailsApplication
 
     def catalogService
+
+    def profileService
 
     def publish(Company company, MiraklEnv env, Catalog catalog, boolean manual = false) {
         if (catalog?.name?.trim()?.toLowerCase() == "impex") {
@@ -459,8 +463,13 @@ class MiraklService {
                         xenv = env
                         xcatalog = Catalog.findByCompanyAndExternalCodeLikeAndReadOnlyAndDeleted(xcompany, "%mirakl::$shopId%", true, false)
                         if(!xcatalog){
+                            def name = shopId
+                            def shops = MiraklClient.searchShops(riverConfig, new SearchShopsRequest(shopIds: ([] << shopId) as List<String>))
+                            if(shops?.shops?.size() > 0){
+                                name = shops?.shops?.first()?.shopName
+                            }
                             xcatalog = new Catalog(
-                                    name: "$shopId",
+                                    name: name,
                                     externalCode: "mirakl::$shopId",
                                     company: xcompany,
                                     miraklEnv: xenv,
@@ -471,6 +480,13 @@ class MiraklService {
                             if(!xcatalog.hasErrors()){
                                 xcatalog.save(flush:true)
                                 def seller = Seller.findByCompanyAndActive(xcompany, true) //TODO create mirakl seller ?
+                                profileService.saveUserPermission(
+                                        seller,
+                                        true,
+                                        PermissionType.UPDATE_STORE_CATALOG,
+                                        xcompany.id as String,
+                                        xcatalog.id as String
+                                )
                                 catalogService.handleMiraklCategoriesByHierarchyAndLevel(xcatalog, riverConfig, seller)
                             }
                         }
