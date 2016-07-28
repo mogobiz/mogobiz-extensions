@@ -10,6 +10,7 @@ import com.mogobiz.common.client.Credentials
 import com.mogobiz.common.rivers.AbstractRiverCache
 import com.mogobiz.common.rivers.GenericRiversFlow
 import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.elasticsearch.rivers.RiverTools
 import com.mogobiz.mirakl.client.MiraklClient
 import com.mogobiz.mirakl.client.MiraklSftpConfig
 import com.mogobiz.mirakl.client.domain.Attribute
@@ -40,6 +41,7 @@ import com.mogobiz.store.domain.VariationValue
 import com.mogobiz.tools.CsvLine
 import com.mogobiz.tools.Reader
 import com.mogobiz.utils.PermissionType
+import rx.Observable
 import rx.Subscriber
 import rx.functions.Action1
 import rx.internal.reactivestreams.SubscriberAdapter
@@ -415,447 +417,504 @@ class MiraklService {
                 MiraklSync.findAllByStatusNotInListAndCatalog(excludedStatus, catalog) :
                 MiraklSync.findAllByStatusNotInList(excludedStatus)
         def operators = !catalog ? MiraklEnv.findAllByOperator(true) : (toSynchronize.collect {it.miraklEnv}.flatten().findAll {it.operator}.unique {a,b -> a.id <=> b.id})
+        // 1 - synchronize products and offers
         operators.each{env ->
             if(env.frontKey && env.remoteHost && env.remotePath && env.username && env.localPath && (env.password || env.keyPath)){ // TODO add creation validation
-                // 0 - upload operator ftp files
-                final String localPath = env.localPath
-                def miraklSftpConfig = new MiraklSftpConfig(
-                        remoteHost: env.remoteHost,
-                        remotePath: env.remotePath,
-                        username: env.username,
-                        password: env.password,
-                        keyPath: env.keyPath,
-                        passphrase: env.passPhrase,
-                        localPath: localPath
-                )
-                synchronizeImports(miraklSftpConfig)
-                // 1 - filter files uploaded
-                def files = new File(localPath).listFiles(new FilenameFilter() {
-                    public boolean accept(File dir, String name) {
-                        final matcher = IMPORT_PRODUCTS.matcher(name)
-                        return matcher.find() && matcher.groupCount() == 4 && matcher.group(1) in env.shopIds.split(",")
-                    }
-                })
-                RiverConfig riverConfig = new RiverConfig(
+                // 1 - synchronize products
+                synchronizeProducts(env)
+                // 2 - synchronize offers
+                synchronizeOffers(env)
+            }
+        }
+        // 2 - synchronize status
+        toSynchronize.each {sync ->
+            synchronizeStatus(sync)
+        }
+    }
+
+    private def void synchronizeProducts(MiraklEnv env) {
+        // 1 - fetch mirakl imported products files
+        File[] files = fetchMiraklImportedProductsFiles(env)
+        RiverConfig riverConfig = new RiverConfig(
+                debug: true,
+                clientConfig: new ClientConfig(
+                        merchant_url: env.url,
                         debug: true,
-                        clientConfig: new ClientConfig(
-                                merchant_url: env.url,
-                                debug: true,
-                                credentials: new Credentials(
-                                        apiKey: env.apiKey, // required for specific api calls
-                                        frontKey: env.frontKey
-                                )
+                        credentials: new Credentials(
+                                apiKey: env.apiKey, // required for specific api calls
+                                frontKey: env.frontKey
                         )
                 )
-                final xcompany = env.company
-                // 2 - load operator attributes
-                def attributes = files.size() > 0 ? listAttributes(riverConfig)?.attributes : []
-                // 3 - handle uploaded files
-                files.each {file ->
-                    final matcher = IMPORT_PRODUCTS.matcher(file.name)
-                    matcher.find()
-                    final shopId = matcher.group(1)
-                    log.info("START HANDLING PRODUCT FILE ${file.path} FOR MIRAKL SHOP $shopId")
-                    Catalog xcatalog = null
-                    // 3.1 - create mirakl catalog for external publication
-                    MiraklEnv xenv = MiraklEnv.findByShopIdAndCompany(shopId, xcompany)
-                    if(!xenv){
-                        xenv = env
-                        xcatalog = Catalog.findByCompanyAndExternalCodeLikeAndReadOnlyAndDeleted(xcompany, "%mirakl::$shopId%", true, false)
-                        if(!xcatalog){
-                            def name = shopId
-                            def shops = MiraklClient.searchShops(riverConfig, new SearchShopsRequest(shopIds: ([] << shopId) as List<String>))
-                            if(shops?.shops?.size() > 0){
-                                name = shops?.shops?.first()?.shopName
-                            }
-                            xcatalog = new Catalog(
-                                    name: name,
-                                    externalCode: "mirakl::$shopId",
-                                    company: xcompany,
-                                    miraklEnv: xenv,
-                                    readOnly: true,
-                                    activationDate: new Date()
-                            )
-                            xcatalog.validate()
-                            if(!xcatalog.hasErrors()){
-                                xcatalog.save(flush:true)
-                                def seller = Seller.findByCompanyAndActive(xcompany, true) //TODO create mirakl seller ?
-                                profileService.saveUserPermission(
-                                        seller,
-                                        true,
-                                        PermissionType.UPDATE_STORE_CATALOG,
-                                        xcompany.id as String,
-                                        xcatalog.id as String
-                                )
-                                catalogService.handleMiraklCategoriesByHierarchyAndLevel(xcatalog, riverConfig, seller)
-                            }
-                        }
-                    }
-                    // 3.2 - parse csv file
-                    rx.Observable<CsvLine> lines = Reader.parseCsvFile(file)
-                    def results = lines.toBlocking()
-                    // 3.3 - check each line
-                    List<MiraklReportItem> reportItems = []
-                    List<MiraklProduct> products = []
-                    results.forEach(new Action1<CsvLine>() {
-                        @Override
-                        void call(CsvLine csvLine) {
-                            List<MiraklAttributeValue> vattributes = []
-                            final Map<String, String> fields = csvLine.fields
-                            def errorMessage = none
-                            // 3.3.1 - check all required attributes by mirakl operator
-                            def error = attributes.any {attribute ->
-                                def ret = false
-                                final def code = attribute.code
-                                if(attribute.required && (!fields.containsKey(code) || fields.get(code).trim().isEmpty())){
-                                    errorMessage = toScalaOption("${code} is required")
-                                    ret = true
-                                }
-                                else{
-                                    vattributes << new MiraklAttributeValue(code, toScalaOption(fields.get(code)))
-                                }
-                                ret
-                            }
-                            // 3.3.2 - check product definition for mogobiz and import products and skus for external publications
-                            if(!error){
-                                final categoryCode = fields.get(MiraklApi.category())
-                                final code = fields.get(MiraklApi.identifier())
-                                final label = fields.get(MiraklApi.title())
-                                final description = fields.get(MiraklApi.description())
-                                final variantGroupCode = fields.get(MiraklApi.variantIdentifier())
-                                final brandName = fields.get(MiraklApi.brand())
-                                final media = fields.get(MiraklApi.media())
-                                List<ProductReference> productReferences = []
-                                fields.get(MiraklApi.productReferences())?.each{k,v ->
-                                    productReferences << new ProductReference(referenceType: k, reference: v)
-                                }
+        )
+        final xcompany = env.company
+        // 2 - load operator attributes
+        List<Attribute> attributes = files.size() > 0 ? listAttributes(riverConfig)?.attributes : []
+        // 3 - handle uploaded files
+        files.each { file ->
+            handleMiraklImportedProductsFile(env, file, riverConfig, xcompany, attributes)
+        }
+    }
 
-                                // find sku and product
-                                TicketType xsku = TicketType.findAllByExternalCodeLikeOrUuid("%mirakl::$code%", code).find {
-                                    def ret = it.product.category.catalog == xcatalog
-                                    if(!ret){
-                                        ret = !it.product.category.catalog.deleted && it.miraklStatus && it.miraklTrackingId
-                                        def e = ret ? MiraklSync.findByTrackingId(it.miraklTrackingId)?.miraklEnv : null
-                                        ret = ret && (e?.shopId == shopId || shopId in e?.shopIds)
-                                    }
-                                    ret
-                                }
-                                Product xproduct = xsku?.product
-                                Category xcategory = xproduct?.category ?: Category.findAllByExternalCodeLikeOrUuid("%mirakl::$categoryCode%", categoryCode).find {
-                                    it.company == xcompany && it.catalog == xcatalog
-                                }
-                                if(xcategory){
-                                    xcatalog = xcatalog ?: xcategory?.catalog
-                                    if(!xsku){
-                                        xproduct = Product.findAllByExternalCodeLikeOrUuid("%mirakl::$variantGroupCode%", variantGroupCode).find {
-                                            it.category == xcategory
-                                        }
-                                        if(!xproduct){
-                                            xproduct = new Product(
-                                                    uuid: variantGroupCode,
-                                                    externalCode: "mirakl::$variantGroupCode",
-                                                    code: variantGroupCode,
-                                                    name: label,
-                                                    xtype: ProductType.PRODUCT, //TODO add product type mapping
-                                                    state: ProductState.ACTIVE,
-                                                    description: description,
-                                                    calendarType: ProductCalendar.NO_DATE, //TODO add calendar type mapping
-                                                    sanitizedName: sanitizeUrlService.sanitizeWithDashes(label),
-                                                    publishable: false,
-                                                    category: xcategory,
-                                                    company: xcompany,
-                                                    brand: Brand.findByCompanyAndNameLike(xcompany, "%$brandName%")
-                                            )
-                                            xproduct.validate()
-                                            if(!xproduct.hasErrors()){
-                                                xproduct.save(flush: true)
-                                            }
-                                            else{
-                                                def message = xproduct.errors.allErrors.collect {it.toString()}.join(",")
-                                                errorMessage = toScalaOption(message)
-                                                xproduct = null
-                                            }
-                                        }
-                                        if(xproduct){
-                                            def xpicture = null
-                                            if(media){
-                                                def name = new File(new URI(media).path).name
-                                                def resource = new Resource(
-                                                        name: name,
-                                                        sanitizedName: sanitizeUrlService.sanitizeWithDashes(name),
-                                                        xtype: ResourceType.PICTURE,
-                                                        url: media,
-                                                        company: xcompany
-                                                )
-                                                resource.validate()
-                                                if(!resource.hasErrors()){
-                                                    resource.save(flush:true)
-                                                    xpicture = resource
-                                                }
-                                            }
-                                            // lookup sku variations
-                                            Map<String, VariationValue> variationValues = [:]
-                                            def xvariations = Variation.findAllByCategory(xcategory)
-                                            xvariations?.eachWithIndex { Variation entry, int i ->
-                                                def vcode = extractMiraklExternalCode(entry.externalCode)
-                                                if(vcode){
-                                                    String vvalue = fields.get(vcode)?.trim()
-                                                    if(vvalue?.length() > 0){
-                                                        def variationValue = VariationValue.findByVariationAndExternalCode(entry, "mirakl::$vvalue")
-                                                        if(variationValue){
-                                                            variationValues.put("variation${i+1}".toString(), variationValue)
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            def variation1 = variationValues.get("variation1")
-                                            def variation2 = variationValues.get("variation2")
-                                            def variation3 = variationValues.get("variation3")
-                                            xsku = new TicketType(
-                                                    uuid: code,
-                                                    sku: code,
-                                                    externalCode: "mirakl::$code",
-                                                    name: label,
-                                                    description: description,
-                                                    publishable: false,
-                                                    product: xproduct,
-                                                    price: 0L, //TODO update during offers import
-                                                    picture: xpicture,
-                                                    variation1: variation1,
-                                                    variation2: variation2,
-                                                    variation3: variation3
-                                            )
-                                            xsku.validate()
-                                            if(!xsku.hasErrors()){
-                                                xsku.save(flush: true)
-                                            }
-                                            else{
-                                                def message = xsku.errors.allErrors.collect {it.toString()}.join(",")
-                                                errorMessage = toScalaOption(message)
-                                            }
-                                        }
-                                    }
-                                    products << new MiraklProduct(
-                                            code,
-                                            label,
-                                            toScalaOption(description),
-                                            categoryCode,
-                                            toScalaOption(true),
-                                            toScalaList(productReferences),
-                                            toScalaList(([] << "$shopId|$code") as List<String>),
-                                            toScalaOption(brandName),
-                                            none,
-                                            toScalaOption(media),
-                                            toScalaList(([] << "$shopId") as List<String>),
-                                            toScalaOption(variantGroupCode),
-                                            none, //TODO logistic-class
-                                            BulkAction.UPDATE,
-                                            toScalaList(vattributes)
-                                    )
-                                }
-                                else {
-                                    log.warn("category not found $categoryCode")
-                                    errorMessage = toScalaOption("unknow category $categoryCode")
-                                }
+    private def void synchronizeOffers(MiraklEnv env) {
+        RiverConfig riverConfig = new RiverConfig(
+                debug: true,
+                clientConfig: new ClientConfig(
+                        merchant_url: env.url,
+                        debug: true,
+                        credentials: new Credentials(
+                                apiKey: env.apiKey, // required for specific api calls
+                                frontKey: env.frontKey
+                        )
+                )
+        )
+        def offers = exportOffers(riverConfig)?.offers
+        offers?.findAll { it.shopId.toString() in env.shopIds }?.each { offer ->
+            // TODO handle offers
+        }
+    }
+
+    private def void synchronizeStatus(MiraklSync sync) {
+        def company = sync.company
+        def env = sync.miraklEnv ?: MiraklEnv.findAllByCompany(company).first()
+        RiverConfig riverConfig = new RiverConfig(
+                debug: true,
+                clientConfig: new ClientConfig(
+                        store: company.code,
+                        merchant_id: env.shopId,
+                        merchant_url: env.url,
+                        debug: true,
+                        credentials: new Credentials(
+                                frontKey: env.frontKey as String,
+                                apiKey: env.apiKey
+                        )
+                )
+        )
+        def trackingId = sync.trackingId as Long
+        SynchronizationStatus synchronizationStatus = null
+        String errorReport = null
+        Long linesRead = 0L
+        Long linesInError = 0L
+        long linesInSuccess = 0L
+        final waitingStatus = [SynchronizationStatus.QUEUED, SynchronizationStatus.WAITING, SynchronizationStatus.RUNNING, SynchronizationStatus.TRANSFORMATION_WAITING, SynchronizationStatus.TRANSFORMATION_RUNNING]
+        try {
+            switch (sync.type) {
+                case MiraklSyncType.CATEGORIES:
+                    def synchronizationStatusResponse = refreshCategoriesSynchronizationStatus(riverConfig, trackingId)
+                    while (synchronizationStatusResponse.status in waitingStatus) {
+                        synchronizationStatusResponse = refreshCategoriesSynchronizationStatus(riverConfig, trackingId)
+                    }
+                    synchronizationStatus = synchronizationStatusResponse.status
+                    linesRead = synchronizationStatusResponse.linesRead
+                    linesInError = synchronizationStatusResponse.linesInError
+                    linesInSuccess = synchronizationStatusResponse.linesInSuccess
+                    if (synchronizationStatusResponse.hasErrorReport) {
+                        errorReport = loadCategoriesSynchronizationErrorReport(riverConfig, trackingId)
+                        synchronizationStatus = SynchronizationStatus.FAILED
+                    }
+                    Category.findAllByMiraklTrackingId(trackingId.toString()).each { cat ->
+                        cat.miraklStatus = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
+                        cat.save(flush: true)
+                    }
+                    break
+                case MiraklSyncType.HIERARCHIES:
+                    def trackingImportStatus = trackHierarchiesImportStatusResponse(riverConfig, trackingId)
+                    while (trackingImportStatus.importStatus in waitingStatus) {
+                        trackingImportStatus = trackHierarchiesImportStatusResponse(riverConfig, trackingId)
+                    }
+                    synchronizationStatus = trackingImportStatus.importStatus
+                    if (trackingImportStatus.hasErrorReport) {
+                        errorReport = loadHierarchiesSynchronizationErrorReport(riverConfig, trackingId)
+                        synchronizationStatus = SynchronizationStatus.FAILED
+                    }
+                    break
+                case MiraklSyncType.VALUES:
+                    def trackingImportStatus = trackValuesImportStatusResponse(riverConfig, trackingId)
+                    while (trackingImportStatus.importStatus in waitingStatus) {
+                        trackingImportStatus = trackValuesImportStatusResponse(riverConfig, trackingId)
+                    }
+                    synchronizationStatus = trackingImportStatus.importStatus
+                    if (trackingImportStatus.hasErrorReport) {
+                        errorReport = loadValuesSynchronizationErrorReport(riverConfig, trackingId)
+                        synchronizationStatus = SynchronizationStatus.FAILED
+                    }
+                    break
+                case MiraklSyncType.ATTRIBUTES:
+                    def trackingImportStatus = trackAttributesImportStatusResponse(riverConfig, trackingId)
+                    while (trackingImportStatus.importStatus in waitingStatus) {
+                        trackingImportStatus = trackAttributesImportStatusResponse(riverConfig, trackingId)
+                    }
+                    synchronizationStatus = trackingImportStatus.importStatus
+                    if (trackingImportStatus.hasErrorReport) {
+                        errorReport = loadAttributesSynchronizationErrorReport(riverConfig, trackingId)
+                        synchronizationStatus = SynchronizationStatus.FAILED
+                    }
+                    break
+                case MiraklSyncType.PRODUCTS:
+                    def synchronizationStatusResponse = trackProductsImportStatusResponse(riverConfig, trackingId)
+                    while (synchronizationStatusResponse.importStatus in waitingStatus) {
+                        synchronizationStatusResponse = trackProductsImportStatusResponse(riverConfig, trackingId)
+                    }
+                    synchronizationStatus = synchronizationStatusResponse.importStatus
+                    linesRead = synchronizationStatusResponse.transformLinesRead
+                    linesInError = synchronizationStatusResponse.transformLinesInError
+                    linesInSuccess = synchronizationStatusResponse.transformLinesInSucces
+                    if (synchronizationStatusResponse.hasErrorReport) {
+                        errorReport = loadProductsImportSynchronizationErrorReport(riverConfig, trackingId)
+                        synchronizationStatus = SynchronizationStatus.FAILED
+                    } else if (synchronizationStatusResponse.hasTransformationErrorReport) {
+                        errorReport = loadProductsImportTransformationErrorReport(riverConfig, trackingId)
+                        synchronizationStatus = SynchronizationStatus.TRANSFORMATION_FAILED
+                    }
+                    break
+                case MiraklSyncType.PRODUCTS_SYNCHRO:
+                    def synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
+                    while (synchronizationStatusResponse.status in waitingStatus) {
+                        synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
+                    }
+                    synchronizationStatus = synchronizationStatusResponse.status
+                    linesRead = synchronizationStatusResponse.linesRead
+                    linesInError = synchronizationStatusResponse.linesInError
+                    linesInSuccess = synchronizationStatusResponse.linesInSuccess
+                    if (synchronizationStatusResponse.hasErrorReport) {
+                        errorReport = loadProductsSynchronizationErrorReport(riverConfig, trackingId)
+                        synchronizationStatus = SynchronizationStatus.FAILED
+                    }
+                    TicketType.findAllByMiraklProductTrackingId(trackingId.toString()).each { sku ->
+                        sku.miraklProductStatus = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
+                        if (synchronizationStatus == SynchronizationStatus.COMPLETE) {
+                            Map<String, String> externalCodes = extractExternalCodes(sku.externalCode)
+                            if (!externalCodes.containsKey("mirakl")) {
+                                externalCodes.put("mirakl", sku.uuid)
+                                sku.externalCode = externalCodes.collect { "${it.key}::${it.value}" }.join(",")
                             }
-                            reportItems << new MiraklReportItem(csvLine, errorMessage)
                         }
-                    })
-                    sendProductIntegrationReports(riverConfig, file.name, SynchronizationStatus.COMPLETE, reportItems)
-                    if(products.size() > 0){
-                        def synchronizationResponse = synchronizeProducts(riverConfig, products)
-                        final productSynchroId = synchronizationResponse?.synchroId
-                        if(productSynchroId){
-                            def sync = new MiraklSync()
-                            sync.miraklEnv = xenv
-                            sync.company = xcompany
-                            sync.catalog = xcatalog
-                            sync.type = MiraklSyncType.PRODUCTS_SYNCHRO
-                            sync.status = MiraklSyncStatus.QUEUED
-                            sync.timestamp = new Date()
-                            sync.trackingId = productSynchroId.toString()
-                            sync.validate()
-                            if (!sync.hasErrors()) {
-                                sync.save(flush: true)
-                                synchronizationResponse?.ids?.each { id ->
-                                    def sku = TicketType.findByExternalCodeLikeOrUuid("%mirakl::$id%", id)
-                                    if (sku) {
-                                        sku.miraklProductStatus = sync.status
-                                        sku.miraklProductTrackingId = sync.trackingId
-                                        sku.validate()
-                                        if (!sku.hasErrors()) {
-                                            sku.save(flush: true)
-                                        }
-                                    }
-                                }
+                        sku.save(flush: true)
+                    }
+                    break
+                case MiraklSyncType.OFFERS:
+                    def trackingImportStatus = trackOffersImportStatusResponse(riverConfig, trackingId)
+                    while (trackingImportStatus.status in waitingStatus) {
+                        trackingImportStatus = trackOffersImportStatusResponse(riverConfig, trackingId)
+                    }
+                    synchronizationStatus = trackingImportStatus.status
+                    linesRead = trackingImportStatus.linesRead
+                    linesInError = trackingImportStatus.linesInError
+                    linesInSuccess = trackingImportStatus.linesInSuccess
+                    if (trackingImportStatus.hasErrorReport) {
+                        errorReport = loadOffersSynchronizationErrorReport(riverConfig, trackingId)
+                        synchronizationStatus = SynchronizationStatus.FAILED
+                    }
+                    TicketType.findAllByMiraklTrackingId(trackingId.toString()).each { sku ->
+                        sku.miraklStatus = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
+                        if (synchronizationStatus == SynchronizationStatus.COMPLETE) {
+                            Map<String, String> externalCodes = extractExternalCodes(sku.externalCode)
+                            if (!externalCodes.containsKey("mirakl")) {
+                                externalCodes.put("mirakl", sku.uuid)
+                                sku.externalCode = externalCodes.collect { "${it.key}::${it.value}" }.join(",")
+                            }
+                        }
+                        sku.save(flush: true)
+                    }
+                    break
+                default:
+                    break
+            }
+        }
+        catch (Exception e) {
+            RiverTools.log.error(e.message)
+        }
+        sync.status = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
+        sync.errorReport = errorReport
+        sync.linesRead = linesRead
+        sync.linesInError = linesInError
+        sync.linesInSuccess = linesInSuccess
+        if (sync.validate()) {
+            sync.save(flush: true)
+        }
+    }
+
+    private def void handleMiraklImportedProductsFile(MiraklEnv env, File file, RiverConfig riverConfig, Company xcompany, List<Attribute> attributes) {
+        final matcher = IMPORT_PRODUCTS.matcher(file.name)
+        matcher.find()
+        final shopId = matcher.group(1)
+        RiverTools.log.info("START HANDLING PRODUCT FILE ${file.path} FOR MIRAKL SHOP $shopId")
+        Catalog xcatalog = null
+        // 1 - create mirakl catalog for external publication
+        MiraklEnv xenv = MiraklEnv.findByShopIdAndCompany(shopId, xcompany)
+        if (!xenv) {
+            xenv = env
+            xcatalog = Catalog.findByCompanyAndExternalCodeLikeAndReadOnlyAndDeleted(xcompany, "%mirakl::$shopId%", true, false) ?: createMiraklCatalog(shopId, riverConfig, xcompany, xenv)
+        }
+        // 2 - load imported products
+        Observable<CsvLine> lines = Reader.parseCsvFile(file)
+        def results = lines.toBlocking()
+        // 3 - handle each imported product
+        List<MiraklReportItem> reportItems = []
+        List<MiraklProduct> products = []
+        results.forEach(new Action1<CsvLine>() {
+            @Override
+            void call(CsvLine csvLine) {
+                MiraklImportedProductResult result = handleMiraklImportedProduct(csvLine, xcatalog, shopId, xcompany, attributes)
+                if (result.product) {
+                    products << result.product
+                }
+                reportItems << result.reportItem
+            }
+        })
+        // 4 - send integration reports - P43
+        sendProductIntegrationReports(riverConfig, file.name, SynchronizationStatus.COMPLETE, reportItems)
+        // 5 - synchronize products - P21
+        if (products.size() > 0) {
+            def synchronizationResponse = synchronizeProducts(riverConfig, products)
+            final productSynchroId = synchronizationResponse?.synchroId
+            if (productSynchroId) {
+                def sync = new MiraklSync()
+                sync.miraklEnv = xenv
+                sync.company = xcompany
+                sync.catalog = xcatalog
+                sync.type = MiraklSyncType.PRODUCTS_SYNCHRO
+                sync.status = MiraklSyncStatus.QUEUED
+                sync.timestamp = new Date()
+                sync.trackingId = productSynchroId.toString()
+                sync.validate()
+                if (!sync.hasErrors()) {
+                    sync.save(flush: true)
+                    synchronizationResponse?.ids?.each { id ->
+                        def sku = TicketType.findByExternalCodeLikeOrUuid("%mirakl::$id%", id)
+                        if (sku) {
+                            sku.miraklProductStatus = sync.status
+                            sku.miraklProductTrackingId = sync.trackingId
+                            sku.validate()
+                            if (!sku.hasErrors()) {
+                                sku.save(flush: true)
                             }
                         }
                     }
-                    file.delete()
-                    log.info("END HANDLING PRODUCT FILE ${file.path} FOR MIRAKL SHOP $shopId")
                 }
             }
         }
-        toSynchronize.each {sync ->
-            def company = sync.company
-            def env = sync.miraklEnv ?: MiraklEnv.findAllByCompany(company).first()
-            RiverConfig riverConfig = new RiverConfig(
-                    debug: true,
-                    clientConfig: new ClientConfig(
-                            store: company.code,
-                            merchant_id: env.shopId,
-                            merchant_url: env.url,
-                            debug: true,
-                            credentials: new Credentials(
-                                    frontKey: env.frontKey as String,
-                                    apiKey: env.apiKey
-                            )
-                    )
+        file.delete()
+        RiverTools.log.info("END HANDLING PRODUCT FILE ${file.path} FOR MIRAKL SHOP $shopId")
+    }
+
+    private def MiraklImportedProductResult handleMiraklImportedProduct(CsvLine csvLine, Catalog xcatalog, String shopId, Company xcompany, List<Attribute> attributes) {
+        MiraklImportedProductResult result = new MiraklImportedProductResult()
+        List<MiraklAttributeValue> vattributes = []
+        Map<String, String> fields = csvLine.fields
+        def errorMessage = none
+        // check all required attributes by mirakl operator
+        def error = attributes.any { attribute ->
+            def ret = false
+            final def code = attribute.code
+            if (attribute.required && (!fields.containsKey(code) || fields.get(code).trim().isEmpty())) {
+                errorMessage = toScalaOption("${code} is required")
+                ret = true
+            } else {
+                vattributes << new MiraklAttributeValue(code, toScalaOption(fields.get(code)))
+            }
+            ret
+        }
+        // check product definition for mogobiz and import products and skus for external publications
+        if (!error) {
+            final categoryCode = fields.get(MiraklApi.category())
+            final code = fields.get(MiraklApi.identifier())
+            final label = fields.get(MiraklApi.title())
+            final description = fields.get(MiraklApi.description())
+            final variantGroupCode = fields.get(MiraklApi.variantIdentifier())
+            final brandName = fields.get(MiraklApi.brand())
+            final media = fields.get(MiraklApi.media())
+            List<ProductReference> productReferences = []
+            fields.get(MiraklApi.productReferences())?.each { k, v ->
+                productReferences << new ProductReference(referenceType: k, reference: v)
+            }
+
+            // find sku and product
+            TicketType xsku = TicketType.findAllByExternalCodeLikeOrUuid("%mirakl::$code%", code).find {
+                def ret = it.product.category.catalog == xcatalog
+                if (!ret) {
+                    ret = !it.product.category.catalog.deleted && it.miraklStatus && it.miraklTrackingId
+                    def e = ret ? MiraklSync.findByTrackingId(it.miraklTrackingId)?.miraklEnv : null
+                    ret = ret && (e?.shopId == shopId || shopId in e?.shopIds)
+                }
+                ret
+            }
+            Product xproduct = xsku?.product
+            Category xcategory = xproduct?.category ?: Category.findAllByExternalCodeLikeOrUuid("%mirakl::$categoryCode%", categoryCode).find {
+                it.company == xcompany && it.catalog == xcatalog
+            }
+            if (xcategory) {
+                xcatalog = xcatalog ?: xcategory?.catalog
+                if (!xsku) {
+                    xproduct = Product.findAllByExternalCodeLikeOrUuid("%mirakl::$variantGroupCode%", variantGroupCode).find {
+                        it.category == xcategory
+                    }
+                    if (!xproduct) {
+                        xproduct = new Product(
+                                uuid: variantGroupCode,
+                                externalCode: "mirakl::$variantGroupCode",
+                                code: variantGroupCode,
+                                name: label,
+                                xtype: ProductType.PRODUCT, //TODO add product type mapping
+                                state: ProductState.ACTIVE,
+                                description: description,
+                                calendarType: ProductCalendar.NO_DATE, //TODO add calendar type mapping
+                                sanitizedName: sanitizeUrlService.sanitizeWithDashes(label),
+                                publishable: false,
+                                category: xcategory,
+                                company: xcompany,
+                                brand: Brand.findByCompanyAndNameLike(xcompany, "%$brandName%")
+                        )
+                        xproduct.validate()
+                        if (!xproduct.hasErrors()) {
+                            xproduct.save(flush: true)
+                        } else {
+                            def message = xproduct.errors.allErrors.collect {
+                                it.toString()
+                            }.join(",")
+                            errorMessage = toScalaOption(message)
+                            xproduct = null
+                        }
+                    }
+                    if (xproduct) {
+                        xsku = createMiraklSku(media, xcompany, xcategory, fields, code, label, description, xproduct)
+                        xsku.validate()
+                        if (!xsku.hasErrors()) {
+                            xsku.save(flush: true)
+                        } else {
+                            def message = xsku.errors.allErrors.collect { it.toString() }.join(",")
+                            errorMessage = toScalaOption(message)
+                        }
+                    }
+                }
+                result.product = new MiraklProduct(
+                        code,
+                        label,
+                        toScalaOption(description),
+                        categoryCode,
+                        toScalaOption(true),
+                        toScalaList(productReferences),
+                        toScalaList(([] << "$shopId|$code") as List<String>),
+                        toScalaOption(brandName),
+                        none,
+                        toScalaOption(media),
+                        toScalaList(([] << "$shopId") as List<String>),
+                        toScalaOption(variantGroupCode),
+                        none, //TODO logistic-class
+                        BulkAction.UPDATE,
+                        toScalaList(vattributes)
+                )
+            } else {
+                log.warn("category not found $categoryCode")
+                errorMessage = toScalaOption("unknow category $categoryCode")
+            }
+        }
+        result.reportItem = new MiraklReportItem(csvLine, errorMessage)
+        result
+    }
+
+    private def TicketType createMiraklSku(String media, Company xcompany, Category xcategory, Map<String, String> fields, String code, String label, String description, Product xproduct) {
+        TicketType xsku = null
+        def xpicture = null
+        if (media) {
+            def name = new File(new URI(media).path).name
+            def resource = new Resource(
+                    name: name,
+                    sanitizedName: sanitizeUrlService.sanitizeWithDashes(name),
+                    xtype: ResourceType.PICTURE,
+                    url: media,
+                    company: xcompany
             )
-            def trackingId = sync.trackingId as Long
-            SynchronizationStatus synchronizationStatus = null
-            String errorReport = null
-            Long linesRead = 0L
-            Long linesInError = 0L
-            long linesInSuccess = 0L
-            final waitingStatus = [SynchronizationStatus.QUEUED, SynchronizationStatus.WAITING, SynchronizationStatus.RUNNING, SynchronizationStatus.TRANSFORMATION_WAITING, SynchronizationStatus.TRANSFORMATION_RUNNING]
-            try{
-                switch(sync.type){
-                    case MiraklSyncType.CATEGORIES:
-                        def synchronizationStatusResponse = refreshCategoriesSynchronizationStatus(riverConfig, trackingId)
-                        while(synchronizationStatusResponse.status in waitingStatus){
-                            synchronizationStatusResponse = refreshCategoriesSynchronizationStatus(riverConfig, trackingId)
-                        }
-                        synchronizationStatus = synchronizationStatusResponse.status
-                        linesRead = synchronizationStatusResponse.linesRead
-                        linesInError = synchronizationStatusResponse.linesInError
-                        linesInSuccess = synchronizationStatusResponse.linesInSuccess
-                        if(synchronizationStatusResponse.hasErrorReport){
-                            errorReport = loadCategoriesSynchronizationErrorReport(riverConfig, trackingId)
-                            synchronizationStatus = SynchronizationStatus.FAILED
-                        }
-                        Category.findAllByMiraklTrackingId(trackingId.toString()).each {cat ->
-                            cat.miraklStatus = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
-                            cat.save(flush: true)
-                        }
-                        break
-                    case MiraklSyncType.HIERARCHIES:
-                        def trackingImportStatus = trackHierarchiesImportStatusResponse(riverConfig, trackingId)
-                        while(trackingImportStatus.importStatus in waitingStatus){
-                            trackingImportStatus = trackHierarchiesImportStatusResponse(riverConfig, trackingId)
-                        }
-                        synchronizationStatus = trackingImportStatus.importStatus
-                        if(trackingImportStatus.hasErrorReport){
-                            errorReport = loadHierarchiesSynchronizationErrorReport(riverConfig, trackingId)
-                            synchronizationStatus = SynchronizationStatus.FAILED
-                        }
-                        break
-                    case MiraklSyncType.VALUES:
-                        def trackingImportStatus = trackValuesImportStatusResponse(riverConfig, trackingId)
-                        while(trackingImportStatus.importStatus in waitingStatus){
-                            trackingImportStatus = trackValuesImportStatusResponse(riverConfig, trackingId)
-                        }
-                        synchronizationStatus = trackingImportStatus.importStatus
-                        if(trackingImportStatus.hasErrorReport){
-                            errorReport = loadValuesSynchronizationErrorReport(riverConfig, trackingId)
-                            synchronizationStatus = SynchronizationStatus.FAILED
-                        }
-                        break
-                    case MiraklSyncType.ATTRIBUTES:
-                        def trackingImportStatus = trackAttributesImportStatusResponse(riverConfig, trackingId)
-                        while(trackingImportStatus.importStatus in waitingStatus){
-                            trackingImportStatus = trackAttributesImportStatusResponse(riverConfig, trackingId)
-                        }
-                        synchronizationStatus = trackingImportStatus.importStatus
-                        if(trackingImportStatus.hasErrorReport){
-                            errorReport = loadAttributesSynchronizationErrorReport(riverConfig, trackingId)
-                            synchronizationStatus = SynchronizationStatus.FAILED
-                        }
-                        break
-                    case MiraklSyncType.PRODUCTS:
-                        def synchronizationStatusResponse = trackProductsImportStatusResponse(riverConfig, trackingId)
-                        while(synchronizationStatusResponse.importStatus in waitingStatus){
-                            synchronizationStatusResponse = trackProductsImportStatusResponse(riverConfig, trackingId)
-                        }
-                        synchronizationStatus = synchronizationStatusResponse.importStatus
-                        linesRead = synchronizationStatusResponse.transformLinesRead
-                        linesInError = synchronizationStatusResponse.transformLinesInError
-                        linesInSuccess = synchronizationStatusResponse.transformLinesInSucces
-                        if(synchronizationStatusResponse.hasErrorReport){
-                            errorReport = loadProductsImportSynchronizationErrorReport(riverConfig, trackingId)
-                            synchronizationStatus = SynchronizationStatus.FAILED
-                        }
-                        else if(synchronizationStatusResponse.hasTransformationErrorReport){
-                            errorReport = loadProductsImportTransformationErrorReport(riverConfig, trackingId)
-                            synchronizationStatus = SynchronizationStatus.TRANSFORMATION_FAILED
-                        }
-                        break
-                    case MiraklSyncType.PRODUCTS_SYNCHRO:
-                        def synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
-                        while(synchronizationStatusResponse.status in waitingStatus){
-                            synchronizationStatusResponse = refreshProductsSynchronizationStatus(riverConfig, trackingId)
-                        }
-                        synchronizationStatus = synchronizationStatusResponse.status
-                        linesRead = synchronizationStatusResponse.linesRead
-                        linesInError = synchronizationStatusResponse.linesInError
-                        linesInSuccess = synchronizationStatusResponse.linesInSuccess
-                        if(synchronizationStatusResponse.hasErrorReport){
-                            errorReport = loadProductsSynchronizationErrorReport(riverConfig, trackingId)
-                            synchronizationStatus = SynchronizationStatus.FAILED
-                        }
-                        TicketType.findAllByMiraklProductTrackingId(trackingId.toString()).each { sku ->
-                            sku.miraklProductStatus = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
-                            if(synchronizationStatus == SynchronizationStatus.COMPLETE){
-                                Map<String, String> externalCodes = extractExternalCodes(sku.externalCode)
-                                if(!externalCodes.containsKey("mirakl")){
-                                    externalCodes.put("mirakl", sku.uuid)
-                                    sku.externalCode = externalCodes.collect {"${it.key}::${it.value}"}.join(",")
-                                }
-                            }
-                            sku.save(flush: true)
-                        }
-                        break
-                    case MiraklSyncType.OFFERS:
-                        def trackingImportStatus = trackOffersImportStatusResponse(riverConfig, trackingId)
-                        while(trackingImportStatus.status in waitingStatus){
-                            trackingImportStatus = trackOffersImportStatusResponse(riverConfig, trackingId)
-                        }
-                        synchronizationStatus = trackingImportStatus.status
-                        linesRead = trackingImportStatus.linesRead
-                        linesInError = trackingImportStatus.linesInError
-                        linesInSuccess = trackingImportStatus.linesInSuccess
-                        if(trackingImportStatus.hasErrorReport){
-                            errorReport = loadOffersSynchronizationErrorReport(riverConfig, trackingId)
-                            synchronizationStatus = SynchronizationStatus.FAILED
-                        }
-                        TicketType.findAllByMiraklTrackingId(trackingId.toString()).each { sku ->
-                            sku.miraklStatus = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
-                            if(synchronizationStatus == SynchronizationStatus.COMPLETE){
-                                Map<String, String> externalCodes = extractExternalCodes(sku.externalCode)
-                                if(!externalCodes.containsKey("mirakl")){
-                                    externalCodes.put("mirakl", sku.uuid)
-                                    sku.externalCode = externalCodes.collect {"${it.key}::${it.value}"}.join(",")
-                                }
-                            }
-                            sku.save(flush: true)
-                        }
-                        break
-                    default:
-                        break
-                }
-            }
-            catch(Exception e){
-                log.error(e.message)
-            }
-            sync.status = MiraklSyncStatus.valueOf(synchronizationStatus?.toString() ?: sync.status.key)
-            sync.errorReport = errorReport
-            sync.linesRead = linesRead
-            sync.linesInError = linesInError
-            sync.linesInSuccess = linesInSuccess
-            if(sync.validate()){
-                sync.save(flush: true)
+            resource.validate()
+            if (!resource.hasErrors()) {
+                resource.save(flush: true)
+                xpicture = resource
             }
         }
+        // lookup sku variations
+        Map<String, VariationValue> variationValues = [:]
+        def xvariations = Variation.findAllByCategory(xcategory)
+        xvariations?.eachWithIndex { Variation entry, int i ->
+            def vcode = extractMiraklExternalCode(entry.externalCode)
+            if (vcode) {
+                String vvalue = fields.get(vcode)?.trim()
+                if (vvalue?.length() > 0) {
+                    def variationValue = VariationValue.findByVariationAndExternalCode(entry, "mirakl::$vvalue")
+                    if (variationValue) {
+                        variationValues.put("variation${i + 1}".toString(), variationValue)
+                    }
+                }
+            }
+        }
+        def variation1 = variationValues.get("variation1")
+        def variation2 = variationValues.get("variation2")
+        def variation3 = variationValues.get("variation3")
+        xsku = new TicketType(
+                uuid: code,
+                sku: code,
+                externalCode: "mirakl::$code",
+                name: label,
+                description: description,
+                publishable: false,
+                product: xproduct,
+                price: 0L, //TODO update during offers import
+                picture: xpicture,
+                variation1: variation1,
+                variation2: variation2,
+                variation3: variation3
+        )
+        xsku
+    }
+
+    private def Catalog createMiraklCatalog(String shopId, RiverConfig riverConfig, Company xcompany, MiraklEnv xenv) {
+        def name = shopId
+        def shops = MiraklClient.searchShops(riverConfig, new SearchShopsRequest(shopIds: ([] << shopId) as List<String>))
+        if (shops?.shops?.size() > 0) {
+            name = shops?.shops?.first()?.shopName
+        }
+        def xcatalog = new Catalog(
+                name: name,
+                externalCode: "mirakl::$shopId",
+                company: xcompany,
+                miraklEnv: xenv,
+                readOnly: true,
+                activationDate: new Date()
+        )
+        xcatalog.validate()
+        if (!xcatalog.hasErrors()) {
+            xcatalog.save(flush: true)
+            def seller = Seller.findByCompanyAndActive(xcompany, true) //TODO create mirakl seller ?
+            profileService.saveUserPermission(
+                    seller,
+                    true,
+                    PermissionType.UPDATE_STORE_CATALOG,
+                    xcompany.id as String,
+                    xcatalog.id as String
+            )
+            catalogService.handleMiraklCategoriesByHierarchyAndLevel(xcatalog, riverConfig, seller)
+        }
+        xcatalog
+    }
+
+    private static def File[] fetchMiraklImportedProductsFiles(MiraklEnv env) {
+        final String localPath = env.localPath
+        def miraklSftpConfig = new MiraklSftpConfig(
+                remoteHost: env.remoteHost,
+                remotePath: env.remotePath,
+                username: env.username,
+                password: env.password,
+                keyPath: env.keyPath,
+                passphrase: env.passPhrase,
+                localPath: localPath
+        )
+        synchronizeImports(miraklSftpConfig)
+        // filter files uploaded
+        def files = new File(localPath).listFiles(new FilenameFilter() {
+            public boolean accept(File dir, String name) {
+                final matcher = IMPORT_PRODUCTS.matcher(name)
+                return matcher.find() && matcher.groupCount() == 4 && matcher.group(1) in env.shopIds.split(",")
+            }
+        })
+        files
     }
 
     def PagedList<MiraklSync> refreshSynchronization(Catalog catalog, PagedListCommand cmd, List<MiraklSyncType> includedTypes = [
@@ -874,4 +933,9 @@ class MiraklService {
         def response = searchShops(riverConfig, request)
         new PagedList<OutputShop>(list: response.shops, totalCount: response.totalCount)
     }
+}
+
+class MiraklImportedProductResult {
+    MiraklProduct product
+    MiraklReportItem reportItem
 }
