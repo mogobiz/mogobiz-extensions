@@ -788,7 +788,7 @@ class MiraklService {
             }
             Product xproduct = xsku?.product
             Category xcategory = xproduct?.category ?: Category.findAllByExternalCodeLikeOrUuid("%mirakl::$categoryCode%", categoryCode).find {
-                it.company == xcompany && it.catalog == xcatalog
+                it.company == xcompany && (!xcatalog || it.catalog == xcatalog)
             }
             if (xcategory) {
                 xcatalog = xcatalog ?: xcategory?.catalog
