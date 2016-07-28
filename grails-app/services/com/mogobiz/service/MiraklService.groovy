@@ -35,6 +35,7 @@ import com.mogobiz.store.domain.ProductType
 import com.mogobiz.store.domain.Resource
 import com.mogobiz.store.domain.ResourceType
 import com.mogobiz.store.domain.Seller
+import com.mogobiz.store.domain.Stock
 import com.mogobiz.store.domain.TicketType
 import com.mogobiz.store.domain.Variation
 import com.mogobiz.store.domain.VariationValue
@@ -468,8 +469,55 @@ class MiraklService {
                 )
         )
         def offers = exportOffers(riverConfig)?.offers
-        offers?.findAll { it.shopId.toString() in env.shopIds }?.each { offer ->
-            // TODO handle offers
+        def xcompany = env.company
+        offers?.findAll {
+            it.shopId.toString() in env.shopIds?.split(",")
+        }?.each { offer ->
+            def shopId = offer.shopId.toString()
+            def xcatalog = Catalog.findByCompanyAndExternalCodeLikeAndReadOnlyAndDeleted(xcompany, "%mirakl::$shopId%", true, false)
+            if(xcatalog){
+                def code = offer.productSku
+                TicketType xsku = TicketType.findAllByExternalCodeLikeOrUuid("%mirakl::$code%", code).find {
+                    it.product.category.catalog == xcatalog
+                }
+                if(xsku){
+                    // update price
+                    if(offer.originPrice){
+                        xsku.price = offer.originPrice
+                    }
+                    // update start date
+                    if(offer.availableStartDate){
+                        Calendar startDate = Calendar.instance
+                        startDate.setTime(offer.availableStartDate)
+                        xsku.startDate = startDate
+                    }
+                    // update end date
+                    if(offer.availableEndDate){
+                        Calendar stopDate = Calendar.instance
+                        stopDate.setTime(offer.availableEndDate)
+                        xsku.stopDate = stopDate
+                    }
+                    // update stock
+                    if(offer.quantity){ // quantity available
+                        def stock = xsku.stock ?: new Stock()
+                        stock.stockUnlimited = offer.quantity >= 0
+                        stock.stock = offer.quantity
+                        stock.validate()
+                        if(!stock.hasErrors()){
+                            stock.save(flush: true)
+                            xsku.stock = stock
+                        }
+                    }
+                    if(offer.deleted || !offer.active){
+                        xsku.available = false
+                    }
+                    // TODO promotions + shipping ?
+                    xsku.validate()
+                    if(!xsku.hasErrors()){
+                        xsku.save(flush: true)
+                    }
+                }
+            }
         }
     }
 
@@ -734,7 +782,7 @@ class MiraklService {
                 if (!ret) {
                     ret = !it.product.category.catalog.deleted && it.miraklStatus && it.miraklTrackingId
                     def e = ret ? MiraklSync.findByTrackingId(it.miraklTrackingId)?.miraklEnv : null
-                    ret = ret && (e?.shopId == shopId || shopId in e?.shopIds)
+                    ret = ret && (e?.shopId == shopId || shopId in e?.shopIds?.split(","))
                 }
                 ret
             }
