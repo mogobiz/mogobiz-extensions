@@ -401,7 +401,7 @@ class MiraklService {
                     new OfferRiver(),
                     config,
                     Math.min(1, Runtime.getRuntime().availableProcessors()),
-                    10,
+                    100,
                     new SubscriberAdapter(subscriber)
             )
 
