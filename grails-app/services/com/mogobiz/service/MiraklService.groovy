@@ -506,12 +506,13 @@ class MiraklService {
                         if(!stock.hasErrors()){
                             stock.save(flush: true)
                             xsku.stock = stock
+                            xsku.nbSales = 0
                         }
                     }
                     if(offer.deleted || !offer.active){
                         xsku.available = false
                     }
-                    // TODO promotions + shipping ?
+                    // TODO promotions
                     xsku.validate()
                     if(!xsku.hasErrors()){
                         xsku.save(flush: true)
