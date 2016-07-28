@@ -93,6 +93,7 @@ class OfferRiver extends AbstractGenericRiver<MiraklOffer, ImportOffersResponse>
                         'left join fetch sku.stockCalendars ' +
                         'left join fetch p.taxRate as taxRate ' +
                         'left join fetch taxRate.localTaxRates ' +
+                        'left join fetch p.productProperties ' +
                         'WHERE p.category.catalog.id=:idCatalog and p.state = :productState and p.publishable = true and p.deleted = false and (sku.stopDate is null or sku.stopDate >= :today)',
                 [idCatalog:config.idCatalog, productState:ProductState.ACTIVE, today: now], [readOnly: true, flushMode: FlushMode.MANUAL])
         )
