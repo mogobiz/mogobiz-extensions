@@ -801,11 +801,11 @@ class MiraklService {
 
             // find sku and product
             TicketType xsku = TicketType.findAllByExternalCodeLikeOrUuid("%mirakl::$code%", code).find {
-                def ret = it.product.category.catalog == xcatalog
-                if (!ret) {
-                    ret = !it.product.category.catalog.deleted && it.miraklStatus && it.miraklTrackingId
+                def ret = xcatalog && it.product.category.catalog == xcatalog
+                if (!xcatalog) {
+                    ret = !it.product.category.catalog.deleted && it.miraklTrackingId
                     def e = ret ? MiraklSync.findByTrackingId(it.miraklTrackingId)?.miraklEnv : null
-                    ret = ret && (e?.shopId == shopId || shopId in e?.shopIds?.split(","))
+                    ret = ret && e?.shopId == shopId
                 }
                 ret
             }
