@@ -516,8 +516,21 @@ class MiraklService {
                         xsku.available = false
                     }
                     if(offer.originPrice && (offer.discountPrice || offer.discountRanges)){
-                        def coupon = Coupon.findByCodeAndTicketTypesInList("mirakl", ([] << xsku).toList()) ?:
-                                new Coupon(anonymous: true, name: "Discount offer", code: "mirakl")
+                        final externalCode = "mirakl::${code}"
+                        def coupons = Coupon.executeQuery(
+                                'select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.ticketTypes as ticketType where (ticketType.id=:skuId and (ticketType.stopDate is null or ticketType.stopDate >= :today) and coupon.active=true and coupon.anonymous=true and coupon.externalCode like :externalCode)',
+                                [skuId:xsku.id, externalCode:"%$externalCode%", today: Calendar.instance])
+                        def coupon = coupons?.size() > 0 ? coupons.first() :
+                                new Coupon(
+                                        name: "Discount offer",
+                                        code: code,
+                                        externalCode: externalCode,
+                                        anonymous: true,
+                                        active: true,
+                                        catalogWise: false,
+                                        forSale: false,
+                                        consumed: 0L,
+                                        company: xcompany)
                         if(offer.discountStartDate){
                             Calendar startDate = Calendar.instance
                             startDate.setTime(offer.discountStartDate)
@@ -528,16 +541,17 @@ class MiraklService {
                             endDate.setTime(offer.discountEndDate)
                             coupon.endDate = endDate
                         }
-                        def oldRules = coupon.rules
-                        oldRules?.each {
-                            coupon.removeFromRules(it)
-                        }
+                        coupon.addToTicketTypes(xsku)
                         coupon.validate()
                         if(!coupon.hasErrors()){
                             coupon.save(flush:true)
-                            oldRules.each {it.delete(flush: true)}
+                        def oldRules = coupon.rules
+                        oldRules?.each {
+                            coupon.removeFromRules(it)
+                                it.delete(flush: true)
+                        }
                             if(offer.discountPrice){
-                                def discount = (offer.originPrice - offer.discountPrice) * 100
+                                long discount = (offer.originPrice - offer.discountPrice) * 100
                                 def rule = new ReductionRule(
                                         xtype: ReductionRuleType.DISCOUNT,
                                         discount: "-$discount"
@@ -546,16 +560,16 @@ class MiraklService {
                                 if(!rule.hasErrors()){
                                     rule.save(flush: true)
                                     coupon.addToRules(rule)
-                                    coupon.save(flush: true)
                                 }
                             }
                             if(offer.discountRanges){
                                 Map<Long, Double> discounts = [:]
                                 offer.discountRanges.split(",").each {
-                                    final tokens = it.split("|")
+                                    final tokens = it.split("\\|")
                                     if(tokens.length >= 2){
                                         def quantityMin = Long.parseLong(tokens.first().toString())
-                                        def discount = (offer.originPrice - Double.parseDouble(tokens.drop(1).first().toString())) * 100
+                                        if(quantityMin > 1 || !offer.discountPrice){
+                                            long discount = (offer.originPrice - Double.parseDouble(tokens.drop(1).first().toString())) * 100
                                         def rule = new ReductionRule(
                                                 quantityMin: quantityMin,
                                                 xtype: ReductionRuleType.DISCOUNT,
@@ -565,11 +579,18 @@ class MiraklService {
                                         if(!rule.hasErrors()){
                                             rule.save(flush: true)
                                             coupon.addToRules(rule)
-                                            coupon.save(flush: true)
                                         }
                                     }
                                 }
                             }
+                        }
+                            coupon.validate()
+                            if(!coupon.hasErrors()){
+                                coupon.save(flush: true)
+                            }
+                        }
+                        else{
+                            coupon.errors.allErrors.each {log.error(it.toString())}
                         }
                     }
                     xsku.validate()
