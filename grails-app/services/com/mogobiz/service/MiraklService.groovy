@@ -483,7 +483,7 @@ class MiraklService {
                 if(xsku){
                     // update price
                     if(offer.originPrice){
-                        xsku.price = offer.originPrice
+                        xsku.price = (offer.originPrice * 100)
                     }
                     // update start date
                     if(offer.availableStartDate){
@@ -500,7 +500,7 @@ class MiraklService {
                     // update stock
                     if(offer.quantity){ // quantity available
                         def stock = xsku.stock ?: new Stock()
-                        stock.stockUnlimited = offer.quantity >= 0
+                        stock.stockUnlimited = offer.quantity < 0
                         stock.stock = offer.quantity
                         stock.validate()
                         if(!stock.hasErrors()){
