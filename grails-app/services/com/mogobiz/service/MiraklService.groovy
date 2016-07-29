@@ -468,7 +468,7 @@ class MiraklService {
                         )
                 )
         )
-        def offers = exportOffers(riverConfig)?.offers
+        def offers = exportOffers(riverConfig, env.offersLastRequestDate)?.offers
         def xcompany = env.company
         offers?.findAll {
             it.shopId.toString() in env.shopIds?.split(",")
@@ -519,6 +519,11 @@ class MiraklService {
                     }
                 }
             }
+        }
+        env.offersLastRequestDate = new Date()
+        env.validate()
+        if(!env.hasErrors()){
+            env.save(flush: true)
         }
     }
 
