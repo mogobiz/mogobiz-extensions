@@ -751,7 +751,7 @@ class MiraklService {
                 if (!sync.hasErrors()) {
                     sync.save(flush: true)
                     synchronizationResponse?.ids?.each { id ->
-                        def sku = TicketType.findByExternalCodeLikeOrUuid("%mirakl::$id%", id)
+                        def sku = TicketType.findAllByExternalCodeLikeOrUuid("%mirakl::$id%", id).find {it.product.category.catalog == xcatalog}
                         if (sku) {
                             sku.miraklProductStatus = sync.status
                             sku.miraklProductTrackingId = sync.trackingId
