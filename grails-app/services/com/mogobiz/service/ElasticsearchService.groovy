@@ -476,6 +476,14 @@ class ElasticsearchService {
             def index = "${store.toLowerCase()}_${DateUtilitaire.format(Calendar.instance, "yyyy.MM.dd.HH.mm.ss")}"
             def debug = true
 
+            // for mirakl catalogs, we just perform upserts
+            boolean mirakl = catalog.readOnly
+            def conf = addSearchguardCredentials([debug: debug])
+            def previousIndices = client.retrieveAliasIndexes(url, store, conf)
+            if(mirakl && previousIndices?.size() > 0){
+                index = previousIndices.first()
+            }
+
             RiverConfig config = new RiverConfig(
                     clientConfig: new ClientConfig(
                             store: store,
@@ -547,10 +555,8 @@ class ElasticsearchService {
                         AbstractRiverCache.purgeAll()
                         def extra = ""
                         def success = true
-                        def conf = addSearchguardCredentials([debug: debug])
-                        def previousIndices = client.retrieveAliasIndexes(url, store, conf)
-                        if (previousIndices.empty || (!previousIndices.any { String previous -> !client.removeAlias(conf, url, store, previous).acknowledged })) {
-                            if (!client.createAlias(conf, url, store, index)) {
+                        if (mirakl || previousIndices.empty || (!previousIndices.any { String previous -> !client.removeAlias(conf, url, store, previous).acknowledged })) {
+                            if (!mirakl && !client.createAlias(conf, url, store, index)) {
                                 def revert = env?.idx
                                 if (previousIndices.any { previous -> revert = previous; client.createAlias(conf, url, store, previous) }) {
                                     success = false
@@ -570,23 +576,25 @@ curl -XPUT ${url}/$index/_alias/$store
                                     log.warn(extra)
                                 }
                             } else {
-                                // on ajoute les indices précédants à l'alias previous_$store
-                                previousIndices.each {previousIndex -> client.createAlias(conf, url, "previous_$store", previousIndex)}
-                                // on récupère la liste des indices ayant l'alias previous_$store
-                                def previousStoreIndices = client.retrieveAliasIndexes(url, "previous_$store", conf)
-                                int nbPreviousStoreIndices = previousStoreIndices.size()
-                                int maxNbPreviousIndices = grailsApplication.config.elasticsearch.previous ?: 3
-                                // si plus d'indices que le maximum autorisé, alors on supprime les indices les plus anciens
-                                if(nbPreviousStoreIndices > maxNbPreviousIndices){
-                                    def indexToDate = {String s ->
-                                        def dateAsString = s.substring("${store.toLowerCase()}_".length())
-                                        DateUtilitaire.parseToDate(dateAsString, "yyyy.MM.dd.HH.mm.ss")
-                                    }
-                                    previousStoreIndices.sort{a,b->
-                                        indexToDate(a)<=>indexToDate(b) // indices triés du plus ancien au plus récent
-                                    }.take(nbPreviousStoreIndices-maxNbPreviousIndices).each {
-                                        client.removeAlias(conf, url, "previous_$store", it)
-                                        client.removeIndex(url, it, conf)
+                                if(!mirakl){
+                                    // on ajoute les indices précédants à l'alias previous_$store
+                                    previousIndices.each {previousIndex -> client.createAlias(conf, url, "previous_$store", previousIndex)}
+                                    // on récupère la liste des indices ayant l'alias previous_$store
+                                    def previousStoreIndices = client.retrieveAliasIndexes(url, "previous_$store", conf)
+                                    int nbPreviousStoreIndices = previousStoreIndices.size()
+                                    int maxNbPreviousIndices = grailsApplication.config.elasticsearch.previous ?: 3
+                                    // si plus d'indices que le maximum autorisé, alors on supprime les indices les plus anciens
+                                    if(nbPreviousStoreIndices > maxNbPreviousIndices){
+                                        def indexToDate = {String s ->
+                                            def dateAsString = s.substring("${store.toLowerCase()}_".length())
+                                            DateUtilitaire.parseToDate(dateAsString, "yyyy.MM.dd.HH.mm.ss")
+                                        }
+                                        previousStoreIndices.sort{a,b->
+                                            indexToDate(a)<=>indexToDate(b) // indices triés du plus ancien au plus récent
+                                        }.take(nbPreviousStoreIndices-maxNbPreviousIndices).each {
+                                            client.removeAlias(conf, url, "previous_$store", it)
+                                            client.removeIndex(url, it, conf)
+                                        }
                                     }
                                 }
                                 // on met à jour le nombre de replicas dans l'index courrant
