@@ -28,10 +28,13 @@ import com.mogobiz.mirakl.client.io.SearchShopsRequest
 import com.mogobiz.mirakl.rivers.OfferRiver
 import com.mogobiz.store.cmd.PagedListCommand
 import com.mogobiz.store.domain.Brand
+import com.mogobiz.store.domain.Coupon
 import com.mogobiz.store.domain.Product
 import com.mogobiz.store.domain.ProductCalendar
 import com.mogobiz.store.domain.ProductState
 import com.mogobiz.store.domain.ProductType
+import com.mogobiz.store.domain.ReductionRule
+import com.mogobiz.store.domain.ReductionRuleType
 import com.mogobiz.store.domain.Resource
 import com.mogobiz.store.domain.ResourceType
 import com.mogobiz.store.domain.Seller
@@ -512,7 +515,63 @@ class MiraklService {
                     if(offer.deleted || !offer.active){
                         xsku.available = false
                     }
-                    // TODO promotions
+                    if(offer.originPrice && (offer.discountPrice || offer.discountRanges)){
+                        def coupon = Coupon.findByCodeAndTicketTypesInList("mirakl", ([] << xsku).toList()) ?:
+                                new Coupon(anonymous: true, name: "Discount offer", code: "mirakl")
+                        if(offer.discountStartDate){
+                            Calendar startDate = Calendar.instance
+                            startDate.setTime(offer.discountStartDate)
+                            coupon.startDate = startDate
+                        }
+                        if(offer.discountEndDate){
+                            Calendar endDate = Calendar.instance
+                            endDate.setTime(offer.discountEndDate)
+                            coupon.endDate = endDate
+                        }
+                        def oldRules = coupon.rules
+                        oldRules?.each {
+                            coupon.removeFromRules(it)
+                        }
+                        coupon.validate()
+                        if(!coupon.hasErrors()){
+                            coupon.save(flush:true)
+                            oldRules.each {it.delete(flush: true)}
+                            if(offer.discountPrice){
+                                def discount = (offer.originPrice - offer.discountPrice) * 100
+                                def rule = new ReductionRule(
+                                        xtype: ReductionRuleType.DISCOUNT,
+                                        discount: "-$discount"
+                                )
+                                rule.validate()
+                                if(!rule.hasErrors()){
+                                    rule.save(flush: true)
+                                    coupon.addToRules(rule)
+                                    coupon.save(flush: true)
+                                }
+                            }
+                            if(offer.discountRanges){
+                                Map<Long, Double> discounts = [:]
+                                offer.discountRanges.split(",").each {
+                                    final tokens = it.split("|")
+                                    if(tokens.length >= 2){
+                                        def quantityMin = Long.parseLong(tokens.first().toString())
+                                        def discount = (offer.originPrice - Double.parseDouble(tokens.drop(1).first().toString())) * 100
+                                        def rule = new ReductionRule(
+                                                quantityMin: quantityMin,
+                                                xtype: ReductionRuleType.DISCOUNT,
+                                                discount: "-$discount"
+                                        )
+                                        rule.validate()
+                                        if(!rule.hasErrors()){
+                                            rule.save(flush: true)
+                                            coupon.addToRules(rule)
+                                            coupon.save(flush: true)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     xsku.validate()
                     if(!xsku.hasErrors()){
                         xsku.save(flush: true)
