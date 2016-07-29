@@ -403,7 +403,7 @@ class MiraklService {
             GenericRiversFlow.synchronize(
                     new OfferRiver(),
                     config,
-                    Math.min(1, Runtime.getRuntime().availableProcessors()),
+                    Math.max(1, Runtime.getRuntime().availableProcessors()),
                     100,
                     new SubscriberAdapter(subscriber)
             )
@@ -805,7 +805,7 @@ class MiraklService {
         results.forEach(new Action1<CsvLine>() {
             @Override
             void call(CsvLine csvLine) {
-                MiraklImportedProductResult result = handleMiraklImportedProduct(csvLine, xcatalog, shopId, xcompany, attributes)
+                MiraklImportedProductResult result = handleMiraklImportedProduct(csvLine, xcatalog, shopId, xcompany, attributes, xenv.shopIds.split(",").toList())
                 if (result.product) {
                     products << result.product
                 }
@@ -848,7 +848,7 @@ class MiraklService {
         RiverTools.log.info("END HANDLING PRODUCT FILE ${file.path} FOR MIRAKL SHOP $shopId")
     }
 
-    private def MiraklImportedProductResult handleMiraklImportedProduct(CsvLine csvLine, Catalog xcatalog, String shopId, Company xcompany, List<Attribute> attributes) {
+    private def MiraklImportedProductResult handleMiraklImportedProduct(CsvLine csvLine, Catalog xcatalog, String shopId, Company xcompany, List<Attribute> attributes, List<String> shopIds) {
         MiraklImportedProductResult result = new MiraklImportedProductResult()
         List<MiraklAttributeValue> vattributes = []
         Map<String, String> fields = csvLine.fields
@@ -948,7 +948,7 @@ class MiraklService {
                         toScalaOption(brandName),
                         none,
                         toScalaOption(media),
-                        toScalaList(([] << "$shopId") as List<String>),
+                        toScalaList(shopIds), //([] << "$shopId") as List<String>
                         toScalaOption(variantGroupCode),
                         none, //TODO logistic-class
                         BulkAction.UPDATE,
