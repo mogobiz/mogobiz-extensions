@@ -844,7 +844,7 @@ class MiraklService {
                 }
             }
         }
-        file.delete()
+        file.renameTo(new File("${file.absolutePath}.done"))
         RiverTools.log.info("END HANDLING PRODUCT FILE ${file.path} FOR MIRAKL SHOP $shopId")
     }
 
@@ -1062,7 +1062,7 @@ class MiraklService {
         def files = new File(localPath).listFiles(new FilenameFilter() {
             public boolean accept(File dir, String name) {
                 final matcher = IMPORT_PRODUCTS.matcher(name)
-                return matcher.find() && matcher.groupCount() == 4 && matcher.group(1) in env.shopIds.split(",")
+                return name.endsWith(".csv") && matcher.find() && matcher.groupCount() == 4 && matcher.group(1) in env.shopIds.split(",")
             }
         })
         files
