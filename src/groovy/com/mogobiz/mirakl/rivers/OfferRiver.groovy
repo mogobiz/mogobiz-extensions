@@ -32,32 +32,32 @@ class OfferRiver extends AbstractGenericRiver<MiraklOffer, ImportOffersResponse>
         // preload coupons
         def couponsMap = [:]
 
-        Coupon.executeQuery('select product, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.products as product where (product.category.catalog.id=:idCatalog and product.state=:productState and coupon.active=true)',
-                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
+        Coupon.executeQuery('select product, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.products as product where (product.category.catalog.id in (:idCatalogs) and product.state=:productState and coupon.active=true)',
+                [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
             def key = (a[0] as Product).uuid
             Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
             coupons.add(a[1] as Coupon)
             couponsMap.put(key, coupons)
         }
 
-        Coupon.executeQuery('select ticketType, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.ticketTypes as ticketType left join ticketType.product as product where (product.category.catalog.id=:idCatalog and product.state=:productState and (ticketType.stopDate is null or ticketType.stopDate >= :today) and coupon.active=true)',
-                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE, today: now], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
+        Coupon.executeQuery('select ticketType, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.ticketTypes as ticketType left join ticketType.product as product where (product.category.catalog.id in (:idCatalogs) and product.state=:productState and (ticketType.stopDate is null or ticketType.stopDate >= :today) and coupon.active=true)',
+                [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE, today: now], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
             def key = (a[0] as TicketType).uuid
             Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
             coupons.add(a[1] as Coupon)
             couponsMap.put(key, coupons)
         }
 
-        Coupon.executeQuery('select category, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.categories as category where category.catalog.id=:idCatalog and coupon.active=true',
-                [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
+        Coupon.executeQuery('select category, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.categories as category where category.catalog.id in (:idCatalogs) and coupon.active=true',
+                [idCatalogs:config.idCatalogs], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
             def key = (a[0] as Category).uuid
             Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
             coupons.add(a[1] as Coupon)
             couponsMap.put(key, coupons)
         }
 
-        Coupon.executeQuery('select catalog, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.catalogs as catalog where catalog.id=:idCatalog and coupon.active=true',
-                [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
+        Coupon.executeQuery('select catalog, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.catalogs as catalog where catalog.id in (:idCatalogs) and coupon.active=true',
+                [idCatalogs:config.idCatalogs], [readOnly: true, flushMode: FlushMode.MANUAL]).each {a ->
             def key = (a[0] as Catalog).uuid
             Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
             coupons.add(a[1] as Coupon)
@@ -68,8 +68,8 @@ class OfferRiver extends AbstractGenericRiver<MiraklOffer, ImportOffersResponse>
             CouponsRiverCache.instance.put(k as String, v as Set<Coupon>)
         }
 
-        Category.executeQuery('select cat FROM Category cat left join fetch cat.features where cat.catalog.id=:idCatalog',
-                [idCatalog:config.idCatalog], [readOnly: true, flushMode: FlushMode.MANUAL]).each {CategoryFeaturesRiverCache.instance.put(it.uuid, it.features)}
+        Category.executeQuery('select cat FROM Category cat left join fetch cat.features where cat.catalog.id in (:idCatalogs)',
+                [idCatalogs:config.idCatalogs], [readOnly: true, flushMode: FlushMode.MANUAL]).each {CategoryFeaturesRiverCache.instance.put(it.uuid, it.features)}
 
         Observable.from(TicketType.executeQuery(
                 'SELECT sku FROM TicketType sku ' +
@@ -94,8 +94,8 @@ class OfferRiver extends AbstractGenericRiver<MiraklOffer, ImportOffersResponse>
                         'left join fetch p.taxRate as taxRate ' +
                         'left join fetch taxRate.localTaxRates ' +
                         'left join fetch p.productProperties ' +
-                        'WHERE p.category.catalog.id=:idCatalog and p.state = :productState and p.publishable = true and p.deleted = false and (sku.stopDate is null or sku.stopDate >= :today)',
-                [idCatalog:config.idCatalog, productState:ProductState.ACTIVE, today: now], [readOnly: true, flushMode: FlushMode.MANUAL])
+                        'WHERE p.category.catalog.id in (:idCatalogs) and p.state = :productState and p.publishable = true and p.deleted = false and (sku.stopDate is null or sku.stopDate >= :today)',
+                [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE, today: now], [readOnly: true, flushMode: FlushMode.MANUAL])
         )
     }
 

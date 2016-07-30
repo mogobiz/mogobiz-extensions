@@ -25,8 +25,8 @@ class SkuRiver extends AbstractGoogleRiver<TicketType>{
     @Override
     rx.Observable<TicketType> retrieveCatalogItems(RiverConfig riverConfig) {
         // FIXME filter with xprivate == false ?
-        return rx.Observable.from(TicketType.executeQuery('FROM TicketType sku WHERE sku.product.category.catalog.id=:idCatalog and sku.product.state = :productState',
-                [idCatalog:riverConfig.idCatalog, productState:ProductState.ACTIVE]))
+        return rx.Observable.from(TicketType.executeQuery('FROM TicketType sku WHERE sku.product.category.catalog.id in (:idCatalogs) and sku.product.state = :productState',
+                [idCatalogs:riverConfig.idCatalogs, productState:ProductState.ACTIVE]))
     }
 
     @Override

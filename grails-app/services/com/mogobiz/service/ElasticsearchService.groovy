@@ -480,8 +480,15 @@ class ElasticsearchService {
             boolean mirakl = catalog.readOnly
             def conf = addSearchguardCredentials([debug: debug])
             def previousIndices = client.retrieveAliasIndexes(url, store, conf)
+            def idCatalogs = [catalog.id] as List<Long>
             if(mirakl && previousIndices?.size() > 0){
                 index = previousIndices.first()
+            }
+            else{
+                Catalog.findAllByCompanyAndReadOnly(company, true).each {mcatalog ->
+                    idCatalogs << mcatalog.id
+                }
+                log.debug(idCatalogs.toString())
             }
 
             RiverConfig config = new RiverConfig(
@@ -494,7 +501,7 @@ class ElasticsearchService {
                                     replicas: replicas
                             ]
                     ),
-                    idCatalog: catalog.id,
+                    idCatalogs: idCatalogs,
                     languages: languages,
                     defaultLang: company.defaultLanguage
             )
@@ -745,7 +752,7 @@ curl -XPUT ${url}/$index/_alias/$store
                                     replicas: replicas
                             ]
                     ),
-                    idCatalog: -1,
+                    idCatalogs: [] as List<Long>,
                     languages: ["fr"],
                     defaultLang: "fr"
             )

@@ -115,15 +115,15 @@ class MiraklService {
                                     apiKey: env.apiKey
                             )
                     ),
-                    idCatalog: catalog.id,
+                    idCatalogs: [catalog.id] as List<Long>,
                     languages: languages,
                     defaultLang: company.defaultLanguage
             )
 
             // 0. Load catalog categories
             Set<Category> categories = Category.executeQuery(
-                    'select cat FROM Category cat left join fetch cat.parent left join fetch cat.features as feature left join fetch feature.values left join fetch cat.variations as variation left join fetch variation.variationValues where cat.catalog.id=:idCatalog and cat.publishable=true and cat.deleted=false',
-                    [idCatalog:config.idCatalog],
+                    'select cat FROM Category cat left join fetch cat.parent left join fetch cat.features as feature left join fetch feature.values left join fetch cat.variations as variation left join fetch variation.variationValues where cat.catalog.id in (:idCatalogs) and cat.publishable=true and cat.deleted=false',
+                    [idCatalogs:config.idCatalogs],
                     [readOnly: true, flushMode: FlushMode.MANUAL]
             ).toSet()
 

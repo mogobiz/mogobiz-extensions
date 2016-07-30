@@ -36,7 +36,7 @@ class GoogleService {
                 def ec = GoogleRivers.dispatcher()
                 def debug = true
                 def riverConfig = new RiverConfig(
-                        idCatalog: catalog.id,
+                        idCatalogs: [catalog.id] as List<Long>,
                         debug: debug,
                         dry_run: env.dry_run,
                         countryCode: c.countryCode,

@@ -56,7 +56,7 @@ class CompanyRiver extends AbstractESRiver<Company> {
 
     @Override
     Observable<Company> retrieveCatalogItems(final RiverConfig config){
-        final idCompany = Catalog.load(config.idCatalog)?.company?.id
+        final idCompany = Catalog.load(config.idCatalogs.first() as Long)?.company?.id
         Observable.from(
                 Company.executeQuery(
                         "SELECT c FROM Company c left join fetch c.shipFrom left join fetch c.location WHERE c.id =:idCompany",
