@@ -838,7 +838,7 @@ curl -XPUT ${url}/$index/_alias/$store
                     }
                 }
 
-                ESRiversFlow.exportRiversItemsWithSubscription(ESBORivers.getInstance(), config, 1, 10, new SubscriberAdapter(subscriber))
+                GenericRiversFlow.publish(ESBORivers.getInstance(), config, 1, 10, new SubscriberAdapter(subscriber))
             }
             else{
                 log.error("an error occured while creating index ${response.error}")
