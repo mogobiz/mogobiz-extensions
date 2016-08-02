@@ -22,8 +22,11 @@ import com.mogobiz.http.client.HTTPClient
 import com.mogobiz.json.RenderUtil
 import com.mogobiz.store.ProductSearchCriteria
 import com.mogobiz.store.domain.Catalog
+import com.mogobiz.store.domain.Category
 import com.mogobiz.store.domain.Company
 import com.mogobiz.store.domain.EsEnv
+import com.mogobiz.store.domain.EsSync
+import com.mogobiz.store.domain.Product
 import com.mogobiz.store.domain.ProductCalendar
 import com.mogobiz.store.domain.Translation
 import com.mogobiz.utils.DateUtilitaire
@@ -452,7 +455,52 @@ class ElasticsearchService {
     }
 
     @Synchronized
-    def void publish(Company company, EsEnv env, Catalog catalog, boolean manual = false) {
+    def void synchronize(Company company, EsEnv env, Catalog catalog){
+        def syncs = EsSync.executeQuery(
+                'FROM EsSync where esEnv=:env and :catalog in elements(catalogs) ',
+                [env: env, catalog: catalog],
+                [sort: "timestamp", order: "desc"]
+        )
+        if(syncs.empty){
+            publish(company, env, catalog, true, null)
+        }
+        else{
+            def lastCompleteSync = syncs.first().timestamp
+            def sync = new EsSync(
+                    company: company,
+                    esEnv: env,
+                    target: catalog
+            )
+            def catalogCategories = Category.findAllByCatalogAndLastUpdatedGreaterThan(catalog, lastCompleteSync, [sort: "lastUpdated", order: "desc"])
+            catalogCategories.each {cat ->
+                boolean none = EsSync.executeQuery(
+                        'FROM EsSync where esEnv=:env and :category in elements(categories) and timestamp >= :timestamp',
+                        [env: env, category: cat, timestamp: cat.lastUpdated]
+                ).isEmpty()
+                if(none){
+                    sync.addToCategories(cat)
+                }
+            }
+            def catalogProducts = Product.findAllByCategoryInListAndLastUpdatedGreaterThan(Category.findAllByCatalog(catalog), lastCompleteSync, [sort: "lastUpdated", order: "desc"])
+            catalogProducts.each { product ->
+                boolean none = EsSync.executeQuery(
+                        'FROM EsSync where esEnv=:env and :product in elements(products) and timestamp >= :timestamp',
+                        [env: env, product: product, timestamp: product.lastUpdated]
+                ).isEmpty()
+                if(none){
+                    sync.addToProducts(product)
+                }
+            }
+            sync.validate()
+            if(!sync.hasErrors()){
+                sync.save(flush: true)
+                publish(company, env, catalog, true, sync)
+            }
+        }
+    }
+
+    @Synchronized
+    def void publish(Company company, EsEnv env, Catalog catalog, boolean manual = false, EsSync sync = null) {
         if (catalog?.name?.trim()?.toLowerCase() == "impex") {
             return
         }
@@ -1044,12 +1092,20 @@ curl -XPUT ${url}/$index/_alias/$store
                     def cron = env.cronExpr
                     if (cron && cron.trim().length() > 0 && CronExpression.isValidExpression(cron)
                             && new CronExpression(cron).isSatisfiedBy(now)) {
-                        publish(company, env, catalog, false)
+                        publish(company, env, catalog, false, null)
                     }
                 }
             }
         }
 
+    }
+
+    private def retrieveChildren = { Category cat, Set<Category> cats ->
+        cats << cat
+        cat.children?.each {
+            retrieveChildren(it, cats)
+        }
+        cats
     }
 }
 
