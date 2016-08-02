@@ -504,6 +504,9 @@ class ElasticsearchService {
         if (catalog?.name?.trim()?.toLowerCase() == "impex") {
             return
         }
+        if(sync){
+            env = sync?.esEnv
+        }
         boolean running = EsEnv.withTransaction {
             EsEnv.findByRunning(true) != null
         }
@@ -524,19 +527,46 @@ class ElasticsearchService {
             def index = "${store.toLowerCase()}_${DateUtilitaire.format(Calendar.instance, "yyyy.MM.dd.HH.mm.ss")}"
             def debug = true
 
-            // for mirakl catalogs, we just perform upserts
+            // for mirakl catalogs or partial publication, we just perform upserts
             boolean mirakl = catalog.readOnly
+            boolean partial = sync != null
             def conf = addSearchguardCredentials([debug: debug])
             def previousIndices = client.retrieveAliasIndexes(url, store, conf)
-            def idCatalogs = [catalog.id] as List<Long>
-            if(mirakl && previousIndices?.size() > 0){
+            List<Catalog> catalogs = []
+            List<Long> idCatalogs = []
+            List<Long> idCategories = []
+            List<Long> idProducts = []
+            if((mirakl || partial) && previousIndices?.size() > 0){
                 index = previousIndices.first()
             }
-            else{
+            else {
+                partial = false
+                catalogs << catalog
+                idCatalogs << catalog.id
                 Catalog.findAllByCompanyAndReadOnly(company, true).each {mcatalog ->
+                    catalogs << mcatalog
                     idCatalogs << mcatalog.id
                 }
-                log.debug(idCatalogs.toString())
+                log.info("idCatalogs -> "+idCatalogs.join(","))
+            }
+
+            if(partial){
+                sync.products.each {
+                    idProducts << it.id
+                    idCategories << it.category.id
+                }
+                sync.categories.each {
+                    retrieveChildren(it, new HashSet<Category>()).each {cat ->
+                        idCategories << cat.id
+                        Product.findAllByCategory(cat).each {product ->
+                            idProducts << product.id
+                        }
+                    }
+                }
+                idCategories.unique()
+                log.info("idCategories -> "+idCategories.join(","))
+                idProducts.unique()
+                log.info("idProducts -> "+idProducts.join(","))
             }
 
             RiverConfig config = new RiverConfig(
@@ -551,7 +581,11 @@ class ElasticsearchService {
                     ),
                     idCatalogs: idCatalogs,
                     languages: languages,
-                    defaultLang: company.defaultLanguage
+                    defaultLang: company.defaultLanguage,
+                    partial: partial,
+                    idCompany: company.id,
+                    idCategories: idCategories,
+                    idProducts: idProducts
             )
             def searchguard = grailsApplication.config.searchguard as Map
             def active = searchguard?.active
@@ -610,8 +644,8 @@ class ElasticsearchService {
                         AbstractRiverCache.purgeAll()
                         def extra = ""
                         def success = true
-                        if (mirakl || previousIndices.empty || (!previousIndices.any { String previous -> !client.removeAlias(conf, url, store, previous).acknowledged })) {
-                            if (!mirakl && !client.createAlias(conf, url, store, index)) {
+                        if (mirakl || partial || previousIndices.empty || (!previousIndices.any { String previous -> !client.removeAlias(conf, url, store, previous).acknowledged })) {
+                            if (!mirakl && !partial && !client.createAlias(conf, url, store, index)) {
                                 def revert = env?.idx
                                 if (previousIndices.any { previous -> revert = previous; client.createAlias(conf, url, store, previous) }) {
                                     success = false
@@ -631,7 +665,7 @@ curl -XPUT ${url}/$index/_alias/$store
                                     log.warn(extra)
                                 }
                             } else {
-                                if(!mirakl){
+                                if(!mirakl && !partial){
                                     // on ajoute les indices précédants à l'alias previous_$store
                                     previousIndices.each {previousIndex -> client.createAlias(conf, url, "previous_$store", previousIndex)}
                                     // on récupère la liste des indices ayant l'alias previous_$store
@@ -742,6 +776,29 @@ curl -XPUT ${url}/$index/_alias/$store
                             }
                             env.extra = extra
                             env.save(flush: true)
+                        }
+                        EsSync.withTransaction {
+                            if(!partial){
+                                sync = new EsSync(
+                                    company: company,
+                                    esEnv: env,
+                                    target: catalog
+                                )
+                                catalogs.each {
+                                    sync.addToCatalogs(it)
+                                }
+                                sync.validate()
+                                if(!sync.hasErrors()){
+                                    sync.save(flush: true)
+                                }
+                            }
+                            else{
+                                sync.refresh()
+                            }
+                            sync.success = success
+                            sync.report = extra
+                            sync.timestamp = new Date()
+                            sync.save(flush: true)
                         }
                     }
 
