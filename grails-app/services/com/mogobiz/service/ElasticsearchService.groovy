@@ -533,7 +533,7 @@ class ElasticsearchService {
             def conf = addSearchguardCredentials([debug: debug])
             def previousIndices = client.retrieveAliasIndexes(url, store, conf)
             List<Catalog> catalogs = []
-            List<Long> idCatalogs = []
+            List<Long> idCatalogs = [] << catalog.id
             List<Long> idCategories = []
             List<Long> idProducts = []
             if((mirakl || partial) && previousIndices?.size() > 0){
@@ -542,13 +542,14 @@ class ElasticsearchService {
             else {
                 partial = false
                 catalogs << catalog
-                idCatalogs << catalog.id
-                Catalog.findAllByCompanyAndReadOnly(company, true).each {mcatalog ->
-                    catalogs << mcatalog
-                    idCatalogs << mcatalog.id
+                if(!mirakl){
+                    Catalog.findAllByCompanyAndReadOnly(company, true).each {mcatalog ->
+                        catalogs << mcatalog
+                        idCatalogs << mcatalog.id
+                    }
                 }
-                log.info("idCatalogs -> "+idCatalogs.join(","))
             }
+            log.info("idCatalogs -> "+idCatalogs.join(","))
 
             if(partial){
                 sync.products.each {
@@ -777,19 +778,23 @@ curl -XPUT ${url}/$index/_alias/$store
                             env.extra = extra
                             env.save(flush: true)
                         }
+                        log.info("Begin sync")
                         EsSync.withTransaction {
                             if(!partial){
                                 sync = new EsSync(
-                                    company: company,
-                                    esEnv: env,
-                                    target: catalog
+                                        company: company.refresh(),
+                                        esEnv: env.refresh(),
+                                        target: catalog.refresh()
                                 )
                                 catalogs.each {
-                                    sync.addToCatalogs(it)
+                                    sync.addToCatalogs(it.refresh())
                                 }
                                 sync.validate()
                                 if(!sync.hasErrors()){
                                     sync.save(flush: true)
+                                }
+                                else{
+                                    sync.errors.allErrors.each{log.error(it.toString())}
                                 }
                             }
                             else{
@@ -800,6 +805,7 @@ curl -XPUT ${url}/$index/_alias/$store
                             sync.timestamp = new Date()
                             sync.save(flush: true)
                         }
+                        log.info("End sync")
                     }
 
                     @Override
