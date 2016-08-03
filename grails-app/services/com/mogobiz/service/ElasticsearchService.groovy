@@ -472,12 +472,14 @@ class ElasticsearchService {
                     target: catalog
             )
             def catalogCategories = Category.findAllByCatalogAndLastUpdatedGreaterThan(catalog, lastCompleteSync, [sort: "lastUpdated", order: "desc"])
+            def syncRequired = false
             catalogCategories.each {cat ->
                 boolean none = EsSync.executeQuery(
                         'FROM EsSync where esEnv=:env and :category in elements(categories) and timestamp >= :timestamp',
                         [env: env, category: cat, timestamp: cat.lastUpdated]
                 ).isEmpty()
                 if(none){
+                    syncRequired = true
                     sync.addToCategories(cat)
                 }
             }
@@ -488,13 +490,30 @@ class ElasticsearchService {
                         [env: env, product: product, timestamp: product.lastUpdated]
                 ).isEmpty()
                 if(none){
+                    syncRequired = true
                     sync.addToProducts(product)
                 }
+            }
+            final noPublicationRequired = "No run diff publication performed - No item has been modified since the last publication"
+            if(!syncRequired){
+                sync.timestamp = new Date()
+                sync.report = noPublicationRequired
+                sync.success = true
             }
             sync.validate()
             if(!sync.hasErrors()){
                 sync.save(flush: true)
-                publish(company, env, catalog, true, sync)
+                if(syncRequired){
+                    publish(company, env, catalog, true, sync)
+                }
+                else{
+                    env.refresh()
+                    env.extra = noPublicationRequired
+                    env.validate()
+                    if(!env.hasErrors()){
+                        env.save(flush: true)
+                    }
+                }
             }
         }
     }
