@@ -28,27 +28,52 @@ class CouponRiver extends AbstractESRiver<Coupon> {
         def defaultLang = config?.defaultLang ?: 'fr'
         def _defaultLang = defaultLang.trim().toLowerCase()
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
+        final args = [readOnly: true, flushMode: FlushMode.MANUAL]
         if(!_languages.flatten().isEmpty()){
             Set<Translation> translations = []
-            translations << Translation.executeQuery('select t from Coupon coupon join coupon.products as p, Translation t where t.target=coupon.id and t.lang in :languages and (p.category.catalog.id in (:idCatalogs) and p.state=:productState)',
-                    [languages:_languages, idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL])
-            translations << Translation.executeQuery('select t from Coupon coupon join coupon.categories as category, Translation t where t.target=coupon.id and t.lang in :languages and (category.catalog.id in (:idCatalogs) and coupon.active=true)',
-                    [languages:_languages, idCatalogs:config.idCatalogs], [readOnly: true, flushMode: FlushMode.MANUAL])
-            translations << Translation.executeQuery('select t from Coupon coupon join coupon.ticketTypes as ticketType, Translation t where t.target=coupon.id and t.lang in :languages and (ticketType.product.category.catalog.id in (:idCatalogs) and ticketType.product.state=:productState and (ticketType.stopDate is null or ticketType.stopDate >= :today) and coupon.active=true)',
-                    [languages:_languages, idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE, today: now], [readOnly: true, flushMode: FlushMode.MANUAL])
-            translations << Translation.executeQuery('select t from Coupon coupon join coupon.catalogs as catalog, Translation t where t.target=coupon.id and t.lang in :languages and (catalog.id in (:idCatalogs) and coupon.active=true)',
-                    [languages:_languages, idCatalogs:config.idCatalogs], [readOnly: true, flushMode: FlushMode.MANUAL])
+            if(config.partial){
+                translations << Translation.executeQuery('select t from Coupon coupon join coupon.products as p, Translation t where t.target=coupon.id and t.lang in :languages and (p.id in (:idProducts) and p.state=:productState)',
+                        [languages:_languages, idProducts:config.idProducts, productState:ProductState.ACTIVE], args)
+                translations << Translation.executeQuery('select t from Coupon coupon join coupon.categories as category, Translation t where t.target=coupon.id and t.lang in :languages and (category.id in (:idCategories) and coupon.active=true)',
+                        [languages:_languages, idCategories:config.idCategories], args)
+                translations << Translation.executeQuery('select t from Coupon coupon join coupon.ticketTypes as ticketType, Translation t where t.target=coupon.id and t.lang in :languages and (ticketType.product.id in (:idProducts) and ticketType.product.state=:productState and (ticketType.stopDate is null or ticketType.stopDate >= :today) and coupon.active=true)',
+                        [languages:_languages, idProducts:config.idProducts, productState:ProductState.ACTIVE, today: now], args)
+                translations << Translation.executeQuery('select t from Coupon coupon join coupon.catalogs as catalog, Translation t where t.target=coupon.id and t.lang in :languages and (catalog.id in (:idCatalogs) and coupon.active=true)',
+                        [languages:_languages, idCatalogs:config.idCatalogs], args)
+            }
+            else{
+                translations << Translation.executeQuery('select t from Coupon coupon join coupon.products as p, Translation t where t.target=coupon.id and t.lang in :languages and (p.category.catalog.id in (:idCatalogs) and p.state=:productState)',
+                        [languages:_languages, idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE], args)
+                translations << Translation.executeQuery('select t from Coupon coupon join coupon.categories as category, Translation t where t.target=coupon.id and t.lang in :languages and (category.catalog.id in (:idCatalogs) and coupon.active=true)',
+                        [languages:_languages, idCatalogs:config.idCatalogs], args)
+                translations << Translation.executeQuery('select t from Coupon coupon join coupon.ticketTypes as ticketType, Translation t where t.target=coupon.id and t.lang in :languages and (ticketType.product.category.catalog.id in (:idCatalogs) and ticketType.product.state=:productState and (ticketType.stopDate is null or ticketType.stopDate >= :today) and coupon.active=true)',
+                        [languages:_languages, idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE, today: now], args)
+                translations << Translation.executeQuery('select t from Coupon coupon join coupon.catalogs as catalog, Translation t where t.target=coupon.id and t.lang in :languages and (catalog.id in (:idCatalogs) and coupon.active=true)',
+                        [languages:_languages, idCatalogs:config.idCatalogs], args)
+            }
             translations.flatten().groupBy {(it.target as Long).toString()}.each {k, v -> TranslationsRiverCache.instance.put(k, v)}
         }
         Set<Coupon> results = []
-        results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.products as product where (product.category.catalog.id in (:idCatalogs) and product.state=:productState and coupon.active=true)',
-                [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL])
-        results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.categories as category where (category.catalog.id in (:idCatalogs) and coupon.active=true)',
-                [idCatalogs:config.idCatalogs], [readOnly: true, flushMode: FlushMode.MANUAL])
-        results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.ticketTypes as ticketType where (ticketType.product.category.catalog.id in (:idCatalogs) and ticketType.product.state=:productState and (ticketType.stopDate is null or ticketType.stopDate >= :today) and coupon.active=true)',
-                [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE, today: now], [readOnly: true, flushMode: FlushMode.MANUAL])
-        results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.catalogs as catalog where (catalog.id in (:idCatalogs) and coupon.active=true)',
-                [idCatalogs:config.idCatalogs], [readOnly: true, flushMode: FlushMode.MANUAL])
+        if(config.partial){
+            results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.products as product where (product.id in (:idProducts) and product.state=:productState and coupon.active=true)',
+                    [idProducts:config.idProducts, productState:ProductState.ACTIVE], args)
+            results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.categories as category where (category.id in (:idCategories) and coupon.active=true)',
+                    [idCategories:config.idCategories], args)
+            results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.ticketTypes as ticketType where (ticketType.product.id in (:idProducts) and ticketType.product.state=:productState and (ticketType.stopDate is null or ticketType.stopDate >= :today) and coupon.active=true)',
+                    [idProducts:config.idProducts, productState:ProductState.ACTIVE, today: now], args)
+            results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.catalogs as catalog where (catalog.id in (:idCatalogs) and coupon.active=true)',
+                    [idCatalogs:config.idCatalogs], args)
+        }
+        else{
+            results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.products as product where (product.category.catalog.id in (:idCatalogs) and product.state=:productState and coupon.active=true)',
+                    [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE], args)
+            results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.categories as category where (category.catalog.id in (:idCatalogs) and coupon.active=true)',
+                    [idCatalogs:config.idCatalogs], args)
+            results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.ticketTypes as ticketType where (ticketType.product.category.catalog.id in (:idCatalogs) and ticketType.product.state=:productState and (ticketType.stopDate is null or ticketType.stopDate >= :today) and coupon.active=true)',
+                    [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE, today: now], args)
+            results << Coupon.executeQuery('select coupon FROM Coupon coupon join fetch coupon.rules left join coupon.catalogs as catalog where (catalog.id in (:idCatalogs) and coupon.active=true)',
+                    [idCatalogs:config.idCatalogs], args)
+        }
         return rx.Observable.from(results.flatten())
     }
 

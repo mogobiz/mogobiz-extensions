@@ -45,14 +45,15 @@ class CategoryRiver extends AbstractESRiver<Category>{
         def defaultLang = config?.defaultLang ?: 'fr'
         def _defaultLang = defaultLang.trim().toLowerCase()
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
+        final args = [readOnly: true, flushMode: FlushMode.MANUAL]
         if(!_languages.flatten().isEmpty()) {
-            Translation.executeQuery('select t from Category cat, Translation t where t.target=cat.id and t.lang in :languages and cat.catalog.id in (:idCatalogs)',
-                    [languages: _languages, idCatalogs: config.idCatalogs], [readOnly: true, flushMode: FlushMode.MANUAL]).groupBy {
+            def translations = config.partial ? Translation.executeQuery('select t from Category cat, Translation t where t.target=cat.id and t.lang in :languages and cat.id in (:idCategories)', [languages: _languages, idCategories: config.idCategories], args) : Translation.executeQuery('select t from Category cat, Translation t where t.target=cat.id and t.lang in :languages and cat.catalog.id in (:idCatalogs)', [languages: _languages, idCatalogs: config.idCatalogs], args)
+            translations.groupBy {
                 it.target.toString()
-            }.each { k, v -> TranslationsRiverCache.instance.put(k, v) }
+            }.each { String k, List<Translation> v -> TranslationsRiverCache.instance.put(k, v) }
         }
 
-        return Observable.from(Category.findAll('From Category cat where cat.catalog.id in (:idCatalogs) and deleted=false', [idCatalogs: config.idCatalogs], [readOnly: true, flushMode: FlushMode.MANUAL]))
+        return Observable.from(config.partial ? Category.findAll('From Category cat where cat.id in (:idCategories) and deleted=false', [idCategories: config.idCategories], args) : Category.findAll('From Category cat where cat.catalog.id in (:idCatalogs) and deleted=false', [idCatalogs: config.idCatalogs], args))
     }
 
     @Override

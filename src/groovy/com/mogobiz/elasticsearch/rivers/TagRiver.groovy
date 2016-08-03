@@ -31,17 +31,21 @@ class TagRiver extends AbstractESRiver<Tag>{
         def defaultLang = config?.defaultLang ?: 'fr'
         def _defaultLang = defaultLang.trim().toLowerCase()
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
+        final args = [readOnly: true, flushMode: FlushMode.MANUAL]
         if(!_languages.flatten().isEmpty()) {
-            Translation.executeQuery('select t from Tag tag, Translation t where t.target=tag.id and t.lang in :languages and tag.company in (select c.company from Catalog c where c.id in (:idCatalogs))',
-                    [languages: _languages, idCatalogs: config.idCatalogs], [readOnly: true, flushMode: FlushMode.MANUAL]).groupBy {
+            def translations = Translation.executeQuery('select t from Tag tag, Translation t where t.target=tag.id and t.lang in :languages and tag.company.id=:idCompany',
+                    [languages: _languages, idCompany: config.idCompany], args)
+            translations.groupBy {
                 it.target.toString()
-            }.each { k, v -> TranslationsRiverCache.instance.put(k, v) }
+            }.each { String k, List<Translation> v -> TranslationsRiverCache.instance.put(k, v) }
         }
 
         def tagCategoriesRiverCache = TagCategoriesRiverCache.instance
 
-        Product.executeQuery('select p, tag.uuid, category from Product p left join fetch p.category as category left join fetch p.tags as tag left join fetch category.parent WHERE category.catalog.id in (:idCatalogs) and p.state = :productState and p.deleted = false',
-                [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).each { a ->
+        def results = config.partial ? Product.executeQuery('select p, tag.uuid, category from Product p left join fetch p.category as category left join fetch p.tags as tag left join fetch category.parent WHERE category.id in (:idCategories) and p.state = :productState and p.deleted = false',
+                [idCategories:config.idCategories, productState:ProductState.ACTIVE], args) : Product.executeQuery('select p, tag.uuid, category from Product p left join fetch p.category as category left join fetch p.tags as tag left join fetch category.parent WHERE category.catalog.id in (:idCatalogs) and p.state = :productState and p.deleted = false',
+                [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE], args)
+        results.each { a ->
             String key = a[1] as String
             Category category = a[2] as Category
             String fullpath = category.fullpath ?: RiverTools.retrieveCategoryPath(category)
@@ -50,8 +54,9 @@ class TagRiver extends AbstractESRiver<Tag>{
             tagCategoriesRiverCache.put(key, categories)
         }
 
-        return Observable.from(Tag.executeQuery('SELECT DISTINCT p.tags FROM Product p WHERE p.category.catalog.id in (:idCatalogs)',
-                [idCatalogs:config.idCatalogs], [readOnly: true, flushMode: FlushMode.MANUAL]))
+        return Observable.from(config.partial ? Tag.executeQuery('SELECT DISTINCT p.tags FROM Product p WHERE p.id in (:idProducts)',
+                [idProducts:config.idProducts], args) : Tag.executeQuery('SELECT DISTINCT p.tags FROM Product p WHERE p.category.catalog.id in (:idCatalogs)',
+                [idCatalogs:config.idCatalogs], args))
     }
 
     @Override

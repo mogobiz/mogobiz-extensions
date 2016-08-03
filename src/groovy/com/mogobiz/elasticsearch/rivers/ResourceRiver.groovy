@@ -29,14 +29,18 @@ class ResourceRiver  extends AbstractESRiver<Resource> {
         def defaultLang = config?.defaultLang ?: 'fr'
         def _defaultLang = defaultLang.trim().toLowerCase()
         def _languages = languages.collect {it.trim().toLowerCase()} - _defaultLang
+        final args = [readOnly: true, flushMode: FlushMode.MANUAL]
         if(!_languages.flatten().isEmpty()) {
-            Translation.executeQuery('select t from Product2Resource pr left join pr.product as p left join pr.resource as r, Translation t where t.target=r.id and t.lang in :languages and (p.category.catalog.id in (:idCatalogs) and p.state=:productState)',
-                    [languages: _languages, idCatalogs: config.idCatalogs, productState: ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).groupBy {
+            def translations = config.partial ? Translation.executeQuery('select t from Product2Resource pr left join pr.product as p left join pr.resource as r, Translation t where t.target=r.id and t.lang in :languages and (p.id in (:idProducts) and p.state=:productState)',
+                    [languages: _languages, idProducts: config.idProducts, productState: ProductState.ACTIVE], args) : Translation.executeQuery('select t from Product2Resource pr left join pr.product as p left join pr.resource as r, Translation t where t.target=r.id and t.lang in :languages and (p.category.catalog.id in (:idCatalogs) and p.state=:productState)',
+                    [languages: _languages, idCatalogs: config.idCatalogs, productState: ProductState.ACTIVE], args)
+            translations.groupBy {
                 it.target.toString()
-            }.each { k, v -> TranslationsRiverCache.instance.put(k, v) }
+            }.each { String k, List<Translation> v -> TranslationsRiverCache.instance.put(k, v) }
         }
-        Observable.from(Resource.executeQuery('SELECT r FROM Product2Resource pr left join pr.product as p left join pr.resource as r WHERE p.category.catalog.id in (:idCatalogs) and p.state=:productState and p.deleted=false and r.active=true and r.deleted=false',
-                [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]).toSet())
+        Observable.from(config.partial ? Resource.executeQuery('SELECT r FROM Product2Resource pr left join pr.product as p left join pr.resource as r WHERE p.id in (:idProducts) and p.state=:productState and p.deleted=false and r.active=true and r.deleted=false',
+                [idProducts:config.idProducts, productState:ProductState.ACTIVE], args).toSet() : Resource.executeQuery('SELECT r FROM Product2Resource pr left join pr.product as p left join pr.resource as r WHERE p.category.catalog.id in (:idCatalogs) and p.state=:productState and p.deleted=false and r.active=true and r.deleted=false',
+                [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE], args).toSet())
     }
 
     @Override

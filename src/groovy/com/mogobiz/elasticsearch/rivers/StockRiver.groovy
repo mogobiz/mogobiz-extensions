@@ -25,7 +25,10 @@ class StockRiver  extends AbstractESRiver<StockCalendarSku> {
     rx.Observable<StockCalendarSku> retrieveCatalogItems(RiverConfig riverConfig) {
         Calendar now = Calendar.getInstance()
         return rx.Observable.from(
-                TicketType.executeQuery(
+                riverConfig.partial ? TicketType.executeQuery(
+                        'SELECT s FROM TicketType s left join fetch s.product as product left join fetch s.stock as stock left join fetch s.stockCalendars WHERE product.id in (:idProducts) and product.state = :productState and (s.stopDate is null or s.stopDate >= :today)',
+                        [idProducts:riverConfig.idProducts, productState:ProductState.ACTIVE, today: now], [readOnly: true, flushMode: FlushMode.MANUAL])
+                        .collect {new StockCalendarSku(it, it.stockCalendars)}/*TODO rx way*/ : TicketType.executeQuery(
                         'SELECT s FROM TicketType s left join fetch s.product as product left join fetch s.stock as stock left join fetch s.stockCalendars WHERE product.category.catalog.id in (:idCatalogs) and product.state = :productState and (s.stopDate is null or s.stopDate >= :today)',
                         [idCatalogs:riverConfig.idCatalogs, productState:ProductState.ACTIVE, today: now], [readOnly: true, flushMode: FlushMode.MANUAL])
                         .collect {new StockCalendarSku(it, it.stockCalendars)}/*TODO rx way*/

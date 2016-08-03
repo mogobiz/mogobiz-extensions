@@ -32,7 +32,7 @@ class CatalogRiver extends AbstractESRiver<Catalog> {
 
     @Override
     Observable<Catalog> retrieveCatalogItems(final RiverConfig config) {
-        return Observable.from(Catalog.findAll('From Catalog where id in :catalogIds', [catalogIds: config.idCatalogs]))
+        return Observable.from(Catalog.findAll('From Catalog c where c.id in :catalogIds', [catalogIds: config.idCatalogs]))
     }
 
     @Override
