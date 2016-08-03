@@ -803,7 +803,7 @@ curl -XPUT ${url}/$index/_alias/$store
                                     def log4j = "$home/log4j.xml".toString()
                                     args << "-cp"
                                     final pathSeparator = System.getProperty("path.separator") ?: ":"
-                                    args << "\"$jar$pathSeparator$app$pathSeparator$log4j$pathSeparator.\"".toString()
+                                    args << "$jar$pathSeparator$app$pathSeparator$log4j$pathSeparator.".toString()
                                     args << "com.mogobiz.cache.bin.ProcessCache"
                                     args << store
                                     cacheUrls.each { cacheUrl ->
