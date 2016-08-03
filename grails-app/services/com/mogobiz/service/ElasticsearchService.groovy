@@ -794,7 +794,7 @@ curl -XPUT ${url}/$index/_alias/$store
                                 if(home && version && run){
                                     cacheUrls << "$run/$store/products/\${product.id}"
                                     cacheUrls << "$run/$store/brands?brandId=\${brand.id}"
-                                    cacheUrls << "$run/$store/categories?categoryPath=\${category.path | encode}"
+                                    cacheUrls << "$run/$store/categories?categoryPath=\${category.path|encode}"
                                     cacheUrls << "$run/$store/categories?parentId=\${category.parentId}"
                                     List<String> args = []
                                     args << "java"
@@ -806,7 +806,12 @@ curl -XPUT ${url}/$index/_alias/$store
                                     args << "$jar$pathSeparator$app$pathSeparator$log4j$pathSeparator.".toString()
                                     args << "com.mogobiz.cache.bin.ProcessCache"
                                     args << store
-                                    cacheUrls.each { args << it }
+                                    cacheUrls.each { u ->
+                                        u = u.replace(" ", "").trim()
+                                        if(u.length() > 0){
+                                            args << u.toString()
+                                        }
+                                    }
                                     BufferedReader br = null
                                     try{
                                         final ProcessBuilder pb = new ProcessBuilder(args)
