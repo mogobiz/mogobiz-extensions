@@ -467,51 +467,80 @@ class ElasticsearchService {
         new PagedList<EsSync>(list: list, totalCount: totalCount as int)
     }
 
+    def Map prepareSynchronizationAsMap(EsEnv env, Catalog catalog){
+        Synchronization synchronization = prepareSynchronization(env, catalog)
+        def map = [syncRequired: synchronization.syncRequired] as Map<String, Object>
+        def categories = []
+        synchronization.categories.each{cat ->
+            categories << [id: cat.id, name: cat.name]
+        }
+        map << [categories: categories]
+        def products = []
+        synchronization.products.each{product ->
+            products << [id: product.id, name: product.name]
+        }
+        map << [products: products]
+    }
+
+    def Synchronization prepareSynchronization(EsEnv env, Catalog catalog){
+        Synchronization synchronization = new Synchronization()
+        if(env && catalog && env.company == catalog.company){
+            final company = env.company
+            def syncs = EsSync.executeQuery(
+                    'FROM EsSync where esEnv=:env and :catalog in elements(catalogs) ',
+                    [env: env, catalog: catalog],
+                    [sort: "timestamp", order: "desc"]
+            )
+            if(!syncs.empty){
+                synchronization.previousSync = true
+                def lastCompleteSync = syncs.first().timestamp
+                def catalogCategories = Category.findAllByCatalogAndLastUpdatedGreaterThan(catalog, lastCompleteSync, [sort: "lastUpdated", order: "desc"])
+                catalogCategories.each {cat ->
+                    boolean none = EsSync.executeQuery(
+                            'FROM EsSync where esEnv=:env and :category in elements(categories) and timestamp >= :timestamp',
+                            [env: env, category: cat, timestamp: cat.lastUpdated]
+                    ).isEmpty()
+                    if(none){
+                        synchronization.categories << cat
+                    }
+                }
+                def catalogProducts = Product.findAllByCategoryInListAndLastUpdatedGreaterThan(Category.findAllByCatalog(catalog), lastCompleteSync, [sort: "lastUpdated", order: "desc"])
+                catalogProducts.each { product ->
+                    boolean none = EsSync.executeQuery(
+                            'FROM EsSync where esEnv=:env and :product in elements(products) and timestamp >= :timestamp',
+                            [env: env, product: product, timestamp: product.lastUpdated]
+                    ).isEmpty()
+                    if(none){
+                        synchronization.products << product
+                    }
+                }
+            }
+        }
+        synchronization
+    }
+
     @Synchronized
     def void synchronize(Company company, EsEnv env, Catalog catalog){
-        def syncs = EsSync.executeQuery(
-                'FROM EsSync where esEnv=:env and :catalog in elements(catalogs) ',
-                [env: env, catalog: catalog],
-                [sort: "timestamp", order: "desc"]
-        )
-        if(syncs.empty){
+        Synchronization synchronization = prepareSynchronization(env, catalog)
+        if(!synchronization.previousSync){
             publish(company, env, catalog, true, null)
         }
         else{
-            def lastCompleteSync = syncs.first().timestamp
             def sync = new EsSync(
                     company: company,
                     esEnv: env,
                     target: catalog
             )
-            def catalogCategories = Category.findAllByCatalogAndLastUpdatedGreaterThan(catalog, lastCompleteSync, [sort: "lastUpdated", order: "desc"])
-            def syncRequired = false
-            catalogCategories.each {cat ->
-                boolean none = EsSync.executeQuery(
-                        'FROM EsSync where esEnv=:env and :category in elements(categories) and timestamp >= :timestamp',
-                        [env: env, category: cat, timestamp: cat.lastUpdated]
-                ).isEmpty()
-                if(none){
-                    syncRequired = true
-                    sync.addToCategories(cat)
-                }
-            }
-            def catalogProducts = Product.findAllByCategoryInListAndLastUpdatedGreaterThan(Category.findAllByCatalog(catalog), lastCompleteSync, [sort: "lastUpdated", order: "desc"])
-            catalogProducts.each { product ->
-                boolean none = EsSync.executeQuery(
-                        'FROM EsSync where esEnv=:env and :product in elements(products) and timestamp >= :timestamp',
-                        [env: env, product: product, timestamp: product.lastUpdated]
-                ).isEmpty()
-                if(none){
-                    syncRequired = true
-                    sync.addToProducts(product)
-                }
-            }
+            def syncRequired = synchronization.syncRequired
             final noPublicationRequired = "No run diff publication performed - No item has been modified since the last publication"
             if(!syncRequired){
                 sync.timestamp = new Date()
                 sync.report = noPublicationRequired
                 sync.success = true
+            }
+            else{
+                synchronization.categories.each{ sync.addToCategories(it) }
+                synchronization.products.each{ sync.addToProducts(it) }
             }
             sync.validate()
             if(!sync.hasErrors()){
@@ -1217,4 +1246,13 @@ class DayPeriod extends Period {
     boolean weekday5
     boolean weekday6
     boolean weekday7
+}
+
+class Synchronization implements Serializable {
+    List<Category> categories = []
+    List<Product> products = []
+    boolean previousSync = false
+    def boolean isSyncRequired() {
+        !categories.isEmpty() || !products.isEmpty()
+    }
 }
