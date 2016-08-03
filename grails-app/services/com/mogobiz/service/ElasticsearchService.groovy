@@ -790,7 +790,7 @@ curl -XPUT ${url}/$index/_alias/$store
                                 final home = cache?.home as String
                                 final version = cache?.version as String
                                 final run = cache?.run as String
-                                final cacheUrls = env.cacheUrls ?: []
+                                List<String> cacheUrls = env.cacheUrls?.split(",")?.toList() ?: []
                                 if(home && version && run){
                                     cacheUrls << "$run/$store/products/\${product.id}"
                                     cacheUrls << "$run/$store/brands?brandId=\${brand.id}"
@@ -806,9 +806,7 @@ curl -XPUT ${url}/$index/_alias/$store
                                     args << "$jar$pathSeparator$app$pathSeparator$log4j$pathSeparator.".toString()
                                     args << "com.mogobiz.cache.bin.ProcessCache"
                                     args << store
-                                    cacheUrls.each { cacheUrl ->
-                                        args << "\"$cacheUrl\"".toString()
-                                    }
+                                    cacheUrls.each { args << it }
                                     BufferedReader br = null
                                     try{
                                         final ProcessBuilder pb = new ProcessBuilder(args)
