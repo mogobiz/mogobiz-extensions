@@ -21,6 +21,7 @@ import com.mogobiz.elasticsearch.rivers.ESRivers
 import com.mogobiz.http.client.HTTPClient
 import com.mogobiz.json.RenderUtil
 import com.mogobiz.store.ProductSearchCriteria
+import com.mogobiz.store.cmd.PagedListCommand
 import com.mogobiz.store.domain.Catalog
 import com.mogobiz.store.domain.Category
 import com.mogobiz.store.domain.Company
@@ -452,6 +453,18 @@ class ElasticsearchService {
             }
         }
         ret
+    }
+
+    def PagedList<EsSync> refreshSynchronization(Catalog catalog, PagedListCommand cmd){
+        def totalCount = EsSync.executeQuery(
+                'select count(*) FROM EsSync where target=:catalog or :catalog in elements(catalogs) ',
+                [catalog: catalog])[0]
+        def list = EsSync.executeQuery(
+                'FROM EsSync where target=:catalog or :catalog in elements(catalogs) ',
+                [catalog: catalog],
+                (cmd?.pagination ?: [:]) + [sort: "timestamp", order: "desc"]
+        )
+        new PagedList<EsSync>(list: list, totalCount: totalCount as int)
     }
 
     @Synchronized
