@@ -42,13 +42,12 @@ class TagRiver extends AbstractESRiver<Tag>{
 
         def tagCategoriesRiverCache = TagCategoriesRiverCache.instance
 
-        def results = config.partial ? Product.executeQuery('select p, tag.uuid, category from Product p left join fetch p.category as category left join fetch p.tags as tag left join fetch category.parent WHERE category.id in (:idCategories) and p.state = :productState and p.deleted = false',
-                [idCategories:config.idCategories, productState:ProductState.ACTIVE], args) : Product.executeQuery('select p, tag.uuid, category from Product p left join fetch p.category as category left join fetch p.tags as tag left join fetch category.parent WHERE category.catalog.id in (:idCatalogs) and p.state = :productState and p.deleted = false',
+        def results = config.partial ? Product.executeQuery('select tag.uuid, category.fullpath from Product p, Tag tag, Category category WHERE category.id in (:idCategories) and p.state = :productState and p.deleted = false and category.id=p.category.id and tag in elements(p.tags)',
+                [idCategories:config.idCategories, productState:ProductState.ACTIVE], args) : Product.executeQuery('select tag.uuid, category.fullpath from Product p, Tag tag, Category category WHERE category.catalog.id in (:idCatalogs) and p.state = :productState and p.deleted = false and category.id=p.category.id and tag in elements(p.tags)',
                 [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE], args)
         results.each { a ->
-            String key = a[1] as String
-            Category category = a[2] as Category
-            String fullpath = category.fullpath ?: RiverTools.retrieveCategoryPath(category)
+            String key = a[0] as String
+            String fullpath = a[1] as String
             Set<String> categories = tagCategoriesRiverCache.get(key) ?: []
             categories << fullpath
             tagCategoriesRiverCache.put(key, categories)

@@ -57,13 +57,12 @@ class BrandRiver extends AbstractESRiver<Brand> {
 
         def brandCategoriesRiverCache = BrandCategoriesRiverCache.instance
 
-        def results = config.partial ? Product.executeQuery('select p, brand.uuid, category from Product p left join fetch p.category as category left join fetch p.brand as brand left join fetch category.parent WHERE (p.id in (:idProducts) or category.id in (:idCategories)) and p.state = :productState and p.deleted = false',
-                [idProducts: config.idProducts, idCategories:config.idCategories, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]) : Product.executeQuery('select p, brand.uuid, category from Product p left join fetch p.category as category left join fetch p.brand as brand left join fetch category.parent WHERE category.catalog.id in (:idCatalogs) and p.state = :productState and p.deleted = false',
+        def results = config.partial ? Product.executeQuery('select brand.uuid, category.fullpath from Product p, Category category, Brand brand WHERE (p.id in (:idProducts) or category.id in (:idCategories)) and p.state = :productState and p.deleted = false and brand.id = p.brand.id and category.id = p.category.id',
+                [idProducts: config.idProducts, idCategories:config.idCategories, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL]) : Product.executeQuery('select brand.uuid, category.fullpath from Product p, Category category, Brand brand WHERE category.catalog.id in (:idCatalogs) and p.state = :productState and p.deleted = false and brand.id = p.brand.id and category.id = p.category.id',
                 [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE], [readOnly: true, flushMode: FlushMode.MANUAL])
         results.each {a ->
-            String key = a[1] as String
-            Category category = a[2] as Category
-            String fullpath = category.fullpath ?: RiverTools.retrieveCategoryPath(category)
+            String key = a[0] as String
+            String fullpath = a[1] as String
             Set<String> categories = brandCategoriesRiverCache.get(key) ?: []
             categories << fullpath
             brandCategoriesRiverCache.put(key, categories)
