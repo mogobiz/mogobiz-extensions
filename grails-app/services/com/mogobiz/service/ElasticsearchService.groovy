@@ -647,7 +647,8 @@ class ElasticsearchService {
                     partial: partial,
                     idCompany: company.id,
                     idCategories: idCategories,
-                    idProducts: idProducts
+                    idProducts: idProducts,
+                    bulkSize: 100 //TODO add to grails application configuration
             )
             def searchguard = grailsApplication.config.searchguard as Map
             def active = searchguard?.active
@@ -896,7 +897,7 @@ curl -XPUT ${url}/$index/_alias/$store
                     }
                 }
 
-                GenericRiversFlow.publish(ESRivers.getInstance(), config, 1, 10, new SubscriberAdapter(subscriber))
+                GenericRiversFlow.publish(ESRivers.getInstance(), config, 1, new SubscriberAdapter(subscriber))
             }
             else{
                 log.error("an error occured while creating index ${response.error}")

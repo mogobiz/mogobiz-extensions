@@ -117,7 +117,8 @@ class MiraklService {
                     ),
                     idCatalogs: [catalog.id] as List<Long>,
                     languages: languages,
-                    defaultLang: company.defaultLanguage
+                    defaultLang: company.defaultLanguage,
+                    bulkSize: 100 //TODO add to grails application configuration
             )
 
             // 0. Load catalog categories
@@ -404,7 +405,6 @@ class MiraklService {
                     new OfferRiver(),
                     config,
                     Math.max(1, Runtime.getRuntime().availableProcessors()),
-                    100,
                     new SubscriberAdapter(subscriber)
             )
 
