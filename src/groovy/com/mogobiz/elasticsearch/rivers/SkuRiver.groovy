@@ -19,9 +19,12 @@ import com.mogobiz.store.domain.Product
 import com.mogobiz.store.domain.ProductState
 import com.mogobiz.store.domain.TicketType
 import com.mogobiz.store.domain.Translation
+import com.mogobiz.tools.InnerSubscription
 import org.hibernate.FlushMode
 import org.springframework.transaction.TransactionDefinition
 import rx.Observable
+import rx.Subscriber
+import sun.security.krb5.internal.Ticket
 
 /**
  *
@@ -162,8 +165,25 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
             CouponsRiverCache.instance.put(k as String, v as Set<Coupon>)
         }
 
-        Observable.from(
-                config.partial ?
+        Observable.create(new Observable.OnSubscribe<TicketType>() {
+            @Override
+            void call(Subscriber<? super TicketType> subscriber) {
+                def subscription = new InnerSubscription()
+                subscriber.add(subscription)
+                subscriber.onStart()
+                try{
+                    final List<Long> idSkus = config.partial ?
+                            TicketType.executeQuery(
+                                    'SELECT sku.id FROM TicketType sku, Product p where sku.product.id=p.id and p.id in (:idProducts) and p.state = :productState and p.deleted = false and (sku.stopDate is null or sku.stopDate >= :today)',
+                                    [idProducts: config.idProducts, productState: ProductState.ACTIVE, today: now],
+                                    args
+                            ) as List<Long> :
+                            TicketType.executeQuery(
+                                    'SELECT sku.id FROM TicketType sku, Product p where sku.product.id=p.id and p.category.catalog.id in (:idCatalogs) and p.state = :productState and p.deleted = false and (sku.stopDate is null or sku.stopDate >= :today)',
+                                    [idCatalogs: config.idCatalogs, productState: ProductState.ACTIVE, today: now],
+                                    args
+                            ) as List<Long>
+                    idSkus.collate(config.bulkSize).each { sub ->
                         TicketType.executeQuery('SELECT sku FROM TicketType sku ' +
                                 'left join fetch sku.product as p ' +
                                 'left join fetch p.features ' +
@@ -185,34 +205,22 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
                                 'left join fetch sku.stockCalendars ' +
                                 'left join fetch p.taxRate as taxRate ' +
                                 'left join fetch taxRate.localTaxRates ' +
-                                'WHERE p.id in (:idProducts) and p.state = :productState and p.deleted = false and (sku.stopDate is null or sku.stopDate >= :today)',
-                                [idProducts:config.idProducts, productState:ProductState.ACTIVE, today: now], args
-                        ) :
-                        TicketType.executeQuery('SELECT sku FROM TicketType sku ' +
-                                'left join fetch sku.product as p ' +
-                                'left join fetch p.features ' +
-                                'left join fetch p.featureValues ' +
-                                'left join fetch p.tags ' +
-                                'left join fetch p.category as category ' +
-                                'left join fetch category.parent ' +
-                                'left join fetch p.brand as brand ' +
-                                'left join fetch brand.brandProperties ' +
-                                'left join fetch p.product2Resources as pr ' +
-                                'left join fetch pr.resource ' +
-                                'left join fetch sku.variation1 v1 ' +
-                                'left join fetch v1.variation ' +
-                                'left join fetch sku.variation2 v2 ' +
-                                'left join fetch v2.variation ' +
-                                'left join fetch sku.variation3 v3 ' +
-                                'left join fetch v3.variation ' +
-                                'left join fetch sku.stock ' +
-                                'left join fetch sku.stockCalendars ' +
-                                'left join fetch p.taxRate as taxRate ' +
-                                'left join fetch taxRate.localTaxRates ' +
-                                'WHERE p.category.catalog.id in (:idCatalogs) and p.state = :productState and p.deleted = false and (sku.stopDate is null or sku.stopDate >= :today)',
-                                [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE, today: now], args
-                        )
-        )
+                                'WHERE sku.id in (:idSkus) and p.state = :productState and p.deleted = false and (sku.stopDate is null or sku.stopDate >= :today)',
+                                [idSkus: sub, productState: ProductState.ACTIVE, today: now], args
+                        ).each {
+                            if(!subscription.isUnsubscribed()) {
+                                subscriber.onNext(it)
+                            }
+                        }
+                    }
+                }
+                catch(Throwable th){
+                    subscriber.onError(th)
+                }
+
+                subscriber.onCompleted()
+            }
+        }).onBackpressureBuffer()
     }
 
     @Override

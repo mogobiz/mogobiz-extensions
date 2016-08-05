@@ -14,9 +14,12 @@ import com.mogobiz.store.domain.*
 import com.mogobiz.elasticsearch.client.ESClient
 import com.mogobiz.elasticsearch.client.ESMapping
 import com.mogobiz.elasticsearch.client.ESProperty
+import com.mogobiz.tools.InnerSubscription
 import org.hibernate.FlushMode
 import org.springframework.transaction.TransactionDefinition
 import rx.Observable
+import rx.Observable.OnSubscribe
+import rx.Subscriber
 
 /**
  */
@@ -398,39 +401,21 @@ class ProductRiver extends AbstractESRiver<Product>{
             CouponsRiverCache.instance.put(k as String, v as Set<Coupon>)
         }
 
-        return Observable.from(
-                config.partial ?
-                        Product.executeQuery('SELECT p FROM Product p ' +
-                            'left join fetch p.features ' +
-                            'left join fetch p.featureValues ' +
-                            'left join fetch p.productProperties ' +
-                            'left join fetch p.product2Resources as pr ' +
-                            'left join fetch pr.resource ' +
-                            'left join fetch p.intraDayPeriods ' +
-                            'left join fetch p.datePeriods ' +
-                            'left join fetch p.tags ' +
-                            'left join fetch p.ticketTypes as sku ' +
-                            'left join fetch sku.variation1 v1 ' +
-                            'left join fetch v1.variation ' +
-                            'left join fetch sku.variation2 v2 ' +
-                            'left join fetch v2.variation ' +
-                            'left join fetch sku.variation3 v3 ' +
-                            'left join fetch v3.variation ' +
-                            'left join fetch sku.stock ' +
-                            'left join fetch sku.stockCalendars ' +
-                            'left join fetch p.poi ' +
-                            'left join fetch p.category as category ' +
-                            'left join fetch category.parent ' +
-                            'left join fetch p.brand as brand ' +
-                            'left join fetch brand.brandProperties ' +
-                            'left join fetch p.shipping ' +
-                            'left join fetch p.taxRate as taxRate ' +
-                            'left join fetch taxRate.localTaxRates ' +
-                            'left join fetch p.ibeacon ' +
-                            'left join fetch p.company ' +
-                            'WHERE p.id in (:idProducts) and p.state = :productState and p.deleted = false and p.ticketTypes.size > 0',
-                            [idProducts:config.idProducts, productState:ProductState.ACTIVE], args
-                        ) :
+        Observable.create(new OnSubscribe<Product>() {
+            @Override
+            void call(Subscriber<? super Product> subscriber) {
+                def subscription = new InnerSubscription()
+                subscriber.add(subscription)
+                subscriber.onStart()
+                try{
+                    final List<Long> idProducts = config.partial ?
+                            config.idProducts as List<Long> :
+                            Product.executeQuery(
+                                    'select p.id from Product p WHERE p.category.catalog.id in (:idCatalogs) and p.state = :productState and p.deleted = false and p.ticketTypes.size > 0',
+                                    [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE],
+                                    args
+                            ) as List<Long>
+                    idProducts.collate(config.bulkSize).each {sub ->
                         Product.executeQuery('SELECT p FROM Product p ' +
                                 'left join fetch p.features ' +
                                 'left join fetch p.featureValues ' +
@@ -459,20 +444,27 @@ class ProductRiver extends AbstractESRiver<Product>{
                                 'left join fetch taxRate.localTaxRates ' +
                                 'left join fetch p.ibeacon ' +
                                 'left join fetch p.company ' +
-                                'WHERE p.category.catalog.id in (:idCatalogs) and p.state = :productState and p.deleted = false and p.ticketTypes.size > 0',
-                                [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE], args
-                        )
-        )
+                                'WHERE p.id in (:idProducts) and p.state = :productState and p.deleted = false and p.ticketTypes.size > 0',
+                                [idProducts: sub, productState:ProductState.ACTIVE], args
+                        ).each {
+                            if(!subscription.isUnsubscribed()) {
+                                subscriber.onNext(it)
+                            }
+                        }
+                    }
+                }
+                catch(Throwable th){
+                    subscriber.onError(th)
+                }
+
+                subscriber.onCompleted()
+            }
+        }).onBackpressureBuffer()
     }
 
     @Override
     String getType() {
         return 'product'
-    }
-
-    @Override
-    List<String> previousProperties(){
-        ['notations'] // TODO
     }
 
     @Override
