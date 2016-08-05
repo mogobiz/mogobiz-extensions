@@ -785,56 +785,7 @@ curl -XPUT ${url}/$index/_alias/$store
                                 catch (Exception ex) {
                                     log.warn("Unable to clear Jahia cache -> ${ex.message}")
                                 }
-                                log.info("Start cache")
-                                int exit = 0
-                                def cache = grailsApplication.config.cache as Map
-                                final home = cache?.home as String
-                                final version = cache?.version as String
-                                final run = cache?.run as String
-                                List<String> cacheUrls = env.cacheUrls?.split(",")?.toList() ?: []
-                                if(home && version && run){
-                                    cacheUrls << "$run/$store/products/\${product.id}"
-                                    cacheUrls << "$run/$store/brands?brandId=\${brand.id}"
-                                    cacheUrls << "$run/$store/categories?categoryPath=\${category.path|encode}"
-                                    cacheUrls << "$run/$store/categories?parentId=\${category.parentId}"
-                                    List<String> args = []
-                                    args << "java"
-                                    def jar = "$home/mogobiz-cache-${version}.jar".toString()
-                                    def app = "$home/application.conf".toString()
-                                    def log4j = "$home/log4j.xml".toString()
-                                    args << "-cp"
-                                    final pathSeparator = System.getProperty("path.separator") ?: ":"
-                                    args << "$jar$pathSeparator$app$pathSeparator$log4j$pathSeparator.".toString()
-                                    args << "com.mogobiz.cache.bin.ProcessCache"
-                                    args << store
-                                    cacheUrls.each { u ->
-                                        u = u.replace(" ", "").trim()
-                                        if(u.length() > 0){
-                                            args << u.toString()
-                                        }
-                                    }
-                                    BufferedReader br = null
-                                    try{
-                                        final ProcessBuilder pb = new ProcessBuilder(args)
-                                        pb.directory(new File(home))
-                                        pb.redirectErrorStream(true)
-                                        log.info("ProcessCache Cmd -> "+pb.command().join(" "))
-                                        final Process process = pb.start()
-                                        br = new BufferedReader(new InputStreamReader(process.inputStream))
-                                        String line
-                                        while ((line = br.readLine()) != null) {
-                                            log.info(line)
-                                        }
-                                        exit = process.exitValue()
-                                    }
-                                    catch(Throwable th){
-                                        log.error(th.message, th)
-                                    }
-                                    finally{
-                                        br?.close()
-                                    }
-                                }
-                                log.info("End cache with code -> $exit")
+                                cache(env, store)
                             }
                         }
                         EsEnv.withTransaction {
@@ -904,6 +855,61 @@ curl -XPUT ${url}/$index/_alias/$store
             }
 
         }
+    }
+
+    def int cache(EsEnv env, String store = null){
+        store = store ?: env.company.code
+        log.info("Start cache")
+        int exit = 0
+        def cache = grailsApplication.config.cache as Map
+        final home = cache?.home as String
+        final version = cache?.version as String
+        final run = cache?.run as String
+        List<String> cacheUrls = env.cacheUrls?.split(",")?.toList() ?: []
+        if(home && version && run){
+            cacheUrls << "$run/$store/products/\${product.id}"
+            cacheUrls << "$run/$store/brands?brandId=\${brand.id}"
+            cacheUrls << "$run/$store/categories?categoryPath=\${category.path|encode}"
+            cacheUrls << "$run/$store/categories?parentId=\${category.parentId}"
+            List<String> args = []
+            args << "java"
+            def jar = "$home/mogobiz-cache-${version}.jar".toString()
+            def app = "$home/application.conf".toString()
+            def log4j = "$home/log4j.xml".toString()
+            args << "-cp"
+            final pathSeparator = System.getProperty("path.separator") ?: ":"
+            args << "$jar$pathSeparator$app$pathSeparator$log4j$pathSeparator.".toString()
+            args << "com.mogobiz.cache.bin.ProcessCache"
+            args << store
+            cacheUrls.each { u ->
+                u = u.replace(" ", "").trim()
+                if(u.length() > 0){
+                    args << u.toString()
+                }
+            }
+            BufferedReader br = null
+            try{
+                final ProcessBuilder pb = new ProcessBuilder(args)
+                pb.directory(new File(home))
+                pb.redirectErrorStream(true)
+                log.info("ProcessCache Cmd -> "+pb.command().join(" "))
+                final Process process = pb.start()
+                br = new BufferedReader(new InputStreamReader(process.inputStream))
+                String line
+                while ((line = br.readLine()) != null) {
+                    log.info(line)
+                }
+                exit = process.exitValue()
+            }
+            catch(Throwable th){
+                log.error(th.message, th)
+            }
+            finally{
+                br?.close()
+            }
+        }
+        log.info("End cache with code -> $exit")
+        exit
     }
 
     @Synchronized
