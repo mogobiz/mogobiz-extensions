@@ -648,7 +648,7 @@ class ElasticsearchService {
                     idCompany: company.id,
                     idCategories: idCategories,
                     idProducts: idProducts,
-                    bulkSize: 100 //TODO add to grails application configuration
+                    bulkSize: 10 //TODO add to grails application configuration
             )
             def searchguard = grailsApplication.config.searchguard as Map
             def active = searchguard?.active
