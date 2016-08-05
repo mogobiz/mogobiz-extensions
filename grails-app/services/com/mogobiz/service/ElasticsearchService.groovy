@@ -604,7 +604,7 @@ class ElasticsearchService {
                 partial = false
                 catalogs << catalog
                 if(!mirakl){
-                    Catalog.findAllByCompanyAndReadOnly(company, true).each {mcatalog ->
+                    Catalog.findAllByCompanyAndReadOnlyAndDeleted(company, true, false).each {mcatalog ->
                         catalogs << mcatalog
                         idCatalogs << mcatalog.id
                     }
