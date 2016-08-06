@@ -24,7 +24,6 @@ import org.hibernate.FlushMode
 import org.springframework.transaction.TransactionDefinition
 import rx.Observable
 import rx.Subscriber
-import sun.security.krb5.internal.Ticket
 
 /**
  *
@@ -120,16 +119,15 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
         }
 
         // preload coupons
-        def couponsMap = [:]
 
         def productCoupons = config.partial ? Coupon.executeQuery('select product, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.products as product where (product.id in (:idProducts) and product.state=:productState and coupon.active=true)',
                 [idProducts:config.idProducts, productState:ProductState.ACTIVE], args) : Coupon.executeQuery('select product, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.products as product where (product.category.catalog.id in (:idCatalogs) and product.state=:productState and coupon.active=true)',
                 [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE], args)
         productCoupons.each { a ->
             def key = (a[0] as Product).uuid
-            Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
+            Set<Coupon> coupons = CouponsRiverCache.instance.get(key) as Set<Coupon> ?: []
             coupons.add(a[1] as Coupon)
-            couponsMap.put(key, coupons)
+            CouponsRiverCache.instance.put(key, coupons)
         }
 
         def skuCoupons = config.partial ? Coupon.executeQuery('select ticketType, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.ticketTypes as ticketType left join ticketType.product as product where (product.id in (:idProducts) and product.state=:productState and (ticketType.stopDate is null or ticketType.stopDate >= :today) and coupon.active=true)',
@@ -137,9 +135,9 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
                 [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE, today: now], args)
         skuCoupons.each { a ->
             def key = (a[0] as TicketType).uuid
-            Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
+            Set<Coupon> coupons = CouponsRiverCache.instance.get(key) as Set<Coupon> ?: []
             coupons.add(a[1] as Coupon)
-            couponsMap.put(key, coupons)
+            CouponsRiverCache.instance.put(key, coupons)
         }
 
         def categoryCoupons = config.partial ? Coupon.executeQuery('select category, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.categories as category where category.id in (:idCategories) and coupon.active=true',
@@ -147,22 +145,18 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
                 [idCatalogs:config.idCatalogs], args)
         categoryCoupons.each { a ->
             def key = (a[0] as Category).uuid
-            Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
+            Set<Coupon> coupons = CouponsRiverCache.instance.get(key) as Set<Coupon> ?: []
             coupons.add(a[1] as Coupon)
-            couponsMap.put(key, coupons)
+            CouponsRiverCache.instance.put(key, coupons)
         }
 
         def catalogCoupons = Coupon.executeQuery('select catalog, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.catalogs as catalog where catalog.id in (:idCatalogs) and coupon.active=true',
                 [idCatalogs:config.idCatalogs], args)
         catalogCoupons?.each { a ->
             def key = (a[0] as Catalog).uuid
-            Set<Coupon> coupons = couponsMap.get(key) as Set<Coupon> ?: []
+            Set<Coupon> coupons = CouponsRiverCache.instance.get(key) as Set<Coupon> ?: []
             coupons.add(a[1] as Coupon)
-            couponsMap.put(key, coupons)
-        }
-
-        couponsMap.each {k, v ->
-            CouponsRiverCache.instance.put(k as String, v as Set<Coupon>)
+            CouponsRiverCache.instance.put(key, coupons)
         }
 
         Observable.create(new Observable.OnSubscribe<TicketType>() {
