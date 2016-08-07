@@ -457,10 +457,10 @@ class ElasticsearchService {
 
     def PagedList<EsSync> refreshSynchronization(Catalog catalog, PagedListCommand cmd){
         def totalCount = EsSync.executeQuery(
-                'select count(*) FROM EsSync where target=:catalog or :catalog in elements(catalogs) ',
+                'select count(*) FROM EsSync where target=:catalog or :catalog in elements(catalogs)',
                 [catalog: catalog])[0]
         def list = EsSync.executeQuery(
-                'FROM EsSync where target=:catalog or :catalog in elements(catalogs) ',
+                'FROM EsSync where target=:catalog or :catalog in elements(catalogs)',
                 [catalog: catalog],
                 (cmd?.pagination ?: [:]) + [sort: "timestamp", order: "desc"]
         )
