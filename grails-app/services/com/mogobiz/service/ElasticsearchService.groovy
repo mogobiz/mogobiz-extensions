@@ -899,6 +899,7 @@ curl -XPUT ${url}/$index/_alias/$store
                 while ((line = br.readLine()) != null) {
                     log.info(line)
                 }
+                process.waitFor()
                 exit = process.exitValue()
             }
             catch(Throwable th){
