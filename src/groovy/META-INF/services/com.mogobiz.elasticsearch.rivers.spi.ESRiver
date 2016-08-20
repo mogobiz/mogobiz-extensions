@@ -3,7 +3,7 @@
 #
 
 com.mogobiz.elasticsearch.rivers.CompanyRiver
-#com.mogobiz.elasticsearch.rivers.CountryRiver
+com.mogobiz.elasticsearch.rivers.CountryRiver
 #com.mogobiz.elasticsearch.rivers.RateRiver
 com.mogobiz.elasticsearch.rivers.CatalogRiver
 com.mogobiz.elasticsearch.rivers.BrandRiver
