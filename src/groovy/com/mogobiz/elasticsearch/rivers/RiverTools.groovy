@@ -305,8 +305,14 @@ final class RiverTools {
                         'code',
                         'name',
                         'isoCode3',
-                        'isoNumericCode'
-                ], country) : [:]
+                        'isoNumericCode',
+                        'shipping',
+                        'billing',
+                        'currencyCode',
+                        'currencyName',
+                        'currencyNumericCode',
+                        'phoneCode'
+                ], country) << [zipCodeRegex: country.postalCodeRegex] : [:]
     }
 
     static Map asRateMap(MogopayRate rate, RiverConfig config) {
