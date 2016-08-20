@@ -215,7 +215,7 @@ class ProductRiver extends AbstractESRiver<Product>{
         new ESMapping(type:getType(),
                 timestamp:true,
                 properties: []
-                        << new ESProperty(name:'code', type:ESClient.TYPE.STRING, index:ESClient.INDEX.ANALYZED, multilang:false)
+                        << new ESProperty(name:'code', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'name', type:ESClient.TYPE.STRING, index:ESClient.INDEX.ANALYZED, multilang:true)
                         << new ESProperty(name:'description', type:ESClient.TYPE.STRING, index:ESClient.INDEX.ANALYZED, multilang:true)
                         << new ESProperty(name:'descriptionAsText', type:ESClient.TYPE.STRING, index:ESClient.INDEX.ANALYZED, multilang:true)
