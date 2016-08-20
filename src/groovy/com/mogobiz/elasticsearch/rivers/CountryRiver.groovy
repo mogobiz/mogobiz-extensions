@@ -11,7 +11,7 @@ import com.mogobiz.elasticsearch.client.ESClient
 import com.mogobiz.elasticsearch.client.ESMapping
 import com.mogobiz.elasticsearch.client.ESProperty
 import com.mogobiz.common.client.Item
-import com.mogobiz.store.vo.Country
+import com.mogobiz.store.domain.Country
 import grails.converters.JSON
 import grails.util.Holders
 import org.apache.commons.lang.StringUtils
@@ -29,35 +29,14 @@ class CountryRiver extends AbstractESRiver<Country> {
                 properties: [] << new ESProperty(name:'code', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
                         << new ESProperty(name:'name', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:true)
                         << new ESProperty(name:'imported', type:ESClient.TYPE.DATE, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+                        << new ESProperty(name:'isoCode3', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
+                        << new ESProperty(name:'isoNumericCode', type:ESClient.TYPE.STRING, index:ESClient.INDEX.NOT_ANALYZED, multilang:false)
         )
     }
 
     @Override
     Observable<Country> retrieveCatalogItems(final RiverConfig config) {
-        def retrieveCountries = {
-            def countries = []
-            def conn = null
-            try
-            {
-                def debug = config.debug
-                def http = HTTPClient.instance
-                conn = http.doGet([debug:debug], new StringBuffer(Holders.config.mogopay.url as String).append('country/countries-for-shipping').toString())
-                if(conn.responseCode >=200 && conn.responseCode < 400){
-                    def data = http.getText([debug:debug], conn)
-                    if(data && !StringUtils.isEmpty(data.toString())){
-                        List<JSONObject> res = JSON.parse(data.toString()) as List<JSONObject>
-                        res.each {JSONObject o ->
-                            countries << new Country(-1L, o.get('code') as String, o.get('name') as String)
-                        }
-                    }
-                }
-            }
-            finally {
-                conn?.disconnect()
-            }
-            return countries
-        }
-        return Observable.from(retrieveCountries())
+        return Observable.from(Country.findAll())
     }
 
     @Override

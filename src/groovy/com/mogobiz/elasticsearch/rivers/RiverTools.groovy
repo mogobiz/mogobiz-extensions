@@ -30,6 +30,7 @@ import com.mogobiz.store.domain.BrandProperty
 import com.mogobiz.store.domain.Catalog
 import com.mogobiz.store.domain.Category
 import com.mogobiz.store.domain.Company
+import com.mogobiz.store.domain.Country
 import com.mogobiz.store.domain.Coupon
 import com.mogobiz.store.domain.Feature
 import com.mogobiz.store.domain.FeatureValue
@@ -55,7 +56,6 @@ import com.mogobiz.store.domain.Translation
 import com.mogobiz.store.domain.VariationValue
 import com.mogobiz.geolocation.domain.Poi
 import com.mogobiz.json.RenderUtil
-import com.mogobiz.store.vo.Country
 
 import static com.mogobiz.tools.FileTools.encodeFileBase64
 import static com.mogobiz.tools.HashTools.generateMD5
@@ -303,7 +303,9 @@ final class RiverTools {
         country ?
                 RenderUtil.asIsoMapForJSON([
                         'code',
-                        'name'
+                        'name',
+                        'isoCode3',
+                        'isoNumericCode'
                 ], country) : [:]
     }
 
