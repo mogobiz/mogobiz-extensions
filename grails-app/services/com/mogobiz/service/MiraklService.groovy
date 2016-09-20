@@ -140,9 +140,11 @@ class MiraklService {
                         hierarchyCode,
                         category.name,
                         BulkAction.UPDATE,
-                        parent ? Some.apply(new MiraklCategory(extractMiraklExternalCode(parent.externalCode) ?: miraklCategoryCode(parent), "")) : toScalaOption(null),
+                        parent ? Some.apply(new MiraklCategory(extractMiraklExternalCode(parent.externalCode) ?: miraklCategoryCode(parent), "")) : toScalaOption((MiraklCategory)null),
                         category.logisticClass,
-                        category.uuid
+                        category.uuid,
+                        toScalaOption((String)null),
+                        toScalaOption((String)null)
                 )
                 category.features?.each {feature ->
                     def featureCode = extractMiraklExternalCode(feature.externalCode) ?: "${hierarchyCode}_${sanitizeUrlService.sanitizeWithDashes(feature.name)}"
