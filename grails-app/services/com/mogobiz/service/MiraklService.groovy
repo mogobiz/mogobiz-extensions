@@ -195,7 +195,7 @@ class MiraklService {
                 }
             }
 
-            if(!readOnly){
+            if(!readOnly && env.operator){
                 // 1. synchronize categories
                 final synchronizeCategories = synchronizeCategories(config, hierarchies)
                 final synchronizeCategoriesId = synchronizeCategories?.synchroId
@@ -417,28 +417,42 @@ class MiraklService {
         final readOnly = catalog?.readOnly
         if(readOnly){
             catalogService.refreshMiraklCatalog(catalog)
-        }
-        def excludedStatus = [MiraklSyncStatus.COMPLETE, MiraklSyncStatus.CANCELLED, MiraklSyncStatus.FAILED, MiraklSyncStatus.TRANSFORMATION_FAILED]
-        def toSynchronize = catalog ?
-                MiraklSync.findAllByStatusNotInListAndCatalog(excludedStatus, catalog) :
-                MiraklSync.findAllByStatusNotInList(excludedStatus)
-        def operators = !catalog ? MiraklEnv.findAllByOperator(true) : (toSynchronize.collect {it.miraklEnv}.flatten().findAll {it.operator}.unique {a,b -> a.id <=> b.id})
-        // 1 - synchronize products and offers
-        operators.each{env ->
-            if(env.frontKey && env.remoteHost && env.remotePath && env.username && env.localPath && (env.password || env.keyPath)){ // TODO add creation validation
+
+            def env = catalog.miraklEnv
+            if (env.frontKey && env.remoteHost && env.remotePath && env.username && env.localPath && (env.password || env.keyPath)) {
+                // TODO add creation validation
                 // 1 - synchronize products
-                synchronizeProducts(env)
+                startSynchronizeProducts(env, catalog)
                 // 2 - synchronize offers
-                synchronizeOffers(env)
+                synchronizeOffers(env, catalog)
             }
         }
-        // 2 - synchronize status
-        toSynchronize.each {sync ->
-            synchronizeStatus(sync)
+        else {
+            def excludedStatus = [MiraklSyncStatus.COMPLETE, MiraklSyncStatus.CANCELLED, MiraklSyncStatus.FAILED, MiraklSyncStatus.TRANSFORMATION_FAILED]
+            def toSynchronize = catalog ?
+                    MiraklSync.findAllByStatusNotInListAndCatalog(excludedStatus, catalog) :
+                    MiraklSync.findAllByStatusNotInList(excludedStatus)
+            def operators = !catalog ? MiraklEnv.findAllByOperator(true) : (toSynchronize.collect {
+                it.miraklEnv
+            }.flatten().findAll { it.operator }.unique { a, b -> a.id <=> b.id })
+            // 1 - synchronize products and offers
+            operators.each { env ->
+                if (env.frontKey && env.remoteHost && env.remotePath && env.username && env.localPath && (env.password || env.keyPath)) {
+                    // TODO add creation validation
+                    // 1 - synchronize products
+                    startSynchronizeProducts(env)
+                    // 2 - synchronize offers
+                    synchronizeOffers(env)
+                }
+            }
+            // 2 - synchronize status
+            toSynchronize.each { sync ->
+                synchronizeStatus(sync)
+            }
         }
     }
 
-    private def void synchronizeProducts(MiraklEnv env) {
+    private def void startSynchronizeProducts(MiraklEnv env, Catalog xcatalog = null) {
         // 1 - fetch mirakl imported products files
         File[] files = fetchMiraklImportedProductsFiles(env)
         RiverConfig riverConfig = new RiverConfig(
@@ -457,11 +471,11 @@ class MiraklService {
         List<Attribute> attributes = files.size() > 0 ? listAttributes(riverConfig)?.attributes : []
         // 3 - handle uploaded files
         files.each { file ->
-            handleMiraklImportedProductsFile(env, file, riverConfig, xcompany, attributes)
+            handleMiraklImportedProductsFile(env, file, riverConfig, xcompany, attributes, xcatalog)
         }
     }
 
-    private def void synchronizeOffers(MiraklEnv env) {
+    private def void synchronizeOffers(MiraklEnv env, Catalog xcatalog = null) {
         RiverConfig riverConfig = new RiverConfig(
                 debug: true,
                 clientConfig: new ClientConfig(
@@ -479,7 +493,7 @@ class MiraklService {
             it.shopId.toString() in env.shopIds?.split(",")
         }?.each { offer ->
             def shopId = offer.shopId.toString()
-            def xcatalog = Catalog.findByCompanyAndExternalCodeLikeAndReadOnlyAndDeleted(xcompany, "%mirakl::$shopId%", true, false)
+            xcatalog = xcatalog ?: Catalog.findByCompanyAndExternalCodeLikeAndReadOnlyAndDeleted(xcompany, "%mirakl::$shopId%", true, false)
             if(xcatalog){
                 def code = offer.productSku
                 TicketType xsku = TicketType.findAllByExternalCodeLikeOrUuid("%mirakl::$code%", code).find {
@@ -786,14 +800,13 @@ class MiraklService {
         }
     }
 
-    private def void handleMiraklImportedProductsFile(MiraklEnv env, File file, RiverConfig riverConfig, Company xcompany, List<Attribute> attributes) {
+    private def void handleMiraklImportedProductsFile(MiraklEnv env, File file, RiverConfig riverConfig, Company xcompany, List<Attribute> attributes, Catalog xcatalog = null) {
         final matcher = IMPORT_PRODUCTS.matcher(file.name)
         matcher.find()
         final shopId = matcher.group(1)
         RiverTools.log.info("START HANDLING PRODUCT FILE ${file.path} FOR MIRAKL SHOP $shopId")
-        Catalog xcatalog = null
         // 1 - create mirakl catalog for external publication
-        MiraklEnv xenv = MiraklEnv.findByShopIdAndCompany(shopId, xcompany)
+        MiraklEnv xenv = xcatalog?.miraklEnv ?: MiraklEnv.findByShopIdAndCompany(shopId, xcompany)
         if (!xenv) {
             xenv = env
             xcatalog = Catalog.findByCompanyAndExternalCodeLikeAndReadOnlyAndDeleted(xcompany, "%mirakl::$shopId%", true, false) ?: createMiraklCatalog(shopId, riverConfig, xcompany, xenv)
@@ -882,23 +895,23 @@ class MiraklService {
             }
 
             // find sku and product
-            TicketType xsku = TicketType.findAllByExternalCodeLikeOrUuid("%mirakl::$code%", code).find {
+            TicketType xsku = TicketType.findAllByExternalCodeLike("%mirakl::$code%").find {
                 def ret = xcatalog && it.product.category.catalog == xcatalog
                 if (!xcatalog) {
                     ret = !it.product.category.catalog.deleted && it.miraklTrackingId
                     def e = ret ? MiraklSync.findByTrackingId(it.miraklTrackingId)?.miraklEnv : null
-                    ret = ret && e?.shopId == shopId
+                    ret = ret && e?.shopId == shopId && e?.operator
                 }
                 ret
             }
             Product xproduct = xsku?.product
-            Category xcategory = xproduct?.category ?: Category.findAllByExternalCodeLikeOrUuid("%mirakl::$categoryCode%", categoryCode).find {
+            Category xcategory = xproduct?.category ?: Category.findAllByExternalCodeLike("%mirakl::$categoryCode%").find {
                 it.company == xcompany && (!xcatalog || it.catalog == xcatalog)
             }
             if (xcategory) {
                 xcatalog = xcatalog ?: xcategory?.catalog
                 if (!xsku) {
-                    xproduct = Product.findAllByExternalCodeLikeOrUuid("%mirakl::$variantGroupCode%", variantGroupCode).find {
+                    xproduct = Product.findAllByExternalCodeLike("%mirakl::$variantGroupCode%").find {
                         it.category == xcategory
                     }
                     if (!xproduct) {
