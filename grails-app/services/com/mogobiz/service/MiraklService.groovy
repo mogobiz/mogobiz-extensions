@@ -500,6 +500,7 @@ class MiraklService {
                     it.product.category.catalog == xcatalog
                 }
                 if(xsku){
+                    xsku.externalCode = "mirakl::$code::${offer.offerId}"
                     // update price
                     if(offer.originPrice){
                         xsku.price = (offer.originPrice * 100)
