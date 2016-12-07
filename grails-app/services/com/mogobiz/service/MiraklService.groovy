@@ -918,7 +918,7 @@ class MiraklService {
                     if (!xproduct) {
                         xproduct = new Product(
                                 uuid: variantGroupCode,
-                                externalCode: "mirakl::$variantGroupCode",
+                                externalCode: "mirakl::$variantGroupCode::$shopId",
                                 code: variantGroupCode,
                                 name: label,
                                 xtype: ProductType.PRODUCT, //TODO add product type mapping
