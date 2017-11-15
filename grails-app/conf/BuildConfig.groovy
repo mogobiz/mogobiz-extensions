@@ -47,16 +47,33 @@ grails.project.dependency.resolution = {
         compile (group:"com.mogobiz", name:"mogobiz-tools", version:"${mogobiz.version}")  {excludes "groovy-all"}
 
         compile "com.mogobiz.rivers:mogobiz-google-shopping:${mogobiz.version}"
+        compile "com.mogobiz.rivers:mogobiz-elasticsearch:${mogobiz.version}"
         compile "com.mogobiz.rivers:mogobiz-cfp:${mogobiz.version}"
         compile "com.mogobiz.rivers:mogobiz-mirakl:${mogobiz.version}"
+        compile "commons-beanutils:commons-beanutils:1.8.3"
+        compile "org.twitter4j:twitter4j-async:2.2.5"
+        compile "org.twitter4j:twitter4j-core:2.2.5"
+        compile "org.twitter4j:twitter4j-media-support:2.2.5"
+        compile "org.twitter4j:twitter4j-stream:2.2.5"
+        compile "com.restfb:restfb:1.6.7"
+        compile "org.apache.oltu.oauth2:org.apache.oltu.oauth2.common:0.31"
+        compile "org.apache.oltu.oauth2:org.apache.oltu.oauth2.authzserver:0.31"
+        compile "org.apache.oltu.oauth2:org.apache.oltu.oauth2.resourceserver:0.31"
+        compile "org.apache.poi:poi-ooxml:3.10.1"
 
     }
 
     plugins {
-        build(":release:3.0.1",
-              ":rest-client-builder:1.0.3") {
+        build(":release:3.1.2",
+              ":rest-client-builder:2.1.1",
+                ":hibernate:3.6.10.19",
+                ":shiro:1.2.1",
+                ":google-data:0.1.3",
+                ":facebook-graph:0.14") {//"com.mogobiz:email-confirmation:${mogobiz.version}"
             export = false
         }
+        compile ":mail:1.0.7"
+        compile ":platform-core:1.0.0"
         compile "com.mogobiz:mogobiz-core:${mogobiz.version}"
 
     }

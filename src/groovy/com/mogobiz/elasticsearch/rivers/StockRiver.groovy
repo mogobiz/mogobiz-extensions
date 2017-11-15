@@ -35,7 +35,7 @@ class StockRiver  extends AbstractESRiver<StockCalendarSku> {
         )
     }
 
-    @Override
+//    @Override
     Item asItem(StockCalendarSku tuple, RiverConfig riverConfig) {
         new Item(id:tuple.sku?.uuid, type: getType(), map:
                 TicketType.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
@@ -82,15 +82,9 @@ class StockRiver  extends AbstractESRiver<StockCalendarSku> {
         return "stock"
     }
 
-    @Override
+//    @Override
     String getUuid(StockCalendarSku s){
         s.sku?.uuid
     }
 
-}
-
-@TupleConstructor
-class StockCalendarSku{
-    TicketType sku
-    Set<StockCalendar> stockCalendars
 }

@@ -6,26 +6,27 @@ package com.mogobiz.elasticsearch.rivers
 
 import com.mogobiz.common.client.Item
 import com.mogobiz.common.rivers.spi.RiverConfig
+import com.mogobiz.elasticsearch.client.ESClient
+import com.mogobiz.elasticsearch.client.ESMapping
+import com.mogobiz.elasticsearch.client.ESProperty
 import com.mogobiz.elasticsearch.rivers.cache.CategoryFeaturesRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.CouponsRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.TranslationsRiverCache
 import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
 import com.mogobiz.store.domain.*
-import com.mogobiz.elasticsearch.client.ESClient
-import com.mogobiz.elasticsearch.client.ESMapping
-import com.mogobiz.elasticsearch.client.ESProperty
 import com.mogobiz.tools.InnerSubscription
 import org.hibernate.FlushMode
 import org.springframework.transaction.TransactionDefinition
 import rx.Observable
 import rx.Observable.OnSubscribe
 import rx.Subscriber
+import rx.functions.Func1
 
 /**
  */
 class ProductRiver extends AbstractESRiver<Product>{
 
-    @Override
+//    @Override
     Item asItem(Product product, RiverConfig config) {
         new Item(id:product.id, type: getType(), map:
                 Product.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]){
@@ -395,21 +396,16 @@ class ProductRiver extends AbstractESRiver<Product>{
             CouponsRiverCache.instance.put(key, coupons)
         }
 
-        Observable.create(new OnSubscribe<Product>() {
+        Observable.from(config.partial ?
+                config.idProducts as List<Long> :
+                Product.executeQuery(
+                        'select p.id from Product p WHERE p.category.catalog.id in (:idCatalogs) and p.state = :productState and p.deleted = false and p.ticketTypes.size > 0',
+                        [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE],
+                        args
+                ) as List<Long>).buffer(config.bulkSize).flatMap(new Func1<List<Long>, Observable<Product>>() {
             @Override
-            void call(Subscriber<? super Product> subscriber) {
-                def subscription = new InnerSubscription()
-                subscriber.add(subscription)
-                subscriber.onStart()
-                try{
-                    final List<Long> idProducts = config.partial ?
-                            config.idProducts as List<Long> :
-                            Product.executeQuery(
-                                    'select p.id from Product p WHERE p.category.catalog.id in (:idCatalogs) and p.state = :productState and p.deleted = false and p.ticketTypes.size > 0',
-                                    [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE],
-                                    args
-                            ) as List<Long>
-                    idProducts.collate(config.bulkSize).each {sub ->
+            Observable<Product> call(List<Long> sub) {
+                return Observable.from(
                         Product.executeQuery('SELECT p FROM Product p ' +
                                 'left join fetch p.features ' +
                                 'left join fetch p.featureValues ' +
@@ -440,20 +436,10 @@ class ProductRiver extends AbstractESRiver<Product>{
                                 'left join fetch p.company ' +
                                 'WHERE p.id in (:idProducts) and p.state = :productState and p.deleted = false and p.ticketTypes.size > 0',
                                 [idProducts: sub, productState:ProductState.ACTIVE], args
-                        ).each {
-                            if(!subscription.isUnsubscribed()) {
-                                subscriber.onNext(it)
-                            }
-                        }
-                    }
-                }
-                catch(Throwable th){
-                    subscriber.onError(th)
-                }
-
-                subscriber.onCompleted()
+                        ))
             }
-        }).onBackpressureBuffer()
+        })
+
     }
 
     @Override
@@ -461,7 +447,7 @@ class ProductRiver extends AbstractESRiver<Product>{
         return 'product'
     }
 
-    @Override
+//    @Override
     String getUuid(Product p){
         p.uuid
     }

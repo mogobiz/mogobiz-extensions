@@ -29,7 +29,7 @@ class SkuRiver extends AbstractGoogleRiver<TicketType>{
                 [idCatalogs:riverConfig.idCatalogs, productState:ProductState.ACTIVE]))
     }
 
-    @Override
+//    @Override
     Item asItem(TicketType sku, RiverConfig riverConfig) {
         def map = [:]
         if(sku){

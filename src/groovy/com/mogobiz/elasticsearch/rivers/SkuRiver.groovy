@@ -12,23 +12,18 @@ import com.mogobiz.elasticsearch.client.ESProperty
 import com.mogobiz.elasticsearch.rivers.cache.CouponsRiverCache
 import com.mogobiz.elasticsearch.rivers.cache.TranslationsRiverCache
 import com.mogobiz.elasticsearch.rivers.spi.AbstractESRiver
-import com.mogobiz.store.domain.Catalog
-import com.mogobiz.store.domain.Category
-import com.mogobiz.store.domain.Coupon
-import com.mogobiz.store.domain.Product
-import com.mogobiz.store.domain.ProductState
-import com.mogobiz.store.domain.TicketType
-import com.mogobiz.store.domain.Translation
+import com.mogobiz.store.domain.*
 import com.mogobiz.tools.InnerSubscription
 import org.hibernate.FlushMode
 import org.springframework.transaction.TransactionDefinition
 import rx.Observable
 import rx.Subscriber
+import rx.functions.Func1
 
 /**
  *
  */
-class SkuRiver  extends AbstractESRiver<TicketType>{
+class SkuRiver extends AbstractESRiver<TicketType>{
 
     @Override
     Observable<TicketType> retrieveCatalogItems(RiverConfig config) {
@@ -144,7 +139,7 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
                 [idCategories:config.idCategories], args) : Coupon.executeQuery('select category, coupon FROM Coupon coupon left join fetch coupon.rules left join coupon.categories as category where category.catalog.id in (:idCatalogs) and coupon.active=true',
                 [idCatalogs:config.idCatalogs], args)
         categoryCoupons.each { a ->
-            def key = (a[0] as Category).uuid
+            def key = (a[0] as groovy.lang.Category).uuid
             Set<Coupon> coupons = CouponsRiverCache.instance.get(key) as Set<Coupon> ?: []
             coupons.add(a[1] as Coupon)
             CouponsRiverCache.instance.put(key, coupons)
@@ -159,25 +154,20 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
             CouponsRiverCache.instance.put(key, coupons)
         }
 
-        Observable.create(new Observable.OnSubscribe<TicketType>() {
+        Observable.from(config.partial ?
+                TicketType.executeQuery(
+                        'SELECT sku.id FROM TicketType sku, Product p where sku.product.id=p.id and p.id in (:idProducts) and p.state = :productState and p.deleted = false and (sku.stopDate is null or sku.stopDate >= :today)',
+                        [idProducts: config.idProducts, productState: ProductState.ACTIVE, today: now],
+                        args
+                ) as List<Long> :
+                TicketType.executeQuery(
+                        'SELECT sku.id FROM TicketType sku, Product p where sku.product.id=p.id and p.category.catalog.id in (:idCatalogs) and p.state = :productState and p.deleted = false and (sku.stopDate is null or sku.stopDate >= :today)',
+                        [idCatalogs: config.idCatalogs, productState: ProductState.ACTIVE, today: now],
+                        args
+                ) as List<Long>).buffer(config.bulkSize).flatMap(new Func1<List<Long>, Observable<TicketType>>() {
             @Override
-            void call(Subscriber<? super TicketType> subscriber) {
-                def subscription = new InnerSubscription()
-                subscriber.add(subscription)
-                subscriber.onStart()
-                try{
-                    final List<Long> idSkus = config.partial ?
-                            TicketType.executeQuery(
-                                    'SELECT sku.id FROM TicketType sku, Product p where sku.product.id=p.id and p.id in (:idProducts) and p.state = :productState and p.deleted = false and (sku.stopDate is null or sku.stopDate >= :today)',
-                                    [idProducts: config.idProducts, productState: ProductState.ACTIVE, today: now],
-                                    args
-                            ) as List<Long> :
-                            TicketType.executeQuery(
-                                    'SELECT sku.id FROM TicketType sku, Product p where sku.product.id=p.id and p.category.catalog.id in (:idCatalogs) and p.state = :productState and p.deleted = false and (sku.stopDate is null or sku.stopDate >= :today)',
-                                    [idCatalogs: config.idCatalogs, productState: ProductState.ACTIVE, today: now],
-                                    args
-                            ) as List<Long>
-                    idSkus.collate(config.bulkSize).each { sub ->
+            Observable<TicketType> call(List<Long> sub) {
+                Observable.from(
                         TicketType.executeQuery('SELECT sku FROM TicketType sku ' +
                                 'left join fetch sku.product as p ' +
                                 'left join fetch p.features ' +
@@ -201,23 +191,13 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
                                 'left join fetch taxRate.localTaxRates ' +
                                 'WHERE sku.id in (:idSkus) and p.state = :productState and p.deleted = false and (sku.stopDate is null or sku.stopDate >= :today)',
                                 [idSkus: sub, productState: ProductState.ACTIVE, today: now], args
-                        ).each {
-                            if(!subscription.isUnsubscribed()) {
-                                subscriber.onNext(it)
-                            }
-                        }
-                    }
-                }
-                catch(Throwable th){
-                    subscriber.onError(th)
-                }
-
-                subscriber.onCompleted()
+                        ))
             }
-        }).onBackpressureBuffer()
+        })
+
     }
 
-    @Override
+//    @Override
     Item asItem(TicketType ticketType, RiverConfig config) {
         new Item(id:ticketType.id, type: getType(), map:
                 Product.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]){
@@ -361,7 +341,7 @@ class SkuRiver  extends AbstractESRiver<TicketType>{
         return "sku"
     }
 
-    @Override
+//    @Override
     String getUuid(TicketType ticketType) {
         return ticketType.uuid
     }

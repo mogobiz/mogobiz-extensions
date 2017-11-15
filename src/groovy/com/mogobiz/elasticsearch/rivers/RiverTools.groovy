@@ -56,6 +56,7 @@ import com.mogobiz.store.domain.Translation
 import com.mogobiz.store.domain.VariationValue
 import com.mogobiz.geolocation.domain.Poi
 import com.mogobiz.json.RenderUtil
+import groovy.transform.TupleConstructor
 
 import static com.mogobiz.tools.FileTools.encodeFileBase64
 import static com.mogobiz.tools.HashTools.generateMD5
@@ -1629,7 +1630,8 @@ final class RiverTools {
     }
 }
 
-
-
-
-
+@TupleConstructor
+class StockCalendarSku{
+    TicketType sku
+    Set<StockCalendar> stockCalendars
+}

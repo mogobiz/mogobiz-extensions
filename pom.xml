@@ -16,7 +16,6 @@
     <description>mogobiz extensions grails plugin</description>
 
     <properties>
-        <grails.version>2.3.8</grails.version>
         <h2.version>1.3.170</h2.version>
     </properties>
 
@@ -418,7 +417,7 @@
         </dependency>
 
         <dependency>
-            <groupId>org.grails.plugins</groupId>
+            <groupId>com.mogobiz</groupId>
             <artifactId>email-confirmation</artifactId>
             <scope>compile</scope>
             <type>zip</type>
@@ -599,12 +598,6 @@
             <plugin>
                 <groupId>org.grails</groupId>
                 <artifactId>grails-maven-plugin</artifactId>
-                <version>${grails.version}</version>
-                <configuration>
-                    <fork>true</fork>
-                    <!--<grailsVersion>${grails.version}</grailsVersion>//-->
-                </configuration>
-                <extensions>true</extensions>
             </plugin>
 
             <plugin>
@@ -642,7 +635,7 @@
                         </goals>
                         <configuration>
                             <repositoryId>${repository.id}</repositoryId>
-                            <url>http://art.ebiznext.com/artifactory/${repository.uri}</url>
+                            <url>https://art.ebiznext.com/artifactory/${repository.uri}</url>
                             <file>${project.build.directory}/${project.build.finalName}.jar</file>
                             <groupId>${project.groupId}</groupId>
                             <artifactId>${project.artifactId}</artifactId>
@@ -678,6 +671,24 @@
                 <repository.id>mogobiz.release</repository.id>
                 <repository.uri>libs-release-local</repository.uri>
             </properties>
+        </profile>
+        <profile>
+            <id>tools</id>
+            <activation>
+                <property>
+                    <name>java.vendor</name>
+                    <value>Sun Microsystems Inc.</value>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.sun</groupId>
+                    <artifactId>tools</artifactId>
+                    <version>${java.version}</version>
+                    <scope>system</scope>
+                    <systemPath>${java.home}/../lib/tools.jar</systemPath>
+                </dependency>
+            </dependencies>
         </profile>
     </profiles>
 </project>

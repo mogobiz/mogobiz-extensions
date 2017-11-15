@@ -73,7 +73,7 @@ class CompanyRiver extends AbstractESRiver<Company> {
         'company'
     }
 
-    @Override
+//    @Override
     Item asItem(Company b, RiverConfig config) {
         new Item(id:b.code, type: getType(), map:
                 Company.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
@@ -82,7 +82,7 @@ class CompanyRiver extends AbstractESRiver<Company> {
         )
     }
 
-    @Override
+//    @Override
     String getUuid(Company c){
         c.uuid
     }

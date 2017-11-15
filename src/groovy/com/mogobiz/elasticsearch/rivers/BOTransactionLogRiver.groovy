@@ -27,7 +27,7 @@ class BOTransactionLogRiver extends AbstractESBORiver<BOTransactionLog>{
         ))
     }
 
-    @Override
+//    @Override
     Item asItem(BOTransactionLog boTransactionLog, RiverConfig config) {
         BOTransactionLog.withTransaction {
             def map = new JsonSlurper().parse(new StringReader(boTransactionLog.extra)) as Map

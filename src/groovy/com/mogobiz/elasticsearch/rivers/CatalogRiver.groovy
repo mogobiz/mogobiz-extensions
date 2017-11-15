@@ -40,7 +40,7 @@ class CatalogRiver extends AbstractESRiver<Catalog> {
         return 'catalog'
     }
 
-    @Override
+//    @Override
     Item asItem(Catalog catalog, RiverConfig config) {
         new Item(id:catalog.id, type: getType(), map:
                 Catalog.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
@@ -49,7 +49,7 @@ class CatalogRiver extends AbstractESRiver<Catalog> {
         )
     }
 
-    @Override
+//    @Override
     String getUuid(Catalog c){
         c.uuid
     }
