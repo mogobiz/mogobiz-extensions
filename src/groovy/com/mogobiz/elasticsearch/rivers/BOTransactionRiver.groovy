@@ -27,7 +27,7 @@ class BOTransactionRiver extends AbstractESBORiver<BOTransaction>{
         ))
     }
 
-//    @Override
+    @Override
     Item asItem(BOTransaction boTransaction, RiverConfig config) {
         BOTransaction.withTransaction {
             def map = new JsonSlurper().parse(new StringReader(boTransaction.extra)) as Map
@@ -41,4 +41,10 @@ class BOTransactionRiver extends AbstractESBORiver<BOTransaction>{
     String getType() {
         return "BOTransaction"
     }
+
+    @Override
+    String getUuid(BOTransaction boTransaction) {
+        return null
+    }
+
 }

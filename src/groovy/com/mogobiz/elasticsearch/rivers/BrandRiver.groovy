@@ -77,7 +77,7 @@ class BrandRiver extends AbstractESRiver<Brand> {
         'brand'
     }
 
-//    @Override
+    @Override
     Item asItem(Brand b, RiverConfig config) {
         new Item(id:b.id, type: getType(), map:
                 Brand.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]){
@@ -86,7 +86,7 @@ class BrandRiver extends AbstractESRiver<Brand> {
         )
     }
 
-//    @Override
+    @Override
     String getUuid(Brand b){
         b.uuid
     }

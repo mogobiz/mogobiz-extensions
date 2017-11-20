@@ -197,7 +197,7 @@ class SkuRiver extends AbstractESRiver<TicketType>{
 
     }
 
-//    @Override
+    @Override
     Item asItem(TicketType ticketType, RiverConfig config) {
         new Item(id:ticketType.id, type: getType(), map:
                 Product.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]){
@@ -341,7 +341,7 @@ class SkuRiver extends AbstractESRiver<TicketType>{
         return "sku"
     }
 
-//    @Override
+    @Override
     String getUuid(TicketType ticketType) {
         return ticketType.uuid
     }

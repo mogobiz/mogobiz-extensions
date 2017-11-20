@@ -47,7 +47,7 @@ class DownloadableRiver extends AbstractESRiver<File>{
         return Observable.from(FileTools.scan(folder)).filter(f)
     }
 
-//    @Override
+    @Override
     Item asItem(File file, RiverConfig config) {
         new Item(id: file?.name, type: getType(), map: RiverTools.asDownloadableMap(file, config))
     }
@@ -68,6 +68,11 @@ class DownloadableRiver extends AbstractESRiver<File>{
     @Override
     String getType() {
         return "downloadable"
+    }
+
+    @Override
+    String getUuid(File file) {
+        return null
     }
 
 }

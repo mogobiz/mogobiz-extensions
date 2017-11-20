@@ -155,7 +155,7 @@
 
         <dependency>
             <groupId>com.mogobiz.rivers</groupId>
-            <artifactId>mogobiz-common</artifactId>
+            <artifactId>mogobiz-spi</artifactId>
             <version>${project.version}</version>
             <scope>compile</scope>
             <exclusions>

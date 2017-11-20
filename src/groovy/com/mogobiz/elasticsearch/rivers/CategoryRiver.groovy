@@ -61,7 +61,7 @@ class CategoryRiver extends AbstractESRiver<Category>{
         'category'
     }
 
-//    @Override
+    @Override
     Item asItem(Category category, RiverConfig config) {
         new Item(id:category.id, type: getType(), map:
                 Category.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
@@ -70,7 +70,7 @@ class CategoryRiver extends AbstractESRiver<Category>{
         )
     }
 
-//    @Override
+    @Override
     String getUuid(Category c){
         c.uuid
     }

@@ -43,7 +43,7 @@ class ResourceRiver  extends AbstractESRiver<Resource> {
                 [idCatalogs:config.idCatalogs, productState:ProductState.ACTIVE], args).toSet())
     }
 
-//    @Override
+    @Override
     Item asItem(Resource resource, RiverConfig config) {
         new Item(id:resource.id, type: getType(), map:
                 Resource.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
@@ -78,7 +78,7 @@ class ResourceRiver  extends AbstractESRiver<Resource> {
         return 'resource'
     }
 
-//    @Override
+    @Override
     String getUuid(Resource r){
         r.uuid
     }

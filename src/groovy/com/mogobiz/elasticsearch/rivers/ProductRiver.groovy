@@ -26,7 +26,7 @@ import rx.functions.Func1
  */
 class ProductRiver extends AbstractESRiver<Product>{
 
-//    @Override
+    @Override
     Item asItem(Product product, RiverConfig config) {
         new Item(id:product.id, type: getType(), map:
                 Product.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]){
@@ -447,7 +447,7 @@ class ProductRiver extends AbstractESRiver<Product>{
         return 'product'
     }
 
-//    @Override
+    @Override
     String getUuid(Product p){
         p.uuid
     }

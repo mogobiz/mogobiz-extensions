@@ -51,12 +51,12 @@ class CountryRiver extends AbstractESRiver<Country> {
         return 'country'
     }
 
-//    @Override
+    @Override
     Item asItem(Country country, RiverConfig config) {
         new Item(id:UUID.randomUUID().toString(), type: getType(), map:RiverTools.asCountryMap(country, config))
     }
 
-//    @Override
+    @Override
     String getUuid(Country c){
         c.code
     }

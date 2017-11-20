@@ -77,7 +77,7 @@ class CouponRiver extends AbstractESRiver<Coupon> {
         return rx.Observable.from(results.flatten())
     }
 
-//    @Override
+    @Override
     Item asItem(Coupon coupon, RiverConfig riverConfig) {
         new Item(id:coupon.id, type: getType(), map:
                 Coupon.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
@@ -124,7 +124,7 @@ class CouponRiver extends AbstractESRiver<Coupon> {
         return 'coupon'
     }
 
-//    @Override
+    @Override
     String getUuid(Coupon c){
         c.uuid
     }

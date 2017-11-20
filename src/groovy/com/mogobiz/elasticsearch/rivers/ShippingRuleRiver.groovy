@@ -24,7 +24,7 @@ class ShippingRuleRiver extends AbstractESRiver<ShippingRule> {
                 [idCompany:riverConfig.idCompany], [readOnly: true, flushMode: FlushMode.MANUAL]))
     }
 
-//    @Override
+    @Override
     Item asItem(ShippingRule shippingRule, RiverConfig riverConfig) {
         new Item(id:shippingRule.uuid, type: getType(), map:
                 ShippingRule.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
@@ -55,7 +55,7 @@ class ShippingRuleRiver extends AbstractESRiver<ShippingRule> {
         return "shipping_rule"
     }
 
-//    @Override
+    @Override
     String getUuid(ShippingRule r){
         r.uuid
     }

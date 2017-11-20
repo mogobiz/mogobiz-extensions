@@ -20,7 +20,7 @@ import rx.Observable
  */
 class SuggestionRiver extends AbstractESRiver<Suggestion>{
 
-//    @Override
+    @Override
     Item asItem(Suggestion suggestion, RiverConfig config){
         Suggestion.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
             new Item(
@@ -122,7 +122,7 @@ class SuggestionRiver extends AbstractESRiver<Suggestion>{
         return 'suggestion'
     }
 
-//    @Override
+    @Override
     String getUuid(Suggestion s){
         s.uuid
     }

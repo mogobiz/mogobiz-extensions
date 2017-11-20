@@ -74,7 +74,7 @@ class TagRiver extends AbstractESRiver<Tag>{
         return 'tag'
     }
 
-//    @Override
+    @Override
     Item asItem(Tag tag, RiverConfig config) {
         new Item(id:tag.id, type: getType(), map:
                 Tag.withTransaction([propagationBehavior: TransactionDefinition.PROPAGATION_SUPPORTS]) {
@@ -83,7 +83,7 @@ class TagRiver extends AbstractESRiver<Tag>{
         )
     }
 
-//    @Override
+    @Override
     String getUuid(Tag t){
         t.uuid
     }
