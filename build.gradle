@@ -1,7 +1,7 @@
 version "1.0.1-SNAPSHOT"
 
 ext {
-    binaryPlugin = true
+    grailsBinaryPlugin = true
 }
 
 dependencies {
