@@ -4,17 +4,17 @@ ext {
 
 dependencies {
     /* grails */
-    compile "org.grails:grails-resources:${grailsVersion}"
-    compile "org.grails:grails-plugin-async:${grailsVersion}"
-    compile "org.grails:grails-plugin-rest:${grailsVersion}"
-    compile "org.grails:grails-plugin-services:${grailsVersion}"
-    compile "org.grails:grails-plugin-i18n:${grailsVersion}"
-    compile "org.grails:grails-plugin-databinding:${grailsVersion}"
-    compile "org.grails:grails-plugin-filters:${grailsVersion}"
-    compile "org.grails:grails-plugin-gsp:${grailsVersion}"
-    compile "org.grails:grails-plugin-url-mappings:${grailsVersion}"
-    compile "org.grails:grails-plugin-log4j:${grailsVersion}"
-    compile "org.grails:grails-plugin-servlets:${grailsVersion}"
+    compile "org.grails:grails-resources:$grailsVersion"
+    compile "org.grails:grails-plugin-async:$grailsVersion"
+    compile "org.grails:grails-plugin-rest:$grailsVersion"
+    compile "org.grails:grails-plugin-services:$grailsVersion"
+    compile "org.grails:grails-plugin-i18n:$grailsVersion"
+    compile "org.grails:grails-plugin-databinding:$grailsVersion"
+    compile "org.grails:grails-plugin-filters:$grailsVersion"
+    compile "org.grails:grails-plugin-gsp:$grailsVersion"
+    compile "org.grails:grails-plugin-url-mappings:$grailsVersion"
+    compile "org.grails:grails-plugin-log4j:$grailsVersion"
+    compile "org.grails:grails-plugin-servlets:$grailsVersion"
 
     compile('net.sourceforge.nekohtml:nekohtml:1.9.15'){
         exclude group: 'xerces', module: 'xercesImpl'
@@ -26,23 +26,18 @@ dependencies {
     }
 
     /* jackson */
-    compile("com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"){
+    compile("com.fasterxml.jackson.core:jackson-core:$jacksonVersion"){
         exclude group: "xerces", module: "xercesImpl"
     }
-    compile "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
 
     /* twitter */
-    compile "org.twitter4j:twitter4j-async:${twitter4jVersion}"
-    compile "org.twitter4j:twitter4j-core:${twitter4jVersion}"
-    compile "org.twitter4j:twitter4j-media-support:${twitter4jVersion}"
-    compile "org.twitter4j:twitter4j-stream:${twitter4jVersion}"
+    compile _twitter4j
 
-    compile 'org.scala-lang:scala-library:2.11.8'
+    compile _scala
 
     /* oauth2 */
-    compile "org.apache.oltu.oauth2:org.apache.oltu.oauth2.common:${oauth2Version}"
-    compile "org.apache.oltu.oauth2:org.apache.oltu.oauth2.authzserver:${oauth2Version}"
-    compile "org.apache.oltu.oauth2:org.apache.oltu.oauth2.resourceserver:${oauth2Version}"
+    compile _oauth2
 
     compile 'com.restfb:restfb:1.6.7'
 
@@ -55,11 +50,11 @@ dependencies {
     compile project(":plugins:grails-email-confirmation")
 
     /* rxjava */
-    compile("io.reactivex:rxjava-reactive-streams:1.O.1"){
+    compile("io.reactivex:rxjava-reactive-streams:$rxJavaRsVersion"){
         exclude group: "io.reactivex", module: "rxjava"
     }
-    compile "io.reactivex:rxjava:1.O.17"
-    compile("io.reactivex:rxgroovy:1.O.3"){
+    compile "io.reactivex:rxjava:$rxJavaVersion"
+    compile("io.reactivex:rxgroovy:$rxGroovyVersion"){
         exclude group: "org.codehaus.groovy", module: "groovy-all"
     }
 
@@ -110,8 +105,8 @@ dependencies {
         exclude group: "xml-apis", module: "xml-apis"
     }
 
-    test "org.grails:grails-test:${grailsVersion}"
-    test "org.grails:grails-plugin-testing:${grailsVersion}"
+    test "org.grails:grails-test:$grailsVersion"
+    test "org.grails:grails-plugin-testing:$grailsVersion"
     test 'org.spockframework:spock-core:1.1-groovy-2.4'
     test 'junit:junit:4.12'
 
