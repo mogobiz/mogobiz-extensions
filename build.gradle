@@ -1,0 +1,115 @@
+ext {
+    grailsBinaryPlugin = true
+}
+
+dependencies {
+    /* grails */
+    compile "org.grails:grails-resources:$grailsVersion"
+    compile "org.grails:grails-plugin-async:$grailsVersion"
+    compile "org.grails:grails-plugin-rest:$grailsVersion"
+    compile "org.grails:grails-plugin-services:$grailsVersion"
+    compile "org.grails:grails-plugin-i18n:$grailsVersion"
+    compile "org.grails:grails-plugin-databinding:$grailsVersion"
+    compile "org.grails:grails-plugin-filters:$grailsVersion"
+    compile "org.grails:grails-plugin-gsp:$grailsVersion"
+    compile "org.grails:grails-plugin-url-mappings:$grailsVersion"
+    compile "org.grails:grails-plugin-log4j:$grailsVersion"
+    compile "org.grails:grails-plugin-servlets:$grailsVersion"
+
+    compile('net.sourceforge.nekohtml:nekohtml:1.9.15'){
+        exclude group: 'xerces', module: 'xercesImpl'
+    }
+
+    compile('org.codehaus.groovy.modules.http-builder:http-builder:0.7.1'){
+        exclude group: 'org.codehaus.groovy'
+        exclude group: 'net.sourceforge.nekohtml', module: 'nekohtml'
+    }
+
+    /* jackson */
+    compile("com.fasterxml.jackson.core:jackson-core:$jacksonVersion"){
+        exclude group: "xerces", module: "xercesImpl"
+    }
+    compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+
+    /* twitter */
+    compile _twitter4j
+
+    compile _scala
+
+    /* oauth2 */
+    compile _oauth2
+
+    compile 'com.restfb:restfb:1.6.7'
+
+    compile 'com.google.zxing:core:1.7'
+
+    /* mogobiz */
+    compile project(":mogobiz-core")
+    compile project(":mogobiz-rivers:cfp")
+    compile project(":mogobiz-rivers:google-shopping")
+    compile project(":plugins:grails-email-confirmation")
+
+    /* rxjava */
+    compile("io.reactivex:rxjava-reactive-streams:$rxJavaRsVersion"){
+        exclude group: "io.reactivex", module: "rxjava"
+    }
+    compile "io.reactivex:rxjava:$rxJavaVersion"
+    compile("io.reactivex:rxgroovy:$rxGroovyVersion"){
+        exclude group: "org.codehaus.groovy", module: "groovy-all"
+    }
+
+    /* grails plugins*/
+    compile "org.grails.plugins:cache:1.1.8"
+    compile "org.grails.plugins:facebook-graph:0.14"
+    compile "org.grails.plugins:platform-core:1.0.0"
+    compile "org.grails.plugins:google-data:0.1.3"
+    compile("org.grails.plugins:shiro:1.2.1"){
+        exclude group: "org.apache.shiro", module: "shiro-quartz"
+    }
+    compile "org.grails.plugins:mail:1.0.7"
+    compile "org.grails.plugins:quartz:1.0.2"
+    compile "org.grails.plugins:recaptcha:1.7.0"
+    compile "org.grails.plugins:cache-headers:1.1.7"
+    compile "org.grails.plugins:cached-resources:1.0"
+    compile "org.grails.plugins:cookie:1.4"
+    compile("org.grails.plugins:rest:0.8"){
+        exclude group: "org.codehaus.groovy.modules.http-builder", module: "http-builder"
+    }
+    compile "org.grails.plugins:joda-time:1.5"
+    compile("org.apache.poi:poi-ooxml:3.10.1"){
+        exclude group: "xml-apis", module: "xml-apis"
+    }
+    compile "org.jsoup:jsoup:1.8.1"
+    compile "org.grails.plugins:executor:0.3"
+    compile "log4j:log4j:1.2.17"
+
+    compile "org.elasticsearch:elasticsearch:1.7.3"
+    compile("org.elasticsearch:elasticsearch-analysis-icu:2.7.0"){
+        exclude group: "org.elasticsearch", module: "elasticsearch"
+    }
+
+    runtime "org.grails.plugins:hibernate:3.6.10.19"
+    runtime "org.grails.plugins:database-migration:1.4.1"
+    runtime "org.grails.plugins:resources:1.2.14"
+
+    runtime "mysql:mysql-connector-java:5.1.30"
+    runtime "postgresql:postgresql:9.1-901.jdbc4"
+
+    /* akka */
+    runtime "com.typesafe.akka:akka-actor_2.11:2.3.12"
+    runtime "com.typesafe.akka:akka-stream-experimental_2.11:1.0-M3"
+
+    runtime "org.codehaus.jettison:jettison:1.2"
+
+    runtime('xerces:xercesImpl:2.8.1'){
+        exclude group: "xml-apis", module: "xml-apis"
+    }
+
+    test "org.grails:grails-test:$grailsVersion"
+    test "org.grails:grails-plugin-testing:$grailsVersion"
+    test 'org.spockframework:spock-core:1.1-groovy-2.4'
+    test 'junit:junit:4.12'
+
+    provided 'javax.servlet:javax.servlet-api:3.0.1'
+    provided 'org.grails.plugins:tomcat:7.0.54'
+}
