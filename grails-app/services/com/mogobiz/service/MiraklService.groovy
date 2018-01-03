@@ -75,7 +75,7 @@ class MiraklService {
 
     def sanitizeUrlService
 
-    def grailsApplication
+    grails.core.GrailsApplication grailsApplication
 
     def catalogService
 

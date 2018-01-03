@@ -15,7 +15,7 @@ import com.mogobiz.store.domain.Country
 import grails.converters.JSON
 import grails.util.Holders
 import org.apache.commons.lang.StringUtils
-import org.codehaus.groovy.grails.web.json.JSONObject
+import org.grails.web.json.JSONObject
 import rx.Observable
 
 /**

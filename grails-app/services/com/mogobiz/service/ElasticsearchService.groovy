@@ -37,7 +37,7 @@ import grails.converters.JSON
 import groovy.json.JsonBuilder
 import groovy.transform.Synchronized
 import org.apache.commons.lang.StringUtils
-import org.codehaus.groovy.grails.web.json.JSONObject
+import org.grails.web.json.JSONObject
 import org.quartz.CronExpression
 
 import java.text.NumberFormat
@@ -59,7 +59,7 @@ class ElasticsearchService {
 
     HTTPClient httpClient = HTTPClient.getInstance()
 
-    def grailsApplication
+    grails.core.GrailsApplication grailsApplication
 
     /**
      * This method lists brands for the specified store

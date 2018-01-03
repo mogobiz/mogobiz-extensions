@@ -70,7 +70,7 @@ import grails.util.Holders
 import groovy.json.JsonSlurper
 import groovy.util.logging.Log4j
 import org.apache.commons.lang.StringUtils
-import org.codehaus.groovy.grails.web.json.JSONObject
+import org.grails.web.json.JSONObject
 
 import java.text.NumberFormat
 import java.util.regex.Matcher

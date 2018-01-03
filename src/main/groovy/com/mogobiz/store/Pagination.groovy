@@ -9,8 +9,7 @@ import grails.validation.Validateable
 
 /**
  */
-@Validateable
-class Pagination implements Serializable{
+class Pagination implements Serializable, Validateable{
 
     Integer maxItemsPerPage = IperConstant.NUMBER_PRODUCT_PER_PAGE
 

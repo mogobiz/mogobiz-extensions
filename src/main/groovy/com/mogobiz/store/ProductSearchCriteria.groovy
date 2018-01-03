@@ -8,8 +8,7 @@ import grails.validation.Validateable
 
 /**
  */
-@Validateable
-class ProductSearchCriteria extends Pagination implements Serializable{
+class ProductSearchCriteria extends Pagination implements Serializable, Validateable{
 
     /**
      * product type
