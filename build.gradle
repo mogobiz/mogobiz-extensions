@@ -10,10 +10,6 @@ dependencyManagement {
     applyMavenExclusions false
 }
 
-ext {
-//    grailsBinaryPlugin = true
-}
-
 dependencies {
 
     compile('net.sourceforge.nekohtml:nekohtml:1.9.15'){
@@ -47,7 +43,6 @@ dependencies {
     compile project(":mogobiz-core")
     compile project(":mogobiz-rivers:cfp")
     compile project(":mogobiz-rivers:google-shopping")
-    compile project(":plugins:grails-email-confirmation")
 
     /* rxjava */
     compile("io.reactivex:rxjava-reactive-streams:$rxJavaRsVersion"){
